@@ -26,6 +26,11 @@
       {/if}
       <div class="card-body">
         <h5 class="card-title">{$post.title|escape}</h5>
+        {if $post.author_first || $post.author_last}
+          <p class="text-muted small mb-2">
+            <em>By {if $post.author_first}{$post.author_first}{/if} {if $post.author_last}{$post.author_last}{/if}</em>
+          </p>
+        {/if}
         <p class="card-text">{$post.excerpt|escape}</p>
         <div class="d-flex justify-content-between align-items-center">
           <small class="text-muted fst-italic">
@@ -33,9 +38,14 @@
             <span class="d-md-none">Tap to read more</span>
           </small>
           {if $is_authenticated|default:false}
-            <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="{$post.id}" title="Edit post">
-              <i class="bi bi-pencil"></i> Edit
-            </button>
+            <div class="btn-group" role="group">
+              <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="{$post.id}" title="Edit post">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-outline-danger btn-delete-post-home" data-post-id="{$post.id}" title="Delete post">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
           {/if}
         </div>
       </div>

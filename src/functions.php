@@ -811,7 +811,8 @@ function updatePost($db_conn, $id, $data)
 function deletePost($db_conn, $id)
 {
     $id = (int)$id;
-    $stmt = mysqli_prepare($db_conn, 'DELETE FROM posts WHERE id = ?');
+    // Soft delete - set deleted_at timestamp instead of actually deleting
+    $stmt = mysqli_prepare($db_conn, 'UPDATE posts SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
     mysqli_stmt_bind_param($stmt, 'i', $id);
     return mysqli_stmt_execute($stmt);
 }
@@ -819,17 +820,25 @@ function deletePost($db_conn, $id)
 function getPost($db_conn, $id)
 {
     $id = (int)$id;
-    $result = mysqli_query($db_conn, "SELECT * FROM posts WHERE id = {$id} LIMIT 1");
+    $sql = "SELECT p.*,
+                   u.first AS author_first, u.last AS author_last, u.username AS author_username
+            FROM posts p
+            LEFT JOIN users u ON p.created_by_user_id = u.username
+            WHERE p.id = {$id} AND p.deleted_at IS NULL LIMIT 1";
+    $result = mysqli_query($db_conn, $sql);
     return $result ? mysqli_fetch_assoc($result) : null;
 }
 
 function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
 {
     $limit = (int)$limit; $offset = (int)$offset;
-    $sql = "SELECT p.*, m.variants_json AS hero_variants
+    $sql = "SELECT p.*, m.variants_json AS hero_variants,
+                   u.first AS author_first, u.last AS author_last, u.username AS author_username
             FROM posts p
             LEFT JOIN media m ON p.hero_media_id = m.id
-            WHERE p.status = 'published' ORDER BY COALESCE(p.published_at, p.created_at) DESC
+            LEFT JOIN users u ON p.created_by_user_id = u.username
+            WHERE p.status = 'published' AND p.deleted_at IS NULL
+            ORDER BY COALESCE(p.published_at, p.created_at) DESC
             LIMIT {$limit} OFFSET {$offset}";
     $res = mysqli_query($db_conn, $sql);
     $rows = [];

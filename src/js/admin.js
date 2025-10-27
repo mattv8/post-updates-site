@@ -393,6 +393,12 @@
     document.body.appendChild(mediaDeleteModal);
   }
 
+  // Move post delete modal to body as well
+  const deletePostModal = document.getElementById('deletePostModal');
+  if (deletePostModal && deletePostModal.parentElement !== document.body) {
+    document.body.appendChild(deletePostModal);
+  }
+
   // Posts - minimal list/create
   const postsList = document.getElementById('postsList');
   const postEditorContainer = postEditorModal.querySelector('.modal-body');
@@ -508,12 +514,15 @@
     fetch('/api/admin/posts.php').then(r=>r.json()).then(j=>{
       if(!j.success) return; postsList.innerHTML='';
       const table = document.createElement('table'); table.className='table table-striped';
-      table.innerHTML = '<thead><tr><th>ID</th><th>Title</th><th>Published</th><th>Created</th><th>Actions</th></tr></thead>';
+      table.innerHTML = '<thead><tr><th>ID</th><th>Title</th><th>Author</th><th>Published</th><th>Created</th><th>Actions</th></tr></thead>';
       const tbody = document.createElement('tbody');
       (j.data||[]).forEach(p=>{
         const tr = document.createElement('tr');
         const isPublished = p.status === 'published';
         const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString() : '';
+
+        // Build author name
+        const authorName = [p.author_first, p.author_last].filter(Boolean).join(' ') || p.author_username || 'Unknown';
 
         // Create toggle switch HTML
         const toggleHtml = `
@@ -529,6 +538,7 @@
         tr.innerHTML = `
           <td>${p.id}</td>
           <td>${p.title || '(untitled)'}</td>
+          <td class="text-muted small">${authorName}</td>
           <td>${toggleHtml}</td>
           <td>${p.created_at}</td>
           <td>
@@ -557,8 +567,11 @@
     }
 
     if (del) {
-      if (!confirm('Delete this post?')) return;
-      api('/api/admin/posts.php?id='+del, {method:'DELETE'}).then(j=>{ loadPosts(); });
+      // Show delete confirmation modal instead of confirm()
+      const deleteModal = new bootstrap.Modal(document.getElementById('deletePostModal'));
+      const confirmBtn = document.getElementById('confirmDeletePostAdmin');
+      confirmBtn.setAttribute('data-post-id', del);
+      deleteModal.show();
     }
   });
 
@@ -598,6 +611,40 @@
       });
     }
   });
+
+  // Confirm delete post button in modal
+  const confirmDeletePostAdmin = document.getElementById('confirmDeletePostAdmin');
+  if (confirmDeletePostAdmin) {
+    confirmDeletePostAdmin.addEventListener('click', function() {
+      const postId = this.getAttribute('data-post-id');
+      if (!postId) return;
+
+      const originalText = this.textContent;
+      this.disabled = true;
+      this.textContent = 'Deleting...';
+
+      api('/api/admin/posts.php?id=' + postId, {method: 'DELETE'})
+        .then(j => {
+          if (j.success) {
+            // Close modal
+            const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deletePostModal'));
+            if (deleteModal) deleteModal.hide();
+            // Reload posts list
+            loadPosts();
+          } else {
+            alert('Error deleting post: ' + (j.error || 'Unknown error'));
+          }
+        })
+        .catch(err => {
+          console.error('Error deleting post:', err);
+          alert('An error occurred while deleting the post');
+        })
+        .finally(() => {
+          this.disabled = false;
+          this.textContent = originalText;
+        });
+    });
+  }
 
   // When New Post button is clicked (modal opens via data-bs-toggle)
   btnNewPost.addEventListener('click', function(){

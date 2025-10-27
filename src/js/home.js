@@ -13,10 +13,25 @@
     const overlay = qs('#post-overlay');
     qs('#overlay-title').textContent = post.title || '';
     const body = qs('#overlay-body');
-    body.innerHTML = post.body_html || '';
+
+    // Add author information if available
+    let authorHtml = '';
+    if (post.author_first || post.author_last) {
+      const authorName = [post.author_first, post.author_last].filter(Boolean).join(' ');
+      authorHtml = `<p class="text-muted small mb-3"><em>By ${authorName}</em></p>`;
+    }
+
+    body.innerHTML = authorHtml + (post.body_html || '');
 
     const media = qs('#overlay-media');
     media.innerHTML = '';
+
+    // Show delete button if authenticated and store post ID
+    const deleteBtn = qs('#overlay-delete');
+    if (deleteBtn) {
+      deleteBtn.style.display = 'block';
+      deleteBtn.setAttribute('data-post-id', post.id);
+    }
 
     // Display gallery images if present
     if (post.gallery_images && post.gallery_images.length > 0) {
@@ -204,8 +219,8 @@
     // Clickable post cards
     qsa('.post-card').forEach(card => {
       card.addEventListener('click', async (e) => {
-        // Don't open overlay if clicking edit button
-        if (e.target.closest('.btn-edit-post-home')) {
+        // Don't open overlay if clicking edit or delete button
+        if (e.target.closest('.btn-edit-post-home') || e.target.closest('.btn-delete-post-home')) {
           return;
         }
 
@@ -226,11 +241,94 @@
       });
     });
 
+    // Delete buttons on post cards
+    qsa('.btn-delete-post-home').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const postId = btn.getAttribute('data-post-id');
+        if (postId) {
+          // Show confirmation modal
+          const deleteModal = new bootstrap.Modal(document.getElementById('deletePostModal'));
+          const confirmBtn = qs('#confirmDeletePost');
+
+          // Store post ID on confirm button
+          confirmBtn.setAttribute('data-post-id', postId);
+
+          deleteModal.show();
+        }
+      });
+    });
+
     // Overlay close/backdrop
     const closeBtn = qs('#overlay-close');
     const backdrop = qs('#post-overlay .post-overlay-backdrop');
     if (closeBtn) closeBtn.addEventListener('click', hideOverlay);
     if (backdrop) backdrop.addEventListener('click', hideOverlay);
+
+    // Delete button in overlay
+    const deleteBtn = qs('#overlay-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        const postId = deleteBtn.getAttribute('data-post-id');
+        if (postId) {
+          // Show confirmation modal
+          const deleteModal = new bootstrap.Modal(document.getElementById('deletePostModal'));
+          const confirmBtn = qs('#confirmDeletePost');
+
+          // Store post ID on confirm button
+          confirmBtn.setAttribute('data-post-id', postId);
+
+          deleteModal.show();
+
+          // Hide overlay when showing delete modal
+          hideOverlay();
+        }
+      });
+    }
+
+    // Confirm delete button
+    const confirmDeleteBtn = qs('#confirmDeletePost');
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', async () => {
+        const postId = confirmDeleteBtn.getAttribute('data-post-id');
+        if (!postId) return;
+
+        const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        try {
+          confirmDeleteBtn.disabled = true;
+          confirmDeleteBtn.textContent = 'Deleting...';
+
+          const response = await fetch(`/api/admin/posts.php?id=${postId}`, {
+            method: 'DELETE',
+            headers: {
+              'X-CSRF-Token': CSRF
+            }
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Close modal
+            const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deletePostModal'));
+            if (deleteModal) deleteModal.hide();
+
+            // Reload page to remove deleted post
+            window.location.reload();
+          } else {
+            alert('Error deleting post: ' + (data.error || 'Unknown error'));
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.textContent = 'Delete Post';
+          }
+        } catch (error) {
+          console.error('Error deleting post:', error);
+          alert('An error occurred while deleting the post');
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.textContent = 'Delete Post';
+        }
+      });
+    }
 
     // Donate button
     const donateBtn = qs('#donate-btn');

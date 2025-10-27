@@ -42,7 +42,11 @@ switch ($method) {
         // If specific ID requested, return single post
         if (isset($_GET['id']) && $_GET['id']) {
             $id = (int)$_GET['id'];
-            $stmt = mysqli_prepare($db_conn, "SELECT * FROM posts WHERE id = ? LIMIT 1");
+            $stmt = mysqli_prepare($db_conn, "SELECT p.*,
+                                                      u.first AS author_first, u.last AS author_last, u.username AS author_username
+                                               FROM posts p
+                                               LEFT JOIN users u ON p.created_by_user_id = u.username
+                                               WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1");
             mysqli_stmt_bind_param($stmt, 'i', $id);
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
@@ -62,11 +66,16 @@ switch ($method) {
         $limit = isset($_GET['limit']) ? min(100, max(1, (int)$_GET['limit'])) : 20;
         $offset = ($page - 1) * $limit;
 
-        $result = mysqli_query($db_conn, 'SELECT COUNT(*) as c FROM posts');
+        $result = mysqli_query($db_conn, 'SELECT COUNT(*) as c FROM posts WHERE deleted_at IS NULL');
         $total = $result ? (int)mysqli_fetch_assoc($result)['c'] : 0;
 
         $rows = [];
-        $res = mysqli_query($db_conn, "SELECT * FROM posts ORDER BY created_at DESC LIMIT {$limit} OFFSET {$offset}");
+        $res = mysqli_query($db_conn, "SELECT p.*,
+                                              u.first AS author_first, u.last AS author_last, u.username AS author_username
+                                       FROM posts p
+                                       LEFT JOIN users u ON p.created_by_user_id = u.username
+                                       WHERE p.deleted_at IS NULL
+                                       ORDER BY p.created_at DESC LIMIT {$limit} OFFSET {$offset}");
         if ($res) { while ($r = mysqli_fetch_assoc($res)) { $rows[] = $r; } }
         echo json_encode(['success' => true, 'data' => $rows, 'meta' => ['total' => $total, 'page' => $page, 'limit' => $limit]]);
         break;
