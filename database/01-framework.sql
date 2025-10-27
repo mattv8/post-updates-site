@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last` varchar(32) NOT NULL,
   `isadmin` tinyint(1) NOT NULL,
   `active` tinyint(1) NOT NULL,
-  `siteMemberships` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `siteMemberships` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL DEFAULT NULL,
   `email` varchar(32) NOT NULL,
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
