@@ -20,9 +20,8 @@ config.local.php
 # User generated files
 storage/
 
-# Composer dependencies (should be installed on server)
+# Composer dependencies (installed via composer install during deployment)
 vendor/
-composer.lock
 
 # Development files
 .git/
