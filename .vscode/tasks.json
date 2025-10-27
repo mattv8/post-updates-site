@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Start Docker Stack",
+			"command": "if [ ! -f ${workspaceFolder}/.env ]; then echo 'Warning: .env file not found at project root'; fi && sudo docker compose up --build",
+			"group": "build",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		}
+	]
+}

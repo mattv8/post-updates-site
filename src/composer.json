@@ -1,0 +1,25 @@
+{
+    "name": "elfy/janssen-care-bridge",
+    "description": "Health updates site (Caring Bridge style) built on Smarty Portal Framework",
+    "require": {
+        "php": "^8.0",
+        "intervention/image": "^2.7",
+        "stripe/stripe-php": "^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Elfy\\JanssenCareBridge\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Matt Visnovsky",
+            "email": "matt@visnovsky.us"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}

@@ -1,0 +1,14 @@
+{* Create Post Modal - shown when authenticated user clicks "Create Post" from public site *}
+<div class="modal fade" id="createPostModal" tabindex="-1" aria-labelledby="createPostModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createPostModalLabel">Create New Post</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {include file='templates/partials/post_editor.tpl'}
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,108 @@
+/* Global CSS - Common styles across all pages */
+
+/* Card enhancements */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Button enhancements */
+.btn {
+    border-radius: 0.375rem;
+}
+
+/* Utility classes */
+.inset-1 {
+    padding: 1rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Prompt template syntax highlighting */
+.prompt-editor {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.prompt-editor:empty:before {
+    content: attr(data-placeholder);
+    color: #6c757d;
+    font-style: italic;
+}
+
+.prompt-editor:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.placeholder-highlight {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-weight: 600;
+    font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+    padding: 1px 3px;
+    border-radius: 3px;
+    border: 1px solid #bbdefb;
+}
+
+/* CKEditor auto-height customizations */
+.ck-editor__editable {
+    min-height: 200px !important;
+    resize: vertical !important;
+    overflow-y: auto !important;
+}
+
+.ck-editor__editable_inline {
+    overflow-y: auto !important;
+}
+
+/* Make CKEditor content area expand with content */
+.ck.ck-content {
+    min-height: inherit;
+    height: auto;
+}
+
+/* Ensure resize handle is visible */
+.ck.ck-editor__editable.ck-focused,
+.ck.ck-editor__editable {
+    resize: vertical !important;
+}
+
+/* Auto-save indicator */
+.editor-autosave-indicator {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    display: inline-block;
+}
+
+.editor-autosave-indicator .saving {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.editor-autosave-indicator .saved {
+    color: #198754;
+}
+
+.editor-autosave-indicator .text-danger {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.editor-autosave-indicator .text-muted {
+    color: #6c757d;
+}

@@ -1,0 +1,29 @@
+#######################################################################
+#
+# Use this file to ignore files/directories during sync to staging/prod
+#
+
+# This file
+sync.exclusions
+
+# Web system files
+robots.txt
+
+# Framework folders and files (managed separately via git clone)
+framework/
+index.php
+cache/
+
+# Local config files
+config.local.php
+
+# User generated files
+storage/
+
+# Composer dependencies (should be installed on server)
+vendor/
+composer.lock
+
+# Development files
+.git/
+.gitignore

@@ -1,0 +1,20 @@
+/* Fix modal z-index issues */
+/* Custom styles for Janssen Care Bridge */
+
+/* Media gallery card styling */
+.media-card {
+  transition: box-shadow 0.2s;
+}
+
+.media-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.media-card .media-delete-btn {
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.media-card .media-delete-btn:hover {
+  opacity: 1 !important;
+}

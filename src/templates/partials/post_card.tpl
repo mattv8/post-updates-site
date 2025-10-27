@@ -1,0 +1,44 @@
+{* Post card partial - Timeline version *}
+{assign var=jpg_srcset value=$post.hero_srcset_jpg}
+{assign var=webp_srcset value=$post.hero_srcset_webp}
+
+<div class="timeline-item" data-post-id="{$post.id}">
+  <div class="timeline-date">
+    <div class="timeline-date-content">
+      {if $post.published_at}
+        <div class="timeline-month">{$post.published_at|date_format:"%b"}</div>
+        <div class="timeline-day">{$post.published_at|date_format:"%e"}</div>
+        <div class="timeline-year">{$post.published_at|date_format:"%Y"}</div>
+      {/if}
+    </div>
+  </div>
+  <div class="timeline-content">
+    <div class="card post-card">
+      {if $jpg_srcset || $webp_srcset}
+        <picture>
+          {if $webp_srcset}
+            <source type="image/webp" srcset="{$webp_srcset}" sizes="(max-width: 768px) 100vw, 50vw" />
+          {/if}
+          {if $jpg_srcset}
+            <img class="card-img-top" srcset="{$jpg_srcset}" sizes="(max-width: 768px) 100vw, 50vw" alt="{$post.title|escape}" />
+          {/if}
+        </picture>
+      {/if}
+      <div class="card-body">
+        <h5 class="card-title">{$post.title|escape}</h5>
+        <p class="card-text">{$post.excerpt|escape}</p>
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted fst-italic">
+            <span class="d-none d-md-inline">Click to read more</span>
+            <span class="d-md-none">Tap to read more</span>
+          </small>
+          {if $is_authenticated|default:false}
+            <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="{$post.id}" title="Edit post">
+              <i class="bi bi-pencil"></i> Edit
+            </button>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

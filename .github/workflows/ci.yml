@@ -1,0 +1,212 @@
+name: JANSSEN PROJECT CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - '**' # Trigger on all branches
+    paths:
+      - 'src/**'
+      - 'database/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deploy-to-staging:
+    name: Deploy to Staging Server
+    runs-on: [self-hosted]
+    if: github.ref == 'refs/heads/stage' && !contains(github.event.head_commit.message, '[skip ci]')
+    env:
+      WEBROOT: ${{ secrets.STAGING_WEBROOT }}
+      USER: ${{ secrets.STAGING_USER }}
+      FRAMEWORK_REPO: https://github.com/mattv8/smarty-portal-framework.git
+      FRAMEWORK_BRANCH: main
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Run Database Migrations
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          # Verify config exists on server
+          if [ ! -f "${{env.WEBROOT}}/config.local.php" ]; then
+            echo "Error: config.local.php not found at ${{env.WEBROOT}}/config.local.php"
+            echo "Please create config.local.php on the server before running migrations"
+            exit 1
+          fi
+
+          chmod +x ./scripts/run-migrations.sh
+
+          # Run migrations with config path pointing to server's config
+          # Migration script will read DB credentials directly from server config
+          export CONFIG_FILE="${{env.WEBROOT}}/config.local.php"
+          if ! ./scripts/run-migrations.sh; then
+            echo "Normal migration failed, attempting recovery with data loss acceptance..."
+            ./scripts/run-migrations.sh --accept-data-loss
+          fi
+
+      - name: Clone or Update Framework
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          TEMP_FRAMEWORK="/tmp/smarty-portal-framework-$$"
+
+          # Clone framework to temp location
+          echo "Cloning framework to temporary location..."
+          sudo rm -rf "$TEMP_FRAMEWORK"
+          git clone -b ${{env.FRAMEWORK_BRANCH}} ${{env.FRAMEWORK_REPO}} "$TEMP_FRAMEWORK"
+
+          # Copy the inner framework directory to webroot
+          echo "Deploying framework files..."
+          sudo rm -rf ${{env.WEBROOT}}/framework
+          sudo cp -r "$TEMP_FRAMEWORK/framework" ${{env.WEBROOT}}/framework
+
+          # Copy framework's index.php to webroot
+          sudo cp "$TEMP_FRAMEWORK/index.php" ${{env.WEBROOT}}/index.php
+
+          # Cleanup temp directory
+          rm -rf "$TEMP_FRAMEWORK"
+
+          echo "Framework deployed successfully"
+
+      - name: Sync Code to Staging
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          # Sync src directory (excluding framework and index.php which come from framework repo)
+          sudo rsync -avzr ./src/ ${{env.WEBROOT}}/ --exclude-from='./src/sync.exclusions' --delete
+
+          # Create storage directories
+          sudo mkdir -p ${{env.WEBROOT}}/storage/uploads/{originals,variants/{1600,800,400}}
+
+          # Set ownership and permissions
+          if [ -n "${{env.USER}}" ]; then
+            sudo chown -R ${{env.USER}}:${{env.USER}} ${{env.WEBROOT}}
+          fi
+          sudo chmod -R 755 ${{env.WEBROOT}}/storage
+
+          echo "Code sync completed successfully"
+
+      - name: Install Composer Dependencies
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          echo "Installing Composer dependencies..."
+
+          # Check if composer is available
+          if ! command -v composer &> /dev/null; then
+            echo "Error: Composer is not installed on this system"
+            echo "Please install Composer: https://getcomposer.org/download/"
+            exit 1
+          fi
+
+          cd ${{env.WEBROOT}}
+          sudo composer install --no-dev --optimize-autoloader
+
+          echo "Composer dependencies installed successfully"
+
+  deploy-to-production:
+    name: Deploy to Production Server
+    runs-on: [self-hosted]
+    if: github.ref == 'refs/heads/production' && !contains(github.event.head_commit.message, '[skip ci]')
+    env:
+      WEBROOT: ${{ secrets.PRODUCTION_WEBROOT }}
+      USER: ${{ secrets.PRODUCTION_USER }}
+      FRAMEWORK_REPO: https://github.com/mattv8/smarty-portal-framework.git
+      FRAMEWORK_BRANCH: main
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Run Database Migrations
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          # Verify config exists on server
+          if [ ! -f "${{env.WEBROOT}}/config.local.php" ]; then
+            echo "Error: config.local.php not found at ${{env.WEBROOT}}/config.local.php"
+            echo "Please create config.local.php on the server before running migrations"
+            exit 1
+          fi
+
+          chmod +x ./scripts/run-migrations.sh
+
+          # Run migrations with config path pointing to server's config
+          # Migration script will read DB credentials directly from server config
+          export CONFIG_FILE="${{env.WEBROOT}}/config.local.php"
+          if ! ./scripts/run-migrations.sh; then
+            echo "Normal migration failed, attempting recovery with data loss acceptance..."
+            ./scripts/run-migrations.sh --accept-data-loss
+          fi
+
+      - name: Clone or Update Framework
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          TEMP_FRAMEWORK="/tmp/smarty-portal-framework-$$"
+
+          # Clone framework to temp location
+          echo "Cloning framework to temporary location..."
+          sudo rm -rf "$TEMP_FRAMEWORK"
+          git clone -b ${{env.FRAMEWORK_BRANCH}} ${{env.FRAMEWORK_REPO}} "$TEMP_FRAMEWORK"
+
+          # Copy the inner framework directory to webroot
+          echo "Deploying framework files..."
+          sudo rm -rf ${{env.WEBROOT}}/framework
+          sudo cp -r "$TEMP_FRAMEWORK/framework" ${{env.WEBROOT}}/framework
+
+          # Copy framework's index.php to webroot
+          sudo cp "$TEMP_FRAMEWORK/index.php" ${{env.WEBROOT}}/index.php
+
+          # Cleanup temp directory
+          rm -rf "$TEMP_FRAMEWORK"
+
+          echo "Framework deployed successfully"
+
+      - name: Sync Code to Production
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          # Sync src directory (excluding framework and index.php which come from framework repo)
+          sudo rsync -avzr ./src/ ${{env.WEBROOT}}/ --exclude-from='./src/sync.exclusions' --delete
+
+          # Create storage directories
+          sudo mkdir -p ${{env.WEBROOT}}/storage/uploads/{originals,variants/{1600,800,400}}
+
+          # Set ownership and permissions
+          if [ -n "${{env.USER}}" ]; then
+            sudo chown -R ${{env.USER}}:${{env.USER}} ${{env.WEBROOT}}
+          fi
+          sudo chmod -R 755 ${{env.WEBROOT}}/storage
+
+          echo "Code sync completed successfully"
+
+      - name: Install Composer Dependencies
+        run: |
+          if [ -z "${{env.WEBROOT}}" ]; then echo "Need to set webroot as GitHub Actions secret" && exit 1; fi
+
+          echo "Installing Composer dependencies..."
+
+          # Check if composer is available
+          if ! command -v composer &> /dev/null; then
+            echo "Error: Composer is not installed on this system"
+            echo "Please install Composer: https://getcomposer.org/download/"
+            exit 1
+          fi
+
+          cd ${{env.WEBROOT}}
+          sudo composer install --no-dev --optimize-autoloader
+
+          echo "Composer dependencies installed successfully"

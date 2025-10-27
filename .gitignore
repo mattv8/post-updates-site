@@ -1,0 +1,12 @@
+# Environment and configuration
+.env
+src/config.local.php
+
+# Application directories
+src/cache/
+logs/
+src/storage/uploads/*
+!src/storage/uploads/.gitkeep
+
+# Application files
+src/index.php
