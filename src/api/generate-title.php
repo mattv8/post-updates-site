@@ -50,13 +50,28 @@ try {
         $plainContent = substr($plainContent, 0, $maxContentLength) . '...';
     }
 
+    // Get custom AI system prompt from settings, or use default
+    $db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+    $systemPrompt = 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.';
+
+    if ($db_conn) {
+        $result = mysqli_query($db_conn, 'SELECT ai_system_prompt FROM settings WHERE id = 1');
+        if ($result) {
+            $row = mysqli_fetch_assoc($result);
+            if (!empty($row['ai_system_prompt'])) {
+                $systemPrompt = $row['ai_system_prompt'];
+            }
+        }
+        mysqli_close($db_conn);
+    }
+
     // Generate title using OpenAI
     $response = $client->chat()->create([
         'model' => 'gpt-4o-mini',
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.'
+                'content' => $systemPrompt
             ],
             [
                 'role' => 'user',

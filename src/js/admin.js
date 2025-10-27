@@ -252,6 +252,9 @@
         const ds = j.data.donation_settings_json ? JSON.parse(j.data.donation_settings_json) : {};
         document.getElementById('donation_presets').value = (ds.preset_amounts||[]).join(',');
       } catch(e) {}
+
+      // Load AI system prompt
+      document.getElementById('ai_system_prompt').value = j.data.ai_system_prompt || '';
     });
   }
 
@@ -299,11 +302,21 @@
     const presets = document.getElementById('donation_presets').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
     const payload = {
       site_title: document.getElementById('site_title').value,
-      donation_settings_json: JSON.stringify({preset_amounts: presets})
+      donation_settings_json: JSON.stringify({preset_amounts: presets}),
+      ai_system_prompt: document.getElementById('ai_system_prompt').value
     };
     api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
       alert(j.success? 'Saved settings' : ('Error: '+j.error));
     });
+  });
+
+  // Reset AI prompt to default
+  const defaultAIPrompt = 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.';
+  document.getElementById('btnResetAIPrompt').addEventListener('click', function(e){
+    e.preventDefault();
+    if (confirm('Reset AI system prompt to default?')) {
+      document.getElementById('ai_system_prompt').value = defaultAIPrompt;
+    }
   });
 
   // Auto-save visibility toggles when changed

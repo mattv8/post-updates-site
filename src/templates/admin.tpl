@@ -144,6 +144,16 @@
           <label class="form-label">Donation Presets (comma-separated)</label>
           <input type="text" id="donation_presets" class="form-control" placeholder="10,25,50,100" />
         </div>
+        <div class="mb-3">
+          <label class="form-label d-flex justify-content-between align-items-center">
+            <span>AI Title Generation System Prompt</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetAIPrompt">Reset to Default</button>
+          </label>
+          <textarea id="ai_system_prompt" class="form-control" rows="4" placeholder="Enter custom AI system prompt for title generation..."></textarea>
+          <small class="form-text text-muted">
+            This prompt guides the AI when generating post titles. It should instruct the AI on tone, length, and style.
+          </small>
+        </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
       </form>
     </div>

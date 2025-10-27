@@ -904,7 +904,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','ai_system_prompt'];
     $sets = [];
     $params = [];
     $types = '';
