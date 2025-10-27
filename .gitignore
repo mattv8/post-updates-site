@@ -2,6 +2,9 @@
 .env
 src/config.local.php
 
+# Dependencies
+src/vendor/
+
 # Application directories
 src/cache/
 logs/
