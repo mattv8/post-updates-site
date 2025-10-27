@@ -32,7 +32,7 @@
     {include file="templates/header.tpl"}
   {/if}
 
-  <link href="{$favicon}" rel="icon" type="image/x-icon" />
+  <link href="{$favicon}" rel="icon" type="image/svg+xml" />
   <link href="{$favicon}" rel="shortcut icon" />
 </head>
 

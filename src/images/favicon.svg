@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <style>
+      .heart-bridge { fill: #2563eb; }
+      .bridge-accent { fill: #1e40af; }
+      .care-highlight { fill: #3b82f6; }
+    </style>
+  </defs>
+
+  <!-- Bridge arch -->
+  <path class="bridge-accent" d="M10,70 Q50,40 90,70 L90,80 Q50,50 10,80 Z"/>
+
+  <!-- Bridge foundation -->
+  <rect class="bridge-accent" x="8" y="75" width="8" height="20" rx="2"/>
+  <rect class="bridge-accent" x="84" y="75" width="8" height="20" rx="2"/>
+
+  <!-- Heart symbolizing care -->
+  <path class="heart-bridge" d="M50,35 C50,35 35,20 25,25 C15,30 15,40 25,50 L50,70 L75,50 C85,40 85,30 75,25 C65,20 50,35 50,35 Z"/>
+
+  <!-- Highlight on heart -->
+  <ellipse class="care-highlight" cx="35" cy="35" rx="6" ry="8" opacity="0.3"/>
+</svg>
