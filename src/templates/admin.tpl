@@ -125,10 +125,16 @@
 
     <div class="tab-pane fade" id="pane-media" role="tabpanel">
       <form id="uploadForm" class="mt-3">
-        <div class="input-group">
-          <input type="file" class="form-control" id="mediaFile" accept="image/*" />
-          <input type="text" class="form-control" id="mediaAlt" placeholder="Alt text" />
-          <button class="btn btn-primary" type="submit">Upload</button>
+        <div class="row g-2">
+          <div class="col-12 col-md-5">
+            <input type="file" class="form-control" id="mediaFile" accept="image/*" />
+          </div>
+          <div class="col-12 col-md-4">
+            <input type="text" class="form-control" id="mediaAlt" placeholder="Alt text" />
+          </div>
+          <div class="col-12 col-md-3">
+            <button class="btn btn-primary w-100" type="submit">Upload</button>
+          </div>
         </div>
       </form>
       <div id="mediaGrid" class="row row-cols-2 row-cols-md-4 g-2 mt-2"></div>

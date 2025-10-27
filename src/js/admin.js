@@ -512,8 +512,15 @@
 
   function loadPosts(){
     fetch('/api/admin/posts.php').then(r=>r.json()).then(j=>{
-      if(!j.success) return; postsList.innerHTML='';
-      const table = document.createElement('table'); table.className='table table-striped';
+      if(!j.success) return;
+      postsList.innerHTML='';
+
+      // Create responsive table wrapper
+      const tableWrapper = document.createElement('div');
+      tableWrapper.className = 'table-responsive';
+
+      const table = document.createElement('table');
+      table.className='table table-striped';
       table.innerHTML = '<thead><tr><th>ID</th><th>Title</th><th>Author</th><th>Published</th><th>Created</th><th>Actions</th></tr></thead>';
       const tbody = document.createElement('tbody');
       (j.data||[]).forEach(p=>{
@@ -540,15 +547,17 @@
           <td>${p.title || '(untitled)'}</td>
           <td class="text-muted small">${authorName}</td>
           <td>${toggleHtml}</td>
-          <td>${p.created_at}</td>
-          <td>
+          <td class="text-nowrap">${p.created_at}</td>
+          <td class="text-nowrap">
             <button class="btn btn-sm btn-outline-primary btn-edit-post" data-id="${p.id}" data-bs-toggle="modal" data-bs-target="#postEditorModal">Edit</button>
             <button class="btn btn-sm btn-outline-danger" data-del="${p.id}">Delete</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
-      table.appendChild(tbody); postsList.appendChild(table);
+      table.appendChild(tbody);
+      tableWrapper.appendChild(table);
+      postsList.appendChild(tableWrapper);
     });
   }
 
