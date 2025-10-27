@@ -100,15 +100,22 @@ jobs:
 
           echo "Installing Composer dependencies..."
 
-          # Check if composer is available
-          if ! command -v composer &> /dev/null; then
-            echo "Error: Composer is not installed on this system"
-            echo "Please install Composer: https://getcomposer.org/download/"
+          # Detect PHP 8.1
+          if command -v php8.1 &> /dev/null; then
+            PHP_BIN="php8.1"
+            echo "Found PHP 8.1: $(php8.1 --version | head -n1)"
+          elif php --version 2>&1 | grep -q "PHP 8.1"; then
+            PHP_BIN="php"
+            echo "Found PHP 8.1: $(php --version | head -n1)"
+          else
+            echo "Error: PHP 8.1 is required but not found"
+            echo "Available PHP version: $(php --version | head -n1 2>/dev/null || echo 'none')"
             exit 1
           fi
 
+          # Use PHP 8.1 with composer (run as the webroot owner, not with sudo)
           cd ${{env.WEBROOT}}
-          sudo composer install --no-dev --optimize-autoloader
+          sudo -u ${{env.USER}} $PHP_BIN /usr/local/bin/composer install --no-dev --optimize-autoloader
 
           echo "Composer dependencies installed successfully"
 
@@ -199,14 +206,21 @@ jobs:
 
           echo "Installing Composer dependencies..."
 
-          # Check if composer is available
-          if ! command -v composer &> /dev/null; then
-            echo "Error: Composer is not installed on this system"
-            echo "Please install Composer: https://getcomposer.org/download/"
+          # Detect PHP 8.1
+          if command -v php8.1 &> /dev/null; then
+            PHP_BIN="php8.1"
+            echo "Found PHP 8.1: $(php8.1 --version | head -n1)"
+          elif php --version 2>&1 | grep -q "PHP 8.1"; then
+            PHP_BIN="php"
+            echo "Found PHP 8.1: $(php --version | head -n1)"
+          else
+            echo "Error: PHP 8.1 is required but not found"
+            echo "Available PHP version: $(php --version | head -n1 2>/dev/null || echo 'none')"
             exit 1
           fi
 
+          # Use PHP 8.1 with composer (run as the webroot owner, not with sudo)
           cd ${{env.WEBROOT}}
-          sudo composer install --no-dev --optimize-autoloader
+          sudo -u ${{env.USER}} $PHP_BIN /usr/local/bin/composer install --no-dev --optimize-autoloader
 
           echo "Composer dependencies installed successfully"
