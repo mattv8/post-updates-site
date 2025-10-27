@@ -35,6 +35,10 @@
         })
         .then(newEditor => {
           editor = newEditor;
+          // Initialize AI title generator with editor instance
+          if (typeof window.initAITitleGenerator === 'function') {
+            window.initAITitleGenerator(modal, editor);
+          }
         })
         .catch(error => {
           console.error('CKEditor initialization error:', error);

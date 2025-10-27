@@ -65,6 +65,10 @@ $custom_css = "css/custom.css";
 $display_footer = false;
 $page_bg_color_class = 'bg-blurred rounded-3';
 
+# OpenAI Configuration
+# Get your API key from: https://platform.openai.com/api-keys
+$openai_api_key = ''; // Insert your OpenAI API key (sk-...)
+
 # Stripe Configuration
 # Get your API keys from: https://dashboard.stripe.com/apikeys
 # Use test keys for development, live keys for production

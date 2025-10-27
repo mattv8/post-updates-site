@@ -11,5 +11,8 @@
 <script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
 <script src="/js/ckeditor-upload-adapter.js"></script>
 
+{* AI Title Generator - included globally *}
+<script src="/js/ai-title-generator.js"></script>
+
 {* Validation utilities - included globally *}
 <script src="/js/validation-utils.js"></script>

@@ -1088,6 +1088,11 @@
             editorElement.style.overflowY = 'auto';
             editorElement.style.resize = 'vertical';
           }
+
+          // Initialize AI title generator with editor instance
+          if (typeof window.initAITitleGenerator === 'function') {
+            window.initAITitleGenerator(postEditorContainer, postBodyEditor);
+          }
         })
         .catch(error => {
           console.error('Post body editor initialization error:', error);

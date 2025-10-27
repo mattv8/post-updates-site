@@ -25,7 +25,14 @@
 
   <div class="row g-4">
     <div class="col-12 col-lg-8">
-      <h2 class="mb-3">Updates</h2>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Updates</h2>
+        {if $is_authenticated|default:false}
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPostModal">
+            <i class="bi bi-plus-circle me-1"></i>Create Post
+          </button>
+        {/if}
+      </div>
       <div id="posts-list" class="timeline">
         {if $posts|@count == 0}
           <p>No updates yet.</p>
@@ -53,6 +60,11 @@
   </div>
 
   {include file='templates/partials/post_overlay.tpl'}
+
+  {* Create Post Modal - only shown when authenticated *}
+  {if $is_authenticated|default:false}
+    {include file='templates/modals/create_post.tpl'}
+  {/if}
 
   {* Post Editor Modal - only shown when authenticated *}
   {if $is_authenticated|default:false}

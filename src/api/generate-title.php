@@ -1,0 +1,84 @@
+<?php
+/**
+ * Generate Title API Endpoint
+ * Uses OpenAI to generate a post title from the content body
+ */
+
+session_start();
+header('Content-Type: application/json');
+
+require_once($_SERVER['DOCUMENT_ROOT'] . '/config.local.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
+
+use OpenAI;
+
+// Check authentication
+if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized']);
+    exit;
+}
+
+// Get POST data
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!isset($input['content']) || empty(trim($input['content']))) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Content is required']);
+    exit;
+}
+
+$content = trim($input['content']);
+
+// Check if OpenAI API key is configured
+if (empty($openai_api_key)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'OpenAI API key not configured']);
+    exit;
+}
+
+try {
+    // Create OpenAI client
+    $client = OpenAI::client($openai_api_key);
+
+    // Strip HTML tags from content for better context
+    $plainContent = strip_tags($content);
+
+    // Truncate content if too long (to avoid token limits)
+    $maxContentLength = 2000;
+    if (strlen($plainContent) > $maxContentLength) {
+        $plainContent = substr($plainContent, 0, $maxContentLength) . '...';
+    }
+
+    // Generate title using OpenAI
+    $response = $client->chat()->create([
+        'model' => 'gpt-4o-mini',
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.'
+            ],
+            [
+                'role' => 'user',
+                'content' => "Create a title for this health update:\n\n" . $plainContent
+            ]
+        ],
+        'max_tokens' => 100,
+        'temperature' => 0.7,
+    ]);
+
+    $generatedTitle = trim($response->choices[0]->message->content);
+
+    // Remove any quotes that might be added
+    $generatedTitle = trim($generatedTitle, '"\'');
+
+    echo json_encode([
+        'success' => true,
+        'title' => $generatedTitle
+    ]);
+
+} catch (Exception $e) {
+    error_log("OpenAI API Error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'Failed to generate title: ' . $e->getMessage()]);
+}

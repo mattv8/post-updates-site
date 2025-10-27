@@ -2,7 +2,13 @@
 <div class="post-editor">
   <div class="mb-3">
     <label class="form-label">Title (optional)</label>
-    <input type="text" class="form-control post-title" placeholder="Untitled post" />
+    <div class="input-group">
+      <input type="text" class="form-control post-title" placeholder="Untitled post" />
+      <button type="button" class="btn btn-outline-secondary btn-generate-title" title="Generate title with AI">
+        <i class="bi bi-sparkles me-1"></i>Create Title with AI
+      </button>
+    </div>
+    <small class="form-text text-muted">Leave blank or click "Create Title with AI" to generate from content</small>
   </div>
 
   <div class="mb-3">

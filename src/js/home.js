@@ -329,6 +329,10 @@ document.addEventListener('DOMContentLoaded', function() {
               editorElement.style.resize = 'vertical';
             }
             editorInitialized = true;
+            // Initialize AI title generator with editor instance
+            if (typeof window.initAITitleGenerator === 'function') {
+              window.initAITitleGenerator(postEditorContainer, postBodyEditor);
+            }
             // Load post data now that editor is ready
             loadPostData();
           })
