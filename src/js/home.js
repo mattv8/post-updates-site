@@ -10,6 +10,7 @@
   }
 
   function showOverlay(post) {
+    console.log('showOverlay called with post:', post);
     const overlay = qs('#post-overlay');
     const overlayTitle = qs('#overlay-title');
     const body = qs('#overlay-body');
@@ -45,22 +46,42 @@
     const hasHeroImage = post.hero_srcset_webp || post.hero_srcset_jpg;
     const showTitleOverlay = post.hero_title_overlay == 1 || post.hero_title_overlay === undefined;
 
+    console.log('Hero image check:', {
+      hasHeroImage,
+      hero_srcset_webp: post.hero_srcset_webp,
+      hero_srcset_jpg: post.hero_srcset_jpg,
+      hero_media_id: post.hero_media_id,
+      hero_crop_overlay: post.hero_crop_overlay,
+      hero_image_height: post.hero_image_height,
+      showTitleOverlay
+    });
+
     if (hasHeroImage) {
+      console.log('Creating hero image elements...');
       // Ensure overlay container is relative and clipped
       media.style.position = 'relative';
       media.style.overflow = 'hidden';
 
       const picture = document.createElement('picture');
       picture.style.display = 'block';
+      picture.style.margin = '0';
+      picture.style.padding = '0';
 
-      // If cropping is enabled, use padding-bottom technique on the picture itself
-      if (post.hero_crop_overlay && post.hero_image_height) {
+      let heroImg = null; // Store reference for later logging
+
+      // If cropping is enabled, use padding-bottom technique
+      // hero_crop_overlay determines if we should apply the height restriction
+      if (post.hero_crop_overlay == 1 && post.hero_image_height) {
+        console.log('Applying crop overlay with height:', post.hero_image_height);
         picture.style.height = '0';
         picture.style.paddingBottom = post.hero_image_height + '%';
         picture.style.position = 'relative';
+      } else {
+        console.log('Using full image height (no crop)');
       }
 
       if (post.hero_srcset_webp) {
+        console.log('Adding WebP source:', post.hero_srcset_webp);
         const srcWebp = document.createElement('source');
         srcWebp.type = 'image/webp';
         srcWebp.setAttribute('srcset', post.hero_srcset_webp);
@@ -68,13 +89,15 @@
         picture.appendChild(srcWebp);
       }
       if (post.hero_srcset_jpg) {
+        console.log('Adding JPG img:', post.hero_srcset_jpg);
         const img = document.createElement('img');
+        heroImg = img; // Store reference
         img.setAttribute('srcset', post.hero_srcset_jpg);
         img.setAttribute('sizes', '100vw');
         img.alt = post.title || 'Post image';
 
-        if (post.hero_crop_overlay && post.hero_image_height) {
-          // Fill the padded box and center the image
+        if (post.hero_crop_overlay == 1 && post.hero_image_height) {
+          // Fill the padded box and center the image (cropped height mode)
           img.style.position = 'absolute';
           img.style.top = '0';
           img.style.left = '0';
@@ -87,20 +110,62 @@
           img.style.display = 'block';
           img.style.width = '100%';
           img.style.height = 'auto';
-          img.style.objectFit = 'contain';
-          img.style.objectPosition = 'center center';
+          img.style.margin = '0';
+          img.style.padding = '0';
         }
 
         // Apply brightness filter if title overlay is enabled
         if (showTitleOverlay) {
           const opacity = post.hero_overlay_opacity || 0.70;
           img.style.filter = `brightness(${opacity})`;
+          console.log('Applied brightness filter:', opacity);
         }
+
+        // Add load event listener to verify image loads
+        img.addEventListener('load', () => {
+          console.log('Hero image loaded successfully!', img.naturalWidth, 'x', img.naturalHeight);
+        });
+        img.addEventListener('error', (e) => {
+          console.error('Hero image failed to load!', e);
+        });
 
         picture.appendChild(img);
       }
 
+      console.log('Appending picture to media container');
       media.appendChild(picture);
+
+      // If the container collapsed to 0 height (sometimes happens with overflow/scrolling),
+      // force it to match the picture's rendered height so the image becomes visible.
+      // Use getBoundingClientRect to get layout height.
+      setTimeout(() => {
+        try {
+          const picRect = picture.getBoundingClientRect();
+          if (picRect.height && media.offsetHeight === 0) {
+            media.style.height = picRect.height + 'px';
+            // Ensure overflow is visible while modal is open so users can scroll if needed
+            media.style.overflow = 'visible';
+            console.log('Forced media container height to', media.style.height);
+          }
+        } catch (e) {
+          console.error('Error forcing media height:', e);
+        }
+      }, 50);
+      console.log('Picture element:', picture);
+      console.log('Media container after append:', media);
+
+      // Log rendered dimensions after a brief delay to allow layout
+      setTimeout(() => {
+        console.log('Rendered dimensions:', {
+          media_height: media.offsetHeight,
+          media_scrollHeight: media.scrollHeight,
+          picture_height: picture.offsetHeight,
+          picture_scrollHeight: picture.scrollHeight,
+          img_height: heroImg ? heroImg.offsetHeight : 'N/A',
+          img_naturalHeight: heroImg ? heroImg.naturalHeight : 'N/A',
+          img_naturalWidth: heroImg ? heroImg.naturalWidth : 'N/A'
+        });
+      }, 100);
 
       // Title overlay is a sibling inside media so it never sits behind card-body
       if (showTitleOverlay) {
@@ -166,6 +231,12 @@
 
     overlay.classList.remove('d-none');
     document.body.classList.add('overflow-hidden');
+
+    // Scroll modal content to top to ensure hero image is visible
+    const overlayContent = overlay.querySelector('.post-overlay-content');
+    if (overlayContent) {
+      overlayContent.scrollTop = 0;
+    }
   }
 
   function hideOverlay() {
