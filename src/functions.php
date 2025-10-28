@@ -1017,7 +1017,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','ai_system_prompt'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','ai_system_prompt','hero_height'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1027,7 +1027,7 @@ function updateSettings($db_conn, $data)
             $sets[] = "$key = ?";
             $params[] = $key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' ? sanitizeHtml($data[$key]) : $data[$key];
             // hero_media_id and show_* fields are integers
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation') { $types .= 'i'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'hero_height') { $types .= 'i'; }
             elseif ($key === 'hero_overlay_opacity') { $types .= 'd'; }
             else { $types .= 's'; }
         }

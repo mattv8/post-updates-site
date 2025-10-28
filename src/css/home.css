@@ -1,5 +1,104 @@
 .hero { overflow: hidden; border-radius: .5rem; position: relative; }
-.hero-content { max-width: 960px; }
+.hero-content {
+  max-width: 960px;
+  /* Reset text styles - let CKEditor content define them */
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Hero content formatting - honor CKEditor styles */
+.hero-content h1,
+.hero-content h2,
+.hero-content h3,
+.hero-content h4,
+.hero-content h5,
+.hero-content h6 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero-content h1 { font-size: 2.5rem; }
+.hero-content h2 { font-size: 2rem; }
+.hero-content h3 { font-size: 1.75rem; }
+.hero-content h4 { font-size: 1.5rem; }
+.hero-content h5 { font-size: 1.25rem; }
+.hero-content h6 { font-size: 1rem; }
+
+.hero-content p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.hero-content ul,
+.hero-content ol {
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.hero-content li {
+  margin-bottom: 0.25rem;
+}
+
+.hero-content strong,
+.hero-content b {
+  font-weight: 700;
+}
+
+.hero-content em,
+.hero-content i {
+  font-style: italic;
+}
+
+.hero-content a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.hero-content blockquote {
+  border-left: 4px solid rgba(255, 255, 255, 0.5);
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-bottom: 1rem;
+  font-style: italic;
+  font-size: 1rem;
+}
+
+.hero-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+}
+
+.hero-content figure {
+  max-width: 100%;
+  margin: 1rem 0;
+}
+
+.hero-content figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Remove any default text size overrides */
+.hero-content > * {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive hero text sizing */
+@media (max-width: 768px) {
+  .hero-content h1 { font-size: 2rem; }
+  .hero-content h2 { font-size: 1.75rem; }
+  .hero-content h3 { font-size: 1.5rem; }
+  .hero-content p { font-size: 0.95rem; }
+}
+
 .post-card img { object-fit: cover; }
 .sticky-top { z-index: 10; }
 

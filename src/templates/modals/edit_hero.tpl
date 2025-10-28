@@ -35,3 +35,5 @@ document.addEventListener('DOMContentLoaded', function() {
   window.heroModalSettings = settings;
 });
 </script>
+<script src="/src/js/edit-hero-modal.js"></script>
+</script>

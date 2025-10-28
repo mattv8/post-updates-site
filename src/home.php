@@ -6,7 +6,11 @@ require_once(__DIR__ . '/lib/MediaProcessor.php');
 require(__DIR__ . '/config.local.php');
 $db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
 
+// Get settings and ensure hero_height is available
 $settings = getSettings($db_conn);
+if (!isset($settings['hero_height'])) {
+    $settings['hero_height'] = 400; // default value if not set
+}
 $posts = getPublishedPosts($db_conn, 10, 0);
 
 // Precompute srcset for post hero images

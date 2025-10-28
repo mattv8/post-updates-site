@@ -41,6 +41,14 @@
     <input type="number" step="0.05" min="0" max="1" class="form-control" id="{$prefix}hero_overlay_opacity" />
   </div>
   <div class="col-sm-6">
+    <label class="form-label">Hero Section Height</label>
+    <div class="input-group">
+      <input type="number" min="100" max="1000" step="10" class="form-control" id="{$prefix}hero_height" placeholder="e.g. 400" />
+      <span class="input-group-text">px</span>
+    </div>
+    <small class="text-muted">Set the height of the hero section (default: image height or 400px)</small>
+  </div>
+  <div class="col-sm-6">
     <label class="form-label">Overlay Color</label>
     <input type="text" class="form-control" id="{$prefix}hero_overlay_color" placeholder="#000000" />
   </div>

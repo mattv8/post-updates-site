@@ -1,6 +1,6 @@
 <div class="container py-4">
   {if $settings.show_hero && ($settings.hero_media_id || $settings.hero_html)}
-    <div class="hero position-relative mb-4">
+  <div class="hero position-relative mb-4" style="height: {$settings.hero_height|default:400}px; max-height: 100vh; overflow: hidden;">
       {if $is_authenticated|default:false}
         <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editHeroModal" title="Edit Hero Banner">
           <i class="bi bi-pencil"></i> Edit
@@ -12,7 +12,7 @@
             <source type="image/webp" srcset="{$hero_webp}" sizes="100vw" />
           {/if}
           {if $hero_jpg}
-            <img class="w-100 rounded" srcset="{$hero_jpg}" sizes="100vw" alt="Hero image" />
+            <img class="w-100 rounded" srcset="{$hero_jpg}" sizes="100vw" alt="Hero image" style="height: 100%; object-fit: cover;" />
           {/if}
         </picture>
         {if $settings.hero_overlay_opacity}

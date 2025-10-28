@@ -89,6 +89,7 @@
     modal.querySelector('#modal_cta_url').value = settings.cta_url || '';
     modal.querySelector('#modal_hero_overlay_opacity').value = settings.hero_overlay_opacity || 0.5;
     modal.querySelector('#modal_hero_overlay_color').value = settings.hero_overlay_color || '#000000';
+    modal.querySelector('#modal_hero_height').value = settings.hero_height || 400;
 
     if (heroEditor) {
       heroEditor.setData(settings.hero_html || '');
@@ -240,6 +241,7 @@
           cta_url: heroModal.querySelector('#modal_cta_url').value,
           hero_overlay_opacity: heroModal.querySelector('#modal_hero_overlay_opacity').value,
           hero_overlay_color: heroModal.querySelector('#modal_hero_overlay_color').value,
+          hero_height: heroModal.querySelector('#modal_hero_height').value || 400,
         };
 
         const result = await SettingsManager.saveSettings(payload);
@@ -249,6 +251,15 @@
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
           }
+
+          // Close the modal
+          const modalInstance = bootstrap.Modal.getInstance(heroModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh the page to show updated hero banner
+          window.location.reload();
         } else {
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
