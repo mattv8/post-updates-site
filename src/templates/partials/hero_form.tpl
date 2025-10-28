@@ -13,9 +13,38 @@
   <select class="form-select" id="{$prefix}hero_media_id">
     <option value="">None</option>
   </select>
-  <div class="hero-banner-preview mt-2" style="display: none;">
-    <img src="" alt="Hero preview" class="img-thumbnail" style="max-height: 200px;" />
-    <button type="button" class="btn btn-sm btn-outline-danger ms-2 btn-remove-hero-banner">Remove</button>
+  <div class="hero-banner-preview-container mt-3" style="display: none;">
+    <div class="row g-3 align-items-start">
+      <div class="col-md-7">
+        <div class="hero-banner-preview-wrapper position-relative" style="overflow: hidden; border-radius: 0.375rem;">
+          <div class="hero-banner-preview" style="display: block; height: 0; padding-bottom: 100%; position: relative; overflow: hidden;">
+            <img src="" alt="Hero preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" />
+            <button type="button" class="btn btn-danger btn-sm btn-remove-hero-banner position-absolute top-0 end-0 m-2"
+                    style="z-index: 10; opacity: 0; transition: opacity 0.2s;" title="Remove hero image">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <div class="text-muted small mt-1 text-center">Preview (matches actual display)</div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="hero-banner-height-control">
+          <label for="{$prefix}hero_height" class="form-label fw-semibold">
+            Display Height: <span class="hero-banner-height-value text-primary">100</span>%
+          </label>
+          <input type="range" class="form-range" id="{$prefix}hero_height" min="10" max="100" step="5" value="100">
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">10%</small>
+            <small class="text-muted">50%</small>
+            <small class="text-muted">100%</small>
+          </div>
+          <div class="alert alert-info mt-3 py-2 px-3 small mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Controls the aspect ratio of the hero banner. Lower values create shorter, wider displays.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <div class="mb-3">
@@ -39,14 +68,6 @@
   <div class="col-sm-6">
     <label class="form-label">Overlay Opacity</label>
     <input type="number" step="0.05" min="0" max="1" class="form-control" id="{$prefix}hero_overlay_opacity" />
-  </div>
-  <div class="col-sm-6">
-    <label class="form-label">Hero Section Height</label>
-    <div class="input-group">
-      <input type="number" min="100" max="1000" step="10" class="form-control" id="{$prefix}hero_height" placeholder="e.g. 400" />
-      <span class="input-group-text">px</span>
-    </div>
-    <small class="text-muted">Set the height of the hero section (default: image height or 400px)</small>
   </div>
   <div class="col-sm-6">
     <label class="form-label">Overlay Color</label>

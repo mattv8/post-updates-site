@@ -89,7 +89,21 @@
     modal.querySelector('#modal_cta_url').value = settings.cta_url || '';
     modal.querySelector('#modal_hero_overlay_opacity').value = settings.hero_overlay_opacity || 0.5;
     modal.querySelector('#modal_hero_overlay_color').value = settings.hero_overlay_color || '#000000';
-    modal.querySelector('#modal_hero_height').value = settings.hero_height || 400;
+
+    const heroHeightSlider = modal.querySelector('#modal_hero_height');
+    const heroHeightValue = modal.querySelector('.hero-banner-height-value');
+    const heroPreviewDiv = modal.querySelector('.hero-banner-preview');
+    const heightToSet = settings.hero_height || 100;
+
+    if (heroHeightSlider) {
+      heroHeightSlider.value = heightToSet;
+      if (heroHeightValue) {
+        heroHeightValue.textContent = heightToSet;
+      }
+      if (heroPreviewDiv) {
+        heroPreviewDiv.style.paddingBottom = heightToSet + '%';
+      }
+    }
 
     if (heroEditor) {
       window.setQuillHTML(heroEditor, settings.hero_html || '');
@@ -97,7 +111,7 @@
 
     // Show hero preview if media selected
     if (settings.hero_media_id) {
-      SettingsManager.loadHeroPreview(settings.hero_media_id, modal.querySelector('.hero-banner-preview'));
+      SettingsManager.loadHeroPreview(settings.hero_media_id, modal.querySelector('.hero-banner-preview-container'));
     }
   }
 
@@ -195,14 +209,31 @@
 
     // Handle hero media selection change
     heroModal.querySelector('#modal_hero_media_id')?.addEventListener('change', async function() {
-      const previewDiv = heroModal.querySelector('.hero-banner-preview');
-      await SettingsManager.loadHeroPreview(this.value, previewDiv);
+      const previewContainer = heroModal.querySelector('.hero-banner-preview-container');
+      await SettingsManager.loadHeroPreview(this.value, previewContainer);
+
+      // Set initial preview height based on current slider value
+      const heroPreviewDiv = heroModal.querySelector('.hero-banner-preview');
+      const heroHeightSlider = heroModal.querySelector('#modal_hero_height');
+      const currentHeight = parseInt(heroHeightSlider?.value || 100);
+      if (heroPreviewDiv) {
+        heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+      }
     });
 
     // Handle remove hero banner
     heroModal.querySelector('.btn-remove-hero-banner')?.addEventListener('click', function() {
       heroModal.querySelector('#modal_hero_media_id').value = '';
-      heroModal.querySelector('.hero-banner-preview').style.display = 'none';
+      const previewContainer = heroModal.querySelector('.hero-banner-preview-container');
+      if (previewContainer) previewContainer.style.display = 'none';
+
+      // Reset height slider
+      const heroHeightSlider = heroModal.querySelector('#modal_hero_height');
+      const heroHeightValue = heroModal.querySelector('.hero-banner-height-value');
+      if (heroHeightSlider) {
+        heroHeightSlider.value = 100;
+        if (heroHeightValue) heroHeightValue.textContent = '100';
+      }
     });
 
     // Save hero settings
@@ -225,7 +256,7 @@
           cta_url: heroModal.querySelector('#modal_cta_url').value,
           hero_overlay_opacity: heroModal.querySelector('#modal_hero_overlay_opacity').value,
           hero_overlay_color: heroModal.querySelector('#modal_hero_overlay_color').value,
-          hero_height: heroModal.querySelector('#modal_hero_height').value || 400,
+          hero_height: heroModal.querySelector('#modal_hero_height').value || 100,
         };
 
         const result = await SettingsManager.saveSettings(payload);

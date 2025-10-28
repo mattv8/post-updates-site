@@ -1,8 +1,8 @@
--- Migration: Add hero_height field to settings table
+-- Migration: Add hero_height fields to settings and posts tables
 -- Date: 2025-10-27
--- Description: Adds hero_height column to control the height of the hero section
+-- Description: Adds hero_height column to settings for main hero section and hero_image_height to posts for per-post customization (both percentage-based)
 
--- Add hero_height column if it doesn't exist (idempotent)
+-- Add or modify hero_height column (idempotent)
 SET @dbname = DATABASE();
 
 SET @col_exists = (
@@ -13,13 +13,42 @@ SET @col_exists = (
     AND COLUMN_NAME = 'hero_height'
 );
 
+-- Add column if it doesn't exist
 SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE `settings` ADD COLUMN `hero_height` INT(11) DEFAULT 400 COMMENT ''Hero section height in pixels'' AFTER `hero_overlay_color`',
-    'SELECT "Column hero_height already exists" AS message'
+    'ALTER TABLE `settings` ADD COLUMN `hero_height` INT(11) DEFAULT 100 COMMENT ''Hero section height as percentage (10-100%)'' AFTER `hero_overlay_color`',
+    'SELECT "Column hero_height already exists, will modify it" AS message'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Set default value for existing row
-UPDATE `settings` SET `hero_height` = 400 WHERE `id` = 1 AND `hero_height` IS NULL;
+-- Always modify the column to ensure correct definition (handles both new and existing)
+ALTER TABLE `settings` MODIFY COLUMN `hero_height` INT(11) DEFAULT 100 COMMENT 'Hero section height as percentage (10-100%)';
+
+-- Update existing rows to use percentage instead of pixels
+UPDATE `settings` SET `hero_height` = 100 WHERE `hero_height` > 100 OR `hero_height` IS NULL;
+
+-- Add hero_image_height column to posts table (idempotent)
+-- Default 100% to show full image height, allows range from 10-100%
+SET @post_col_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @dbname
+    AND TABLE_NAME = 'posts'
+    AND COLUMN_NAME = 'hero_image_height'
+);
+
+-- Add column if it doesn't exist
+SET @sql2 = IF(@post_col_exists = 0,
+    'ALTER TABLE `posts` ADD COLUMN `hero_image_height` INT(11) DEFAULT 100 COMMENT ''Height as percentage of image (10-100%)'' AFTER `hero_media_id`',
+    'SELECT "Column hero_image_height already exists, will modify it" AS message'
+);
+PREPARE stmt2 FROM @sql2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;
+
+-- Always modify the column to ensure correct definition (handles both new and existing)
+ALTER TABLE `posts` MODIFY COLUMN `hero_image_height` INT(11) DEFAULT 100 COMMENT 'Height as percentage of image (10-100%)';
+
+-- Update existing rows to use percentage instead of pixels
+UPDATE `posts` SET `hero_image_height` = 100 WHERE `hero_image_height` > 100 OR `hero_image_height` IS NULL;
