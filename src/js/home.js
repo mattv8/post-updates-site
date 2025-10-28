@@ -605,6 +605,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tgl && !tgl.dataset.bound) {
           tgl.dataset.bound = '1';
           tgl.addEventListener('change', async () => {
+            // Ensure we have a valid post ID
+            if (!editingPostId) {
+              console.error('No editingPostId set for status toggle');
+              return;
+            }
+
             const label = postEditorContainer.querySelector('.status-label');
             if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
             const saveEl = postEditorContainer.querySelector('#post-status-save');
@@ -643,6 +649,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tgl && !tgl.dataset.bound) {
           tgl.dataset.bound = '1';
           tgl.addEventListener('change', async () => {
+            // Ensure we have a valid post ID
+            if (!editingPostId) {
+              console.error('No editingPostId set for status toggle');
+              return;
+            }
+
             const label = postEditorContainer.querySelector('.status-label');
             if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
             const saveEl = postEditorContainer.querySelector('#post-status-save');
@@ -756,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function() {
               const heroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
               const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
               if (heroOverlayOpacity) {
-                const opacityToSet = post.hero_overlay_opacity || 0.70;
+                const opacityToSet = parseFloat(post.hero_overlay_opacity) || 0.70;
                 heroOverlayOpacity.value = opacityToSet;
                 if (overlayOpacityValue) {
                   overlayOpacityValue.textContent = opacityToSet.toFixed(2);
