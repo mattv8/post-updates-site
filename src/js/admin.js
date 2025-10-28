@@ -305,8 +305,22 @@
       donation_settings_json: JSON.stringify({preset_amounts: presets}),
       ai_system_prompt: document.getElementById('ai_system_prompt').value
     };
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+    }
+
     api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
-      alert(j.success? 'Saved settings' : ('Error: '+j.error));
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+      if (!j.success) {
+        alert('Error: ' + j.error);
+      }
     });
   });
 

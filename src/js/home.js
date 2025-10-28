@@ -460,13 +460,13 @@ document.addEventListener('DOMContentLoaded', function() {
           const postId = editBtn.getAttribute('data-post-id');
           if (postId) {
             editingPostId = parseInt(postId, 10);
-            
+
             // Immediately show loading spinner and hide content
             const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
             const contentEl = postEditorContainer.querySelector('.post-editor-content');
             if (loadingEl) loadingEl.style.display = 'block';
             if (contentEl) contentEl.style.display = 'none';
-            
+
             const bsModal = new bootstrap.Modal(modal);
             bsModal.show();
           }
@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
               }
             }
           }
-          
+
           // Hide loading, show content
           if (loadingEl) loadingEl.style.display = 'none';
           if (contentEl) contentEl.style.display = 'block';
