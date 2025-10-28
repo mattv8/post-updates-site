@@ -28,11 +28,17 @@
     const media = qs('#overlay-media');
     media.innerHTML = '';
 
-    // Show delete button if authenticated and store post ID
+    // Show delete and edit buttons if authenticated and store post ID
     const deleteBtn = qs('#overlay-delete');
     if (deleteBtn) {
       deleteBtn.style.display = 'block';
       deleteBtn.setAttribute('data-post-id', post.id);
+    }
+
+    const editBtn = qs('#overlay-edit');
+    if (editBtn) {
+      editBtn.style.display = 'block';
+      editBtn.setAttribute('data-post-id', post.id);
     }
 
     // Display gallery images if present
@@ -336,6 +342,8 @@
       });
     }
 
+    // Edit button in overlay - handler is set up in post editor scope below
+
     // Confirm delete button
     const confirmDeleteBtn = qs('#confirmDeletePost');
     if (confirmDeleteBtn) {
@@ -473,6 +481,35 @@ document.addEventListener('DOMContentLoaded', function() {
           return false;
         }
       }, true); // Use capture phase
+
+      // Handle edit button in overlay
+      const overlayEditBtn = document.querySelector('#overlay-edit');
+      if (overlayEditBtn) {
+        overlayEditBtn.addEventListener('click', function() {
+          const postId = overlayEditBtn.getAttribute('data-post-id');
+          if (postId) {
+            // Hide the overlay first
+            const overlay = document.querySelector('#post-overlay');
+            if (overlay) {
+              overlay.classList.add('d-none');
+              document.body.classList.remove('overflow-hidden');
+            }
+
+            // Set up edit mode
+            editingPostId = parseInt(postId, 10);
+
+            // Immediately show loading spinner and hide content
+            const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+            const contentEl = postEditorContainer.querySelector('.post-editor-content');
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (contentEl) contentEl.style.display = 'none';
+
+            // Open the edit modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+          }
+        });
+      }
 
     // Initialize CKEditor when modal is first shown
     let editorInitialized = false;

@@ -6,6 +6,9 @@
       <h5 class="mb-0" id="overlay-title"></h5>
       <div class="d-flex gap-2">
         {if $is_authenticated|default:false}
+          <button type="button" class="btn btn-sm btn-outline-primary" id="overlay-edit" style="display: none;">
+            <i class="bi bi-pencil"></i> Edit
+          </button>
           <button type="button" class="btn btn-sm btn-outline-danger" id="overlay-delete" style="display: none;">
             <i class="bi bi-trash"></i> Delete
           </button>
