@@ -46,9 +46,40 @@
   <div class="mb-3">
     <label class="form-label">Hero Image (optional)</label>
     <div class="hero-image-section">
-      <div class="hero-preview mb-2" style="display:none;">
-        <img src="" alt="" class="img-thumbnail" style="max-height: 200px;" />
-        <button type="button" class="btn btn-sm btn-danger mt-1 btn-remove-hero">Remove</button>
+      <div class="hero-preview-container mb-3" style="display:none;">
+        <div class="row g-3 align-items-start">
+          <div class="col-md-7">
+            <div class="hero-preview-wrapper position-relative" style="overflow: hidden; border-radius: 0.375rem;">
+              <div class="hero-preview" style="display: block; height: 0; padding-bottom: 100%; position: relative; overflow: hidden;">
+                <img src="" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" />
+                <button type="button" class="btn btn-danger btn-sm btn-remove-hero position-absolute top-0 end-0 m-2"
+                        style="z-index: 10; opacity: 0; transition: opacity 0.2s;" title="Remove hero image">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+              <div class="text-muted small mt-1 text-center">Preview (matches actual display)</div>
+            </div>
+          </div>
+          <div class="col-md-5">
+            {* Hero Image Height Control *}
+            <div class="hero-height-control">
+              <label for="heroImageHeight" class="form-label fw-semibold">
+                Display Height: <span class="hero-height-value text-primary">100</span>%
+              </label>
+              <input type="range" class="form-range post-hero-height" id="heroImageHeight"
+                     min="10" max="100" step="5" value="100">
+              <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">10%</small>
+                <small class="text-muted">50%</small>
+                <small class="text-muted">100%</small>
+              </div>
+              <div class="alert alert-info mt-3 py-2 px-3 small mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                Controls the aspect ratio of the hero image. Lower values create shorter, wider displays. Higher values show more vertical content.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="hero-upload-controls">
         <div class="input-group">

@@ -95,6 +95,12 @@
         img.setAttribute('srcset', post.hero_srcset_jpg);
         img.setAttribute('sizes', '100vw');
         img.alt = post.title || 'Post image';
+        // Apply custom height if set
+        if (post.hero_image_height) {
+          img.style.height = post.hero_image_height + 'px';
+          img.style.objectFit = 'cover';
+          img.style.width = '100%';
+        }
         picture.appendChild(img);
       }
       media.appendChild(picture);
@@ -678,9 +684,29 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set hero image
             if (post.hero_media_id) {
               const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+              const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
               if (heroSelect) {
                 heroSelect.value = post.hero_media_id;
                 heroSelect.dispatchEvent(new Event('change'));
+              }
+              // Set hero height and show control
+              const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+              const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+              const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+              const heightToSet = post.hero_image_height || 100;
+              if (heroHeightSlider) {
+                heroHeightSlider.value = heightToSet;
+                if (heroHeightValue) {
+                  heroHeightValue.textContent = heightToSet;
+                }
+                // Set preview padding-bottom to match actual display
+                if (heroPreviewDiv) {
+                  heroPreviewDiv.style.paddingBottom = heightToSet + '%';
+                }
+              }
+              // Show height control when there's a hero image
+              if (heroHeightControl) {
+                heroHeightControl.style.display = 'block';
               }
             }
 
@@ -735,8 +761,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Hero image selection handler
     const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+    const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
     const heroPreview = postEditorContainer.querySelector('.hero-preview');
     const heroPreviewImg = heroPreview?.querySelector('img');
+    const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
+    const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+    const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
 
     if (heroSelect) {
       heroSelect.addEventListener('change', function() {
@@ -752,12 +782,45 @@ document.addEventListener('DOMContentLoaded', function() {
                   : '/storage/uploads/originals/' + data.data.filename;
                 heroPreviewImg.src = previewUrl;
                 heroPreviewImg.alt = data.data.alt_text || '';
-                heroPreview.style.display = 'block';
+                if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
+
+                // Set initial preview padding-bottom based on current slider value
+                const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+                const currentHeight = parseInt(heroHeightSlider?.value || 100);
+                if (heroPreviewDiv) {
+                  heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+                }
               }
             });
-        } else if (heroPreview) {
-          heroPreview.style.display = 'none';
+        } else {
+          if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
         }
+      });
+    }
+
+    // Hero height slider handler - update preview dynamically
+    if (heroHeightSlider && heroHeightValue) {
+      const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+      heroHeightSlider.addEventListener('input', function() {
+        const heightPercent = parseInt(this.value);
+        heroHeightValue.textContent = heightPercent;
+        // Update padding-bottom to match actual display
+        if (heroPreviewDiv) {
+          heroPreviewDiv.style.paddingBottom = heightPercent + '%';
+        }
+      });
+    }
+
+    // Show trash icon on hover
+    const heroPreviewWrapper = postEditorContainer.querySelector('.hero-preview-wrapper');
+    if (heroPreviewWrapper) {
+      heroPreviewWrapper.addEventListener('mouseenter', function() {
+        const removeBtn = this.querySelector('.btn-remove-hero');
+        if (removeBtn) removeBtn.style.opacity = '1';
+      });
+      heroPreviewWrapper.addEventListener('mouseleave', function() {
+        const removeBtn = this.querySelector('.btn-remove-hero');
+        if (removeBtn) removeBtn.style.opacity = '0';
       });
     }
 
@@ -766,8 +829,110 @@ document.addEventListener('DOMContentLoaded', function() {
     if (heroRemoveBtn) {
       heroRemoveBtn.addEventListener('click', function() {
         if (heroSelect) heroSelect.value = '';
-        if (heroPreview) heroPreview.style.display = 'none';
+        if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
         if (heroPreviewImg) heroPreviewImg.src = '';
+        if (heroHeightSlider) {
+          heroHeightSlider.value = 100;
+          // Reset preview padding-bottom
+          const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+          if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
+        }
+        if (heroHeightValue) heroHeightValue.textContent = '100';
+      });
+    }
+
+    // Hero upload handlers
+    const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
+    const heroUploadBtn = postEditorContainer.querySelector('.btn-upload-hero');
+
+    // Show upload button when file is selected
+    if (heroUploadInput) {
+      heroUploadInput.addEventListener('change', function() {
+        if (heroUploadBtn) {
+          heroUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
+        }
+      });
+    }
+
+    // Handle hero upload
+    if (heroUploadBtn) {
+      heroUploadBtn.addEventListener('click', async function() {
+        const file = heroUploadInput?.files[0];
+        if (!file) return;
+
+        // Validate file size (20MB)
+        if (file.size > 20 * 1024 * 1024) {
+          alert('File size must be less than 20MB');
+          return;
+        }
+
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+        if (!validTypes.includes(file.type)) {
+          alert('Invalid file type. Please use JPG, PNG, WebP, or HEIC');
+          return;
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('alt_text', '');
+
+        try {
+          heroUploadBtn.disabled = true;
+          const originalText = heroUploadBtn.textContent;
+          heroUploadBtn.textContent = 'Uploading...';
+
+          const response = await fetch('/api/admin/media.php', {
+            method: 'POST',
+            headers: {
+              'X-CSRF-Token': csrfToken
+            },
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Add to select dropdown
+            const option = document.createElement('option');
+            option.value = data.id;
+            option.textContent = file.name;
+            option.selected = true;
+            heroSelect.appendChild(option);
+
+            // Show preview
+            const variants = JSON.parse(data.data?.variants_json || '{}');
+            const variant400 = variants['400'];
+            const previewUrl = variant400?.jpg
+              ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
+              : '/storage/uploads/originals/' + data.data?.filename;
+            if (heroPreviewImg) {
+              heroPreviewImg.src = previewUrl;
+            }
+            if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
+
+            // Set initial preview padding-bottom based on current slider value
+            const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+            const currentHeight = parseInt(heroHeightSlider?.value || 100);
+            if (heroPreviewDiv) {
+              heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+            }
+
+            // Clear file input
+            heroUploadInput.value = '';
+            heroUploadBtn.style.display = 'none';
+          } else {
+            alert('Upload failed: ' + (data.error || 'Unknown error'));
+          }
+
+          heroUploadBtn.disabled = false;
+          heroUploadBtn.textContent = originalText;
+        } catch (error) {
+          console.error('Error uploading hero image:', error);
+          alert('An error occurred during upload');
+          heroUploadBtn.disabled = false;
+        }
       });
     }
 
@@ -804,6 +969,81 @@ document.addEventListener('DOMContentLoaded', function() {
       galleryPreview.appendChild(item);
     }
 
+    // Gallery upload handlers
+    const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
+    const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
+
+    // Show upload button when files are selected
+    if (galleryUploadInput) {
+      galleryUploadInput.addEventListener('change', function() {
+        if (galleryUploadBtn) {
+          galleryUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
+        }
+      });
+    }
+
+    // Handle gallery upload
+    if (galleryUploadBtn) {
+      galleryUploadBtn.addEventListener('click', async function() {
+        const files = Array.from(galleryUploadInput?.files || []);
+        if (!files.length) return;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        try {
+          galleryUploadBtn.disabled = true;
+          const originalText = galleryUploadBtn.textContent;
+          galleryUploadBtn.textContent = `Uploading ${files.length} file(s)...`;
+
+          for (const file of files) {
+            // Validate each file
+            if (file.size > 20 * 1024 * 1024) {
+              alert(`${file.name} is too large (max 20MB)`);
+              continue;
+            }
+
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+            if (!validTypes.includes(file.type)) {
+              alert(`${file.name} has invalid type`);
+              continue;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('alt_text', '');
+
+            const response = await fetch('/api/admin/media.php', {
+              method: 'POST',
+              headers: {
+                'X-CSRF-Token': csrfToken
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Add to gallery
+              galleryMediaIds.push(data.id);
+              addGalleryItemPreview(data.id, data.data);
+            } else {
+              alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
+            }
+          }
+
+          // Clear file input
+          galleryUploadInput.value = '';
+          galleryUploadBtn.style.display = 'none';
+          galleryUploadBtn.disabled = false;
+          galleryUploadBtn.textContent = originalText;
+        } catch (error) {
+          console.error('Error uploading gallery images:', error);
+          alert('An error occurred during upload');
+          galleryUploadBtn.disabled = false;
+        }
+      });
+    }
+
     // Save button handler
     postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function() {
       const saveBtn = this;
@@ -813,14 +1053,112 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
 
+        // Check if there's a pending hero image file to upload
+        const heroFile = heroUploadInput?.files[0];
+        let uploadedHeroId = postEditorContainer.querySelector('.post-hero-media').value || null;
+
+        if (heroFile && !uploadedHeroId) {
+          saveBtn.textContent = 'Uploading hero image...';
+
+          // Validate file
+          if (heroFile.size > 20 * 1024 * 1024) {
+            alert('Hero image file size must be less than 20MB');
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return;
+          }
+
+          const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+          if (!validTypes.includes(heroFile.type)) {
+            alert('Invalid hero image type. Please use JPG, PNG, WebP, or HEIC');
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return;
+          }
+
+          // Upload hero image
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+          const formData = new FormData();
+          formData.append('file', heroFile);
+          formData.append('alt_text', '');
+
+          const response = await fetch('/api/admin/media.php', {
+            method: 'POST',
+            headers: {
+              'X-CSRF-Token': csrfToken
+            },
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            uploadedHeroId = data.id;
+          } else {
+            alert('Hero image upload failed: ' + (data.error || 'Unknown error'));
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return;
+          }
+        }
+
+        // Check if there are pending gallery files to upload
+        const galleryFiles = Array.from(galleryUploadInput?.files || []);
+        if (galleryFiles.length > 0) {
+          saveBtn.textContent = `Uploading ${galleryFiles.length} gallery image(s)...`;
+
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+          for (const file of galleryFiles) {
+            // Validate each file
+            if (file.size > 20 * 1024 * 1024) {
+              alert(`${file.name} is too large (max 20MB)`);
+              continue;
+            }
+
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+            if (!validTypes.includes(file.type)) {
+              alert(`${file.name} has invalid type`);
+              continue;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('alt_text', '');
+
+            const response = await fetch('/api/admin/media.php', {
+              method: 'POST',
+              headers: {
+                'X-CSRF-Token': csrfToken
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              galleryMediaIds.push(data.id);
+            } else {
+              alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
+            }
+          }
+
+          // Clear gallery input after upload
+          if (galleryUploadInput) galleryUploadInput.value = '';
+        }
+
+        saveBtn.textContent = 'Saving post...';
+
         const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
         const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
+        const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
 
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
           body_html: postBodyEditor ? postBodyEditor.getData() : postEditorContainer.querySelector('.post-body').value,
           status: statusVal,
-          hero_media_id: postEditorContainer.querySelector('.post-hero-media').value || null,
+          hero_media_id: uploadedHeroId,
+          hero_image_height: heroImageHeightValue,
           gallery_media_ids: galleryMediaIds
         };
 

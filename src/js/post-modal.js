@@ -58,8 +58,10 @@
     modal.querySelector('.post-hero-media').value = '';
     modal.querySelector('.hero-upload-input').value = '';
     modal.querySelector('.gallery-upload-input').value = '';
-    modal.querySelector('.hero-preview').style.display = 'none';
+    modal.querySelector('.hero-preview-container').style.display = 'none';
     modal.querySelector('.hero-preview img').src = '';
+    modal.querySelector('.post-hero-height').value = 100;
+    modal.querySelector('.hero-height-value').textContent = '100';
     const galleryPreview = modal.querySelector('#galleryPreview');
     galleryPreview.innerHTML = '';
     galleryPreview.classList.add('empty');
@@ -69,9 +71,13 @@
   // Hero image upload handlers
   const heroUploadInput = modal.querySelector('.hero-upload-input');
   const heroUploadBtn = modal.querySelector('.btn-upload-hero');
+  const heroPreviewContainer = modal.querySelector('.hero-preview-container');
   const heroPreview = modal.querySelector('.hero-preview');
   const heroPreviewImg = heroPreview.querySelector('img');
   const heroSelect = modal.querySelector('.post-hero-media');
+  const heroHeightControl = modal.querySelector('.hero-height-control');
+  const heroHeightSlider = modal.querySelector('.post-hero-height');
+  const heroHeightValue = modal.querySelector('.hero-height-value');
 
   // Enable upload button when file selected
   heroUploadInput?.addEventListener('change', function() {
@@ -127,7 +133,14 @@
         const variants = JSON.parse(data.data?.variants_json || '{}');
         const previewUrl = variants['400']?.jpg || '/storage/uploads/originals/' + data.data?.filename;
         heroPreviewImg.src = previewUrl;
-        heroPreview.style.display = 'block';
+        heroPreviewContainer.style.display = 'block';
+
+        // Set initial preview height based on slider value
+        const heroPreviewDiv = modal.querySelector('.hero-preview');
+        const currentHeight = parseInt(heroHeightSlider?.value || 100);
+        if (heroPreviewDiv) {
+          heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+        }
 
         // Clear file input
         heroUploadInput.value = '';
@@ -155,19 +168,57 @@
             const previewUrl = variants['400']?.jpg || '/storage/uploads/originals/' + data.data.filename;
             heroPreviewImg.src = previewUrl;
             heroPreviewImg.alt = data.data.alt_text || '';
-            heroPreview.style.display = 'block';
+            heroPreviewContainer.style.display = 'block';
+
+            // Set initial preview height based on slider value
+            const heroPreviewDiv = modal.querySelector('.hero-preview');
+            const currentHeight = parseInt(heroHeightSlider?.value || 100);
+            if (heroPreviewDiv) {
+              heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+            }
           }
         });
     } else {
-      heroPreview.style.display = 'none';
+      heroPreviewContainer.style.display = 'none';
     }
   });
 
-  // Handle hero remove
-  modal.querySelector('.btn-remove-hero')?.addEventListener('click', function() {
+  // Handle hero height slider
+  heroHeightSlider?.addEventListener('input', function() {
+    const heightPercent = parseInt(this.value);
+    heroHeightValue.textContent = heightPercent;
+
+    // Update preview padding-bottom to match actual display
+    const heroPreviewDiv = modal.querySelector('.hero-preview');
+    if (heroPreviewDiv) {
+      heroPreviewDiv.style.paddingBottom = heightPercent + '%';
+    }
+  });
+
+  // Handle hero remove - add hover handlers for trash icon
+  const removeBtn = modal.querySelector('.btn-remove-hero');
+  const heroPreviewWrapper = modal.querySelector('.hero-preview-wrapper');
+
+  if (heroPreviewWrapper && removeBtn) {
+    heroPreviewWrapper.addEventListener('mouseenter', function() {
+      removeBtn.style.opacity = '1';
+    });
+
+    heroPreviewWrapper.addEventListener('mouseleave', function() {
+      removeBtn.style.opacity = '0';
+    });
+  }
+
+  removeBtn?.addEventListener('click', function() {
     heroSelect.value = '';
-    heroPreview.style.display = 'none';
+    heroPreviewContainer.style.display = 'none';
     heroPreviewImg.src = '';
+    heroHeightSlider.value = 100;
+    heroHeightValue.textContent = '100';
+    const heroPreviewDiv = modal.querySelector('.hero-preview');
+    if (heroPreviewDiv) {
+      heroPreviewDiv.style.paddingBottom = '100%'; // Reset to 100%
+    }
   });
 
   // Gallery upload handlers
@@ -326,6 +377,7 @@
       const title = modal.querySelector('.post-title').value.trim() || null;
       const status = modal.querySelector('.post-status').value;
       const heroMediaId = modal.querySelector('.post-hero-media').value || null;
+      const heroImageHeight = heroMediaId ? parseInt(modal.querySelector('.post-hero-height').value) : null;
       const bodyHtml = editor ? editor.getData() : '';
 
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -345,6 +397,7 @@
             body_html: bodyHtml,
             status: status,
             hero_media_id: heroMediaId,
+            hero_image_height: heroImageHeight,
             gallery_media_ids: galleryMediaIds
           })
         });

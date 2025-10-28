@@ -15,14 +15,17 @@
   <div class="timeline-content">
     <div class="card post-card">
       {if $jpg_srcset || $webp_srcset}
-        <picture>
-          {if $webp_srcset}
-            <source type="image/webp" srcset="{$webp_srcset}" sizes="(max-width: 768px) 100vw, 50vw" />
-          {/if}
-          {if $jpg_srcset}
-            <img class="card-img-top" srcset="{$jpg_srcset}" sizes="(max-width: 768px) 100vw, 50vw" alt="{$post.title|escape}" />
-          {/if}
-        </picture>
+        <div class="hero-image-container" style="max-height: 600px; overflow: hidden; position: relative;">
+          <picture style="display: block; height: 0; padding-bottom: {$post.hero_image_height|default:100}%; position: relative; overflow: hidden;">
+            {if $webp_srcset}
+              <source type="image/webp" srcset="{$webp_srcset}" sizes="(max-width: 768px) 100vw, 50vw" />
+            {/if}
+            {if $jpg_srcset}
+              <img class="card-img-top" srcset="{$jpg_srcset}" sizes="(max-width: 768px) 100vw, 50vw" alt="{$post.title|escape}"
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center;" />
+            {/if}
+          </picture>
+        </div>
       {/if}
       <div class="card-body">
         <h5 class="card-title">{$post.title|escape}</h5>
