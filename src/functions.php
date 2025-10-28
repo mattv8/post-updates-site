@@ -760,6 +760,11 @@ function createPost($db_conn, $data)
     $published_at = !empty($data['published_at']) ? $data['published_at'] : null;
     $created_by = $data['created_by_user_id'] ?? ($_SESSION['username'] ?? 'admin');
 
+    // Auto-set published_at when status is 'published' and no published_at is provided
+    if ($status === 'published' && is_null($published_at)) {
+        $published_at = date('Y-m-d H:i:s');
+    }
+
     $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     mysqli_stmt_bind_param($stmt, 'sssissss', $title, $body_html, $excerpt, $hero_media_id, $gallery_media_ids, $status, $published_at, $created_by);
     if (!mysqli_stmt_execute($stmt)) {
@@ -778,6 +783,15 @@ function updatePost($db_conn, $id, $data)
     $gallery_media_ids = array_key_exists('gallery_media_ids', $data) ? json_encode($data['gallery_media_ids']) : null;
     $status = isset($data['status']) && in_array($data['status'], ['draft','published']) ? $data['status'] : null;
     $published_at = $data['published_at'] ?? null;
+
+    // Auto-set published_at when status changes to 'published'
+    // Check current status and published_at from database
+    if ($status === 'published') {
+        $current = mysqli_fetch_assoc(mysqli_query($db_conn, "SELECT status, published_at FROM posts WHERE id = {$id}"));
+        if ($current && is_null($current['published_at'])) {
+            $published_at = date('Y-m-d H:i:s');
+        }
+    }
 
     // Build dynamic update
     $fields = [];
