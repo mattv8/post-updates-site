@@ -64,7 +64,7 @@
       <label class="form-label">Status</label>
       <select class="form-select post-status">
         <option value="draft">Draft</option>
-        <option value="published">Published</option>
+        <option value="published" selected>Published</option>
       </select>
     </div>
   </div>

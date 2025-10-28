@@ -54,7 +54,7 @@
     }
     // Reset form
     modal.querySelector('.post-title').value = '';
-    modal.querySelector('.post-status').value = 'draft';
+    modal.querySelector('.post-status').value = 'published';
     modal.querySelector('.post-hero-media').value = '';
     modal.querySelector('.hero-upload-input').value = '';
     modal.querySelector('.gallery-upload-input').value = '';
