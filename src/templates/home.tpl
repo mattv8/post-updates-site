@@ -125,9 +125,11 @@
 
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
 
-    {* Page-specific JS - loaded after modals are in DOM *}
-    <script src="js/home.js"></script>
+    {* Edit sections JS - only for authenticated users *}
     <script src="js/edit-sections.js"></script>
   {/if}
+
+  {* Page-specific JS - loaded for all users *}
+  <script src="js/home.js"></script>
 
 </div>
