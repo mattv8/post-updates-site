@@ -85,10 +85,24 @@
 
     modal.querySelector('#modal_show_hero').checked = settings.show_hero == 1;
     modal.querySelector('#modal_hero_media_id').value = settings.hero_media_id || '';
-    modal.querySelector('#modal_cta_text').value = settings.cta_text || '';
-    modal.querySelector('#modal_cta_url').value = settings.cta_url || '';
-    modal.querySelector('#modal_hero_overlay_opacity').value = settings.hero_overlay_opacity || 0.5;
-    modal.querySelector('#modal_hero_overlay_color').value = settings.hero_overlay_color || '#000000';
+
+    // Set overlay opacity slider and display value
+    const opacitySlider = modal.querySelector('#modal_hero_overlay_opacity');
+    const opacityValue = modal.querySelector('.hero-overlay-opacity-value');
+    const opacityToSet = parseFloat(settings.hero_overlay_opacity) || 0.5;
+    if (opacitySlider) {
+      opacitySlider.value = opacityToSet;
+      if (opacityValue) {
+        opacityValue.textContent = opacityToSet.toFixed(2);
+      }
+    }
+
+    // Set overlay color picker and hex input
+    const colorPicker = modal.querySelector('#modal_hero_overlay_color');
+    const colorHex = modal.querySelector('#modal_hero_overlay_color_hex');
+    const colorToSet = settings.hero_overlay_color || '#000000';
+    if (colorPicker) colorPicker.value = colorToSet;
+    if (colorHex) colorHex.value = colorToSet;
 
     const heroHeightSlider = modal.querySelector('#modal_hero_height');
     const heroHeightValue = modal.querySelector('.hero-banner-height-value');
@@ -112,6 +126,50 @@
     // Show hero preview if media selected
     if (settings.hero_media_id) {
       SettingsManager.loadHeroPreview(settings.hero_media_id, modal.querySelector('.hero-banner-preview-container'));
+      // Update preview after a short delay to ensure elements are rendered
+      setTimeout(() => updateHeroBannerPreview(), 100);
+    }
+  }
+
+  // Function to update hero banner preview
+  function updateHeroBannerPreview() {
+    const modal = document.getElementById('editHeroModal');
+    if (!modal) {
+      console.log('updateHeroBannerPreview: modal not found');
+      return;
+    }
+
+    const overlayDiv = modal.querySelector('.hero-banner-overlay');
+    const textPreview = modal.querySelector('.hero-preview-content');
+    const opacitySlider = modal.querySelector('#modal_hero_overlay_opacity');
+    const colorPicker = modal.querySelector('#modal_hero_overlay_color');
+
+    console.log('updateHeroBannerPreview called', {
+      overlayDiv: !!overlayDiv,
+      textPreview: !!textPreview,
+      opacitySlider: !!opacitySlider,
+      colorPicker: !!colorPicker
+    });
+
+    if (!overlayDiv) {
+      console.log('updateHeroBannerPreview: overlayDiv not found');
+      return;
+    }
+
+    // Update overlay color and opacity
+    const opacity = parseFloat(opacitySlider?.value || 0.5);
+    const color = colorPicker?.value || '#000000';
+
+    console.log('Applying overlay styles:', { color, opacity });
+
+    overlayDiv.style.backgroundColor = color;
+    overlayDiv.style.opacity = opacity;
+
+    // Update text preview from Quill editor
+    if (heroEditor && textPreview) {
+      const htmlContent = window.getQuillHTML(heroEditor);
+      // Strip out HTML tags and get just the text, or use the HTML if you want formatting
+      textPreview.innerHTML = htmlContent || 'Hero text will appear here...';
     }
   }
 
@@ -168,6 +226,11 @@
 
           // Setup auto-save
           heroAutoSave = setupAutoSave(heroEditor, 'hero_html', 'modal_hero-autosave-status', 10000);
+
+          // Update preview when editor content changes
+          heroEditor.on('text-change', function() {
+            updateHeroBannerPreview();
+          });
         } catch (error) {
           console.error('Hero editor initialization error:', error);
         }
@@ -189,6 +252,48 @@
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
     });
+
+    // Hero height slider handler
+    const heroHeightSlider = heroModal.querySelector('#modal_hero_height');
+    const heroHeightValue = heroModal.querySelector('.hero-banner-height-value');
+    if (heroHeightSlider && heroHeightValue) {
+      heroHeightSlider.addEventListener('input', function() {
+        const heightPercent = parseInt(this.value);
+        heroHeightValue.textContent = heightPercent;
+        const heroPreviewDiv = heroModal.querySelector('.hero-banner-preview');
+        if (heroPreviewDiv) {
+          heroPreviewDiv.style.paddingBottom = heightPercent + '%';
+        }
+      });
+    }
+
+    // Overlay opacity slider handler
+    const opacitySlider = heroModal.querySelector('#modal_hero_overlay_opacity');
+    const opacityValue = heroModal.querySelector('.hero-overlay-opacity-value');
+    if (opacitySlider && opacityValue) {
+      opacitySlider.addEventListener('input', function() {
+        const opacity = parseFloat(this.value);
+        opacityValue.textContent = opacity.toFixed(2);
+        updateHeroBannerPreview();
+      });
+    }
+
+    // Color picker handlers - sync between color input and hex input
+    const colorPicker = heroModal.querySelector('#modal_hero_overlay_color');
+    const colorHex = heroModal.querySelector('#modal_hero_overlay_color_hex');
+    if (colorPicker && colorHex) {
+      colorPicker.addEventListener('input', function() {
+        colorHex.value = this.value;
+        updateHeroBannerPreview();
+      });
+
+      colorHex.addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+          colorPicker.value = this.value;
+          updateHeroBannerPreview();
+        }
+      });
+    }
 
     // Clean up when hidden
     heroModal.addEventListener('hidden.bs.modal', function() {
@@ -219,6 +324,9 @@
       if (heroPreviewDiv) {
         heroPreviewDiv.style.paddingBottom = currentHeight + '%';
       }
+
+      // Update preview with overlay and text
+      setTimeout(() => updateHeroBannerPreview(), 100);
     });
 
     // Handle remove hero banner
@@ -252,9 +360,7 @@
           show_hero: heroModal.querySelector('#modal_show_hero').checked ? 1 : 0,
           hero_media_id: heroModal.querySelector('#modal_hero_media_id').value || null,
           hero_html: heroEditor ? window.getQuillHTML(heroEditor) : heroModal.querySelector('#modal_hero_html').value,
-          cta_text: heroModal.querySelector('#modal_cta_text').value,
-          cta_url: heroModal.querySelector('#modal_cta_url').value,
-          hero_overlay_opacity: heroModal.querySelector('#modal_hero_overlay_opacity').value,
+          hero_overlay_opacity: parseFloat(heroModal.querySelector('#modal_hero_overlay_opacity').value),
           hero_overlay_color: heroModal.querySelector('#modal_hero_overlay_color').value,
           hero_height: heroModal.querySelector('#modal_hero_height').value || 100,
         };

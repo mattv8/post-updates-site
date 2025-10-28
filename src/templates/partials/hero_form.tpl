@@ -18,7 +18,11 @@
       <div class="col-md-7">
         <div class="hero-banner-preview-wrapper position-relative" style="overflow: hidden; border-radius: 0.375rem;">
           <div class="hero-banner-preview" style="display: block; height: 0; padding-bottom: 100%; position: relative; overflow: hidden;">
-            <img src="" alt="Hero preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" />
+            <img src="" alt="Hero preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 0;" />
+            <div class="hero-banner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; opacity: 0.5; pointer-events: none; z-index: 1;"></div>
+            <div class="hero-banner-text-preview hero-content" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.4); transform-origin: center; width: 250%; max-width: 2400px; color: white; z-index: 2; padding: 150px;">
+              <div class="hero-preview-content">Hero text will appear here...</div>
+            </div>
             <button type="button" class="btn btn-danger btn-sm btn-remove-hero-banner position-absolute top-0 end-0 m-2"
                     style="z-index: 10; opacity: 0; transition: opacity 0.2s;" title="Remove hero image">
               <i class="bi bi-trash"></i>
@@ -28,7 +32,7 @@
         </div>
       </div>
       <div class="col-md-5">
-        <div class="hero-banner-height-control">
+        <div class="hero-banner-height-control mb-3">
           <label for="{$prefix}hero_height" class="form-label fw-semibold">
             Display Height: <span class="hero-banner-height-value text-primary">100</span>%
           </label>
@@ -39,6 +43,28 @@
             <small class="text-muted">100%</small>
           </div>
         </div>
+
+        <div class="mb-3">
+          <label for="{$prefix}hero_overlay_opacity" class="form-label fw-semibold">
+            Overlay Opacity: <span class="hero-overlay-opacity-value text-primary">0.50</span>
+          </label>
+          <input type="range" class="form-range" id="{$prefix}hero_overlay_opacity" min="0" max="1" step="0.05" value="0.5">
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">0% (transparent)</small>
+            <small class="text-muted">100% (solid)</small>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="{$prefix}hero_overlay_color" class="form-label fw-semibold">
+            Overlay Color
+          </label>
+          <div class="d-flex align-items-center gap-2">
+            <input type="color" class="form-control form-control-color" id="{$prefix}hero_overlay_color" value="#000000" title="Choose overlay color">
+            <input type="text" class="form-control form-control-sm" id="{$prefix}hero_overlay_color_hex" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" style="width: 100px;">
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -49,24 +75,4 @@
     <small class="editor-autosave-indicator" id="{$prefix}hero-autosave-status"></small>
   </div>
   <div class="form-control" id="{$prefix}hero_html"></div>
-</div>
-<div class="row g-3">
-  <div class="col-sm-6">
-    <label class="form-label">CTA Text</label>
-    <input type="text" class="form-control" id="{$prefix}cta_text" />
-  </div>
-  <div class="col-sm-6">
-    <label class="form-label">CTA URL</label>
-    <input type="text" class="form-control" id="{$prefix}cta_url" />
-  </div>
-</div>
-<div class="row g-3 mt-1">
-  <div class="col-sm-6">
-    <label class="form-label">Overlay Opacity</label>
-    <input type="number" step="0.05" min="0" max="1" class="form-control" id="{$prefix}hero_overlay_opacity" />
-  </div>
-  <div class="col-sm-6">
-    <label class="form-label">Overlay Color</label>
-    <input type="text" class="form-control" id="{$prefix}hero_overlay_color" placeholder="#000000" />
-  </div>
 </div>
