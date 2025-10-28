@@ -95,12 +95,7 @@
         img.setAttribute('srcset', post.hero_srcset_jpg);
         img.setAttribute('sizes', '100vw');
         img.alt = post.title || 'Post image';
-        // Apply custom height if set
-        if (post.hero_image_height) {
-          img.style.height = post.hero_image_height + 'px';
-          img.style.objectFit = 'cover';
-          img.style.width = '100%';
-        }
+        // Overlay shows full image without cropping
         picture.appendChild(img);
       }
       media.appendChild(picture);
