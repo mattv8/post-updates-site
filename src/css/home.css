@@ -1,7 +1,28 @@
-.hero { overflow: hidden; border-radius: .5rem; }
+.hero { overflow: hidden; border-radius: .5rem; position: relative; }
 .hero-content { max-width: 960px; }
 .post-card img { object-fit: cover; }
 .sticky-top { z-index: 10; }
+
+/* Edit buttons for sections */
+.btn-edit-section {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.hero:hover .btn-edit-section,
+.card:hover .btn-edit-section,
+.position-relative:hover .btn-edit-section {
+  opacity: 1;
+}
+
+.btn-edit-section {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-edit-section:hover {
+  background-color: var(--bs-light) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
 
 /* Timeline Styles */
 .timeline {

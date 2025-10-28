@@ -14,5 +14,8 @@
 {* AI Title Generator - included globally *}
 <script src="/js/ai-title-generator.js"></script>
 
+{* Settings Manager - shared utilities *}
+<script src="/js/settings-manager.js"></script>
+
 {* Validation utilities - included globally *}
 <script src="/js/validation-utils.js"></script>

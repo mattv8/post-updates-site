@@ -1,9 +1,11 @@
-{* Page-specific JS *}
-<script src="js/home.js"></script>
-
 <div class="container py-4">
   {if $settings.show_hero && $settings.hero_media_id}
     <div class="hero position-relative mb-4">
+      {if $is_authenticated|default:false}
+        <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editHeroModal" title="Edit Hero Banner">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
+      {/if}
       <picture>
         {if $hero_webp}
           <source type="image/webp" srcset="{$hero_webp}" sizes="100vw" />
@@ -45,7 +47,12 @@
     <div class="col-12 col-lg-4">
       <div class="sticky-top" style="top: 90px;">
         {if $settings.show_about}
-          <div class="card mb-4">
+          <div class="card mb-4 position-relative">
+            {if $is_authenticated|default:false}
+              <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editAboutModal" title="Edit About Section">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+            {/if}
             <div class="card-body">
               <h5 class="card-title">About</h5>
               <div class="card-text">{$settings.site_bio_html nofilter}</div>
@@ -53,7 +60,14 @@
           </div>
         {/if}
         {if $settings.show_donation}
-          {include file='templates/partials/donate_section.tpl'}
+          <div class="position-relative">
+            {if $is_authenticated|default:false}
+              <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editDonationModal" title="Edit Donation Section">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+            {/if}
+            {include file='templates/partials/donate_section.tpl'}
+          </div>
         {/if}
       </div>
     </div>
@@ -102,7 +116,16 @@
       </div>
     </div>
 
+    {* Edit Section Modals *}
+    {include file='templates/modals/edit_hero.tpl'}
+    {include file='templates/modals/edit_about.tpl'}
+    {include file='templates/modals/edit_donation.tpl'}
+
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
+
+    {* Page-specific JS - loaded after modals are in DOM *}
+    <script src="js/home.js"></script>
+    <script src="js/edit-sections.js"></script>
   {/if}
 
 </div>

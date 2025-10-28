@@ -33,92 +33,21 @@
 
     <div class="tab-pane fade" id="pane-hero" role="tabpanel">
       <form id="heroForm" class="mt-3">
-        <div class="mb-3 form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="show_hero" />
-          <label class="form-check-label" for="show_hero">
-            <strong>Show Hero Banner on home page</strong>
-          </label>
-        </div>
-        <hr class="mb-3" />
-        <div class="mb-3">
-          <label class="form-label">Hero Background Image</label>
-          <select class="form-select" id="hero_media_id">
-            <option value="">None</option>
-          </select>
-          <div class="hero-banner-preview mt-2" style="display: none;">
-            <img src="" alt="Hero preview" class="img-thumbnail" style="max-height: 200px;" />
-            <button type="button" class="btn btn-sm btn-outline-danger ms-2 btn-remove-hero-banner">Remove</button>
-          </div>
-        </div>
-        <div class="mb-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <label class="form-label mb-0">Hero Text</label>
-            <small class="editor-autosave-indicator" id="hero-autosave-status"></small>
-          </div>
-          <textarea class="form-control" id="hero_html" rows="5"></textarea>
-        </div>
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label">CTA Text</label>
-            <input type="text" class="form-control" id="cta_text" />
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">CTA URL</label>
-            <input type="text" class="form-control" id="cta_url" />
-          </div>
-        </div>
-        <div class="row g-3 mt-1">
-          <div class="col-sm-6">
-            <label class="form-label">Overlay Opacity</label>
-            <input type="number" step="0.05" min="0" max="1" class="form-control" id="hero_overlay_opacity" />
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Overlay Color</label>
-            <input type="text" class="form-control" id="hero_overlay_color" placeholder="#000000" />
-          </div>
-        </div>
+        {include file='templates/partials/hero_form.tpl'}
         <button type="submit" class="btn btn-primary mt-3">Save</button>
       </form>
     </div>
 
     <div class="tab-pane fade" id="pane-about" role="tabpanel">
       <form id="aboutForm" class="mt-3">
-        <div class="mb-3 form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="show_about" />
-          <label class="form-check-label" for="show_about">
-            <strong>Show About section in sidebar</strong>
-          </label>
-        </div>
-        <hr class="mb-3" />
-        <div class="mb-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <label class="form-label mb-0">About Section</label>
-            <small class="editor-autosave-indicator" id="about-autosave-status"></small>
-          </div>
-          <small class="text-muted d-block mb-2">This content appears in the sidebar on the home page</small>
-          <textarea id="site_bio_html" class="form-control" rows="8"></textarea>
-        </div>
+        {include file='templates/partials/about_form.tpl'}
         <button type="submit" class="btn btn-primary">Save About</button>
       </form>
     </div>
 
     <div class="tab-pane fade" id="pane-donation" role="tabpanel">
       <form id="donationForm" class="mt-3">
-        <div class="mb-3 form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="show_donation" />
-          <label class="form-check-label" for="show_donation">
-            <strong>Show Donation section in sidebar</strong>
-          </label>
-        </div>
-        <hr class="mb-3" />
-        <div class="mb-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <label class="form-label mb-0">Donation Section Content</label>
-            <small class="editor-autosave-indicator" id="donation-autosave-status"></small>
-          </div>
-          <small class="text-muted d-block mb-2">This content appears in the donation card in the sidebar</small>
-          <textarea id="donate_text_html" class="form-control" rows="8"></textarea>
-        </div>
+        {include file='templates/partials/donation_form.tpl'}
         <button type="submit" class="btn btn-primary">Save Donation</button>
       </form>
     </div>
