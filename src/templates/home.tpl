@@ -92,7 +92,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            {include file='templates/partials/post_editor.tpl'}
+            {include file='templates/partials/post_editor.tpl' mode='edit'}
           </div>
         </div>
       </div>

@@ -1,5 +1,26 @@
 {* Reusable post editor component *}
 <div class="post-editor">
+  {if isset($mode) && $mode == 'edit'}
+  <div class="post-editor-loading text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3 text-muted">Loading post...</p>
+  </div>
+  <div class="post-editor-content" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="me-3">
+      <label for="postStatusToggle" class="form-label mb-0">Published</label>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input post-status-toggle" type="checkbox" id="postStatusToggle">
+        <label class="form-check-label ms-1" for="postStatusToggle"><span class="status-label">Published</span></label>
+      </div>
+      <small id="post-status-save" class="text-muted"></small>
+    </div>
+  </div>
+  {/if}
   <div class="mb-3">
     <label class="form-label">Title (optional)</label>
     <div class="input-group">
@@ -59,20 +80,25 @@
     </div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">Status</label>
-      <select class="form-select post-status">
-        <option value="draft">Draft</option>
-        <option value="published" selected>Published</option>
-      </select>
+  {if !isset($mode) || $mode != 'edit'}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Status</label>
+        <select class="form-select post-status">
+          <option value="draft">Draft</option>
+          <option value="published" selected>Published</option>
+        </select>
+      </div>
     </div>
-  </div>
+  {/if}
 
   <div class="mt-3 d-flex gap-2 justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
     <button type="button" class="btn btn-primary btn-save-post">Save Post</button>
   </div>
+  {if isset($mode) && $mode == 'edit'}
+  </div>
+  {/if}
 </div>
 
 <style>

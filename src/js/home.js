@@ -203,23 +203,12 @@
     return lightbox;
   }
 
-  function bindEvents() {
-    // Read more buttons
-    qsa('.read-more').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.currentTarget.getAttribute('data-post-id');
-        try {
-          const post = await fetchPost(id);
-          showOverlay(post);
-        } catch (err) {
-          console.error(err);
-          alert('Sorry, we could not load that update right now.');
-        }
-      });
-    });
-
+  // Attach handlers to timeline cards within a container (idempotent via data-bound)
+  function bindCardHandlers(container=document) {
     // Clickable post cards
-    qsa('.post-card').forEach(card => {
+    qsa('.post-card', container).forEach(card => {
+      if (card.dataset.bound === '1') return;
+      card.dataset.bound = '1';
       card.addEventListener('click', async (e) => {
         // Don't open overlay if clicking edit or delete button
         if (e.target.closest('.btn-edit-post-home') || e.target.closest('.btn-delete-post-home')) {
@@ -256,7 +245,9 @@
     });
 
     // Delete buttons on post cards
-    qsa('.btn-delete-post-home').forEach(btn => {
+    qsa('.btn-delete-post-home', container).forEach(btn => {
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -273,6 +264,50 @@
         }
       });
     });
+  }
+
+  async function refreshPostsList() {
+    try {
+      const response = await fetch(window.location.href, { cache: 'no-store' });
+      const html = await response.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newList = doc.querySelector('#posts-list');
+      const currentList = document.getElementById('posts-list');
+      if (newList && currentList) {
+        currentList.innerHTML = newList.innerHTML;
+        bindCardHandlers(currentList);
+        // Ensure anchors open in new tab
+        ensureAnchorsOpenNewTab(currentList);
+      } else {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error('Failed to refresh posts list:', e);
+      window.location.reload();
+    }
+  }
+  // Expose globally for other modules (e.g., post-modal.js)
+  window.refreshPostsList = refreshPostsList;
+
+  function bindEvents() {
+    // Read more buttons
+    qsa('.read-more').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.getAttribute('data-post-id');
+        try {
+          const post = await fetchPost(id);
+          showOverlay(post);
+        } catch (err) {
+          console.error(err);
+          alert('Sorry, we could not load that update right now.');
+        }
+      });
+    });
+
+    // Bind card handlers initially
+    bindCardHandlers(document);
+
+    // Delete buttons are covered in bindCardHandlers
 
     // Overlay close/backdrop
     const closeBtn = qs('#overlay-close');
@@ -425,6 +460,13 @@ document.addEventListener('DOMContentLoaded', function() {
           const postId = editBtn.getAttribute('data-post-id');
           if (postId) {
             editingPostId = parseInt(postId, 10);
+            
+            // Immediately show loading spinner and hide content
+            const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+            const contentEl = postEditorContainer.querySelector('.post-editor-content');
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (contentEl) contentEl.style.display = 'none';
+            
             const bsModal = new bootstrap.Modal(modal);
             bsModal.show();
           }
@@ -473,6 +515,41 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Load post data now that editor is ready
             loadPostData();
+            // Bind status toggle change (edit mode)
+            const tgl = postEditorContainer.querySelector('.post-status-toggle');
+            if (tgl && !tgl.dataset.bound) {
+              tgl.dataset.bound = '1';
+              tgl.addEventListener('change', async () => {
+                const label = postEditorContainer.querySelector('.status-label');
+                if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+                const saveEl = postEditorContainer.querySelector('#post-status-save');
+                if (saveEl) saveEl.textContent = 'Saving…';
+                tgl.disabled = true;
+                try {
+                  const j = await api('/api/admin/posts.php?id=' + editingPostId, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ status: tgl.checked ? 'published' : 'draft' })
+                  });
+                  if (j.success) {
+                    if (saveEl) saveEl.textContent = 'Saved';
+                    if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
+                  } else {
+                    if (saveEl) saveEl.textContent = 'Save failed';
+                    tgl.checked = !tgl.checked;
+                    if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+                  }
+                } catch (e) {
+                  console.error('Status toggle save error:', e);
+                  if (saveEl) saveEl.textContent = 'Save error';
+                  tgl.checked = !tgl.checked;
+                  if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+                } finally {
+                  tgl.disabled = false;
+                  setTimeout(()=>{ if (saveEl) saveEl.textContent=''; }, 2000);
+                }
+              });
+            }
           })
           .catch(error => {
             console.error('Post body editor initialization error:', error);
@@ -480,12 +557,56 @@ document.addEventListener('DOMContentLoaded', function() {
       } else if (editorInitialized) {
         // Editor already initialized, just load the data
         loadPostData();
+        // Ensure toggle is bound
+        const tgl = postEditorContainer.querySelector('.post-status-toggle');
+        if (tgl && !tgl.dataset.bound) {
+          tgl.dataset.bound = '1';
+          tgl.addEventListener('change', async () => {
+            const label = postEditorContainer.querySelector('.status-label');
+            if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+            const saveEl = postEditorContainer.querySelector('#post-status-save');
+            if (saveEl) saveEl.textContent = 'Saving…';
+            tgl.disabled = true;
+            try {
+              const j = await api('/api/admin/posts.php?id=' + editingPostId, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ status: tgl.checked ? 'published' : 'draft' })
+              });
+              if (j.success) {
+                if (saveEl) saveEl.textContent = 'Saved';
+                if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
+              } else {
+                if (saveEl) saveEl.textContent = 'Save failed';
+                tgl.checked = !tgl.checked;
+                if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+              }
+            } catch (e) {
+              console.error('Status toggle save error:', e);
+              if (saveEl) saveEl.textContent = 'Save error';
+              tgl.checked = !tgl.checked;
+              if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+            } finally {
+              tgl.disabled = false;
+              setTimeout(()=>{ if (saveEl) saveEl.textContent=''; }, 2000);
+            }
+          });
+        }
       }
     });
 
     // Load post data function
     function loadPostData() {
       if (!editingPostId) return;
+
+      // Loading spinner is already shown when edit button was clicked
+      // Just ensure it's visible in case this is called directly
+      const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+      const contentEl = postEditorContainer.querySelector('.post-editor-content');
+      if (loadingEl && loadingEl.style.display !== 'block') {
+        loadingEl.style.display = 'block';
+        if (contentEl) contentEl.style.display = 'none';
+      }
 
       // Clear gallery preview
       const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
@@ -502,7 +623,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const post = j.data;
 
             postEditorContainer.querySelector('.post-title').value = post.title || '';
-            postEditorContainer.querySelector('.post-status').value = post.status || 'draft';
+            const tgl = postEditorContainer.querySelector('.post-status-toggle');
+            if (tgl) {
+              tgl.checked = (post.status === 'published');
+              const label = postEditorContainer.querySelector('.status-label');
+              if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+            } else {
+              postEditorContainer.querySelector('.post-status').value = post.status || 'draft';
+            }
 
             if (postBodyEditor) {
               postBodyEditor.setData(post.body_html || '');
@@ -540,6 +668,16 @@ document.addEventListener('DOMContentLoaded', function() {
               }
             }
           }
+          
+          // Hide loading, show content
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (contentEl) contentEl.style.display = 'block';
+        })
+        .catch(err => {
+          console.error('Error loading post:', err);
+          // Hide loading, show content even on error
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (contentEl) contentEl.style.display = 'block';
         });
     }
 
@@ -638,10 +776,13 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
 
+        const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
+        const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
+
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
           body_html: postBodyEditor ? postBodyEditor.getData() : postEditorContainer.querySelector('.post-body').value,
-          status: postEditorContainer.querySelector('.post-status').value,
+          status: statusVal,
           hero_media_id: postEditorContainer.querySelector('.post-hero-media').value || null,
           gallery_media_ids: galleryMediaIds
         };
@@ -652,13 +793,16 @@ document.addEventListener('DOMContentLoaded', function() {
           body: JSON.stringify(payload)
         });
 
-        if (j.success) {
-          alert('Post updated successfully!');
-          const bsModal = bootstrap.Modal.getInstance(modal);
-          if (bsModal) bsModal.hide();
-          // Reload page to show updated post
-          window.location.reload();
-        } else {
+          if (j.success) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+            // Refresh posts list without full page reload
+            if (typeof window.refreshPostsList === 'function') {
+              await window.refreshPostsList();
+            } else {
+              window.location.reload();
+            }
+          } else {
           alert('Error: ' + (j.error || 'Unknown error'));
         }
       } catch (error) {

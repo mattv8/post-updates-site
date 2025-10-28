@@ -352,12 +352,15 @@
         const data = await response.json();
 
         if (data.success) {
-          alert('Post created successfully!');
           // Close modal
           const bsModal = bootstrap.Modal.getInstance(modal);
-          bsModal.hide();
-          // Reload page to show new post
-          window.location.reload();
+          if (bsModal) bsModal.hide();
+          // Refresh posts list without full page reload
+          if (typeof window.refreshPostsList === 'function') {
+            await window.refreshPostsList();
+          } else {
+            window.location.reload();
+          }
         } else {
           alert('Error: ' + (data.error || 'Failed to create post'));
         }
