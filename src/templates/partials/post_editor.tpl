@@ -52,6 +52,9 @@
             <div class="hero-preview-wrapper position-relative" style="overflow: hidden; border-radius: 0.375rem;">
               <div class="hero-preview" style="display: block; height: 0; padding-bottom: 100%; position: relative; overflow: hidden;">
                 <img src="" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" />
+                <div class="hero-preview-title-overlay" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 2rem 1rem 1rem; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.3) 80%, transparent 100%); display: none;">
+                  <h5 class="text-white mb-0" style="font-size: 1.25rem;">Post Title Preview</h5>
+                </div>
                 <button type="button" class="btn btn-danger btn-sm btn-remove-hero position-absolute top-0 end-0 m-2"
                         style="z-index: 10; opacity: 0; transition: opacity 0.2s;" title="Remove hero image">
                   <i class="bi bi-trash"></i>
@@ -84,6 +87,29 @@
               <small class="form-text text-muted d-block mt-1">
                 When enabled, the post detail view will use the same cropped aspect ratio. When disabled, the full image is shown.
               </small>
+
+              {* Title Overlay Toggle *}
+              <div class="form-check form-switch mt-3">
+                <input class="form-check-input post-hero-title-overlay" type="checkbox" id="heroTitleOverlay" checked>
+                <label class="form-check-label" for="heroTitleOverlay">
+                  Display title over hero image
+                </label>
+              </div>
+              <small class="form-text text-muted d-block mt-1">
+                When enabled, the title appears overlaid on the hero image with a dark background. When disabled, the title appears below the hero image.
+              </small>
+
+              {* Overlay Opacity Slider *}
+              <div class="mt-3 hero-overlay-opacity-control">
+                <label class="form-label" for="heroOverlayOpacity">
+                  Hero Image Brightness: <span class="overlay-opacity-value">0.70</span>
+                </label>
+                <input type="range" class="form-range post-hero-overlay-opacity" id="heroOverlayOpacity"
+                       min="0" max="1" step="0.05" value="0.70">
+                <small class="form-text text-muted d-block">
+                  Lower values darken the image more when title overlay is enabled (0.0 = very dark, 1.0 = no darkening)
+                </small>
+              </div>
             </div>
           </div>
         </div>

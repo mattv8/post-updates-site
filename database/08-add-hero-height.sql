@@ -74,3 +74,47 @@ DEALLOCATE PREPARE stmt3;
 
 -- Always modify the column to ensure correct definition
 ALTER TABLE `posts` MODIFY COLUMN `hero_crop_overlay` TINYINT(1) DEFAULT 0 COMMENT 'Apply hero_image_height cropping in overlay (0=full image, 1=cropped)';
+
+-- Add hero_title_overlay column to posts table (idempotent)
+-- Controls whether title displays over hero image (1) or below it (0)
+SET @title_overlay_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @dbname
+    AND TABLE_NAME = 'posts'
+    AND COLUMN_NAME = 'hero_title_overlay'
+);
+
+-- Add column if it doesn't exist
+SET @sql4 = IF(@title_overlay_exists = 0,
+    'ALTER TABLE `posts` ADD COLUMN `hero_title_overlay` TINYINT(1) DEFAULT 1 COMMENT ''Display title over hero image (1=over, 0=below)'' AFTER `hero_crop_overlay`',
+    'SELECT "Column hero_title_overlay already exists, will modify it" AS message'
+);
+PREPARE stmt4 FROM @sql4;
+EXECUTE stmt4;
+DEALLOCATE PREPARE stmt4;
+
+-- Always modify the column to ensure correct definition
+ALTER TABLE `posts` MODIFY COLUMN `hero_title_overlay` TINYINT(1) DEFAULT 1 COMMENT 'Display title over hero image (1=over, 0=below)';
+
+-- Add hero_overlay_opacity column to posts table (idempotent)
+-- Controls brightness/opacity of hero image when title overlay is enabled (0.0=very dark, 1.0=no darkening)
+SET @opacity_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @dbname
+    AND TABLE_NAME = 'posts'
+    AND COLUMN_NAME = 'hero_overlay_opacity'
+);
+
+-- Add column if it doesn't exist
+SET @sql5 = IF(@opacity_exists = 0,
+    'ALTER TABLE `posts` ADD COLUMN `hero_overlay_opacity` DECIMAL(3,2) DEFAULT 0.70 COMMENT ''Hero image brightness when title overlay enabled (0.0-1.0)'' AFTER `hero_title_overlay`',
+    'SELECT "Column hero_overlay_opacity already exists, will modify it" AS message'
+);
+PREPARE stmt5 FROM @sql5;
+EXECUTE stmt5;
+DEALLOCATE PREPARE stmt5;
+
+-- Always modify the column to ensure correct definition
+ALTER TABLE `posts` MODIFY COLUMN `hero_overlay_opacity` DECIMAL(3,2) DEFAULT 0.70 COMMENT 'Hero image brightness when title overlay enabled (0.0-1.0)';

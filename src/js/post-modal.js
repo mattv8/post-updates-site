@@ -68,6 +68,44 @@
   const heroHeightControl = modal.querySelector('.hero-height-control');
   const heroHeightSlider = modal.querySelector('.post-hero-height');
   const heroHeightValue = modal.querySelector('.hero-height-value');
+  const heroOverlayOpacitySlider = modal.querySelector('.post-hero-overlay-opacity');
+  const overlayOpacityValue = modal.querySelector('.overlay-opacity-value');
+  const heroPreviewTitleOverlay = modal.querySelector('.hero-preview-title-overlay');
+  const heroTitleOverlayToggle = modal.querySelector('.post-hero-title-overlay');
+  const postTitleInput = modal.querySelector('.post-title');
+  const heroOverlayOpacityControl = modal.querySelector('.hero-overlay-opacity-control');
+
+  // Function to update preview based on settings
+  const updateHeroPreview = () => {
+    if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
+
+    const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+    const opacity = parseFloat(heroOverlayOpacitySlider?.value || 0.70);
+    const titleText = postTitleInput?.value || 'Post Title Preview';
+
+    // Show/hide opacity control based on title overlay toggle
+    if (heroOverlayOpacityControl) {
+      heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+    }
+
+    // Update image brightness
+    if (showTitleOverlay) {
+      heroPreviewImg.style.filter = `brightness(${opacity})`;
+    } else {
+      heroPreviewImg.style.filter = 'none';
+    }
+
+    // Update title overlay visibility and text
+    if (showTitleOverlay) {
+      heroPreviewTitleOverlay.style.display = 'block';
+      const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+      if (titleElement) {
+        titleElement.textContent = titleText || 'Post Title Preview';
+      }
+    } else {
+      heroPreviewTitleOverlay.style.display = 'none';
+    }
+  };
 
   // Enable upload button when file selected
   heroUploadInput?.addEventListener('change', function() {
@@ -132,6 +170,9 @@
           heroPreviewDiv.style.paddingBottom = currentHeight + '%';
         }
 
+        // Update preview with current settings
+        updateHeroPreview();
+
         // Clear file input
         heroUploadInput.value = '';
       } else {
@@ -166,6 +207,9 @@
             if (heroPreviewDiv) {
               heroPreviewDiv.style.paddingBottom = currentHeight + '%';
             }
+
+            // Update preview with current settings
+            updateHeroPreview();
           }
         });
     } else {
@@ -184,6 +228,21 @@
       heroPreviewDiv.style.paddingBottom = heightPercent + '%';
     }
   });
+
+  // Opacity slider and overlay toggle handlers
+  heroOverlayOpacitySlider?.addEventListener('input', function() {
+    const opacity = parseFloat(this.value);
+    if (overlayOpacityValue) {
+      overlayOpacityValue.textContent = opacity.toFixed(2);
+    }
+    updateHeroPreview();
+  });
+
+  // Title overlay toggle handler
+  heroTitleOverlayToggle?.addEventListener('change', updateHeroPreview);
+
+  // Update preview when title changes
+  postTitleInput?.addEventListener('input', updateHeroPreview);
 
   // Handle hero remove - add hover handlers for trash icon
   const removeBtn = modal.querySelector('.btn-remove-hero');
@@ -389,6 +448,8 @@
             hero_media_id: heroMediaId,
             hero_image_height: heroImageHeight,
             hero_crop_overlay: modal.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0,
+            hero_title_overlay: modal.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0,
+            hero_overlay_opacity: parseFloat(modal.querySelector('.post-hero-overlay-opacity')?.value || 0.70),
             gallery_media_ids: galleryMediaIds
           })
         });

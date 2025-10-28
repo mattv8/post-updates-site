@@ -11,7 +11,7 @@
 
   function showOverlay(post) {
     const overlay = qs('#post-overlay');
-    qs('#overlay-title').textContent = post.title || '';
+    const overlayTitle = qs('#overlay-title');
     const body = qs('#overlay-body');
 
     // Add author information if available
@@ -42,8 +42,24 @@
     }
 
     // Display hero image at the top (edge-to-edge)
-    if (post.hero_srcset_webp || post.hero_srcset_jpg) {
+    const hasHeroImage = post.hero_srcset_webp || post.hero_srcset_jpg;
+    const showTitleOverlay = post.hero_title_overlay == 1 || post.hero_title_overlay === undefined;
+
+    if (hasHeroImage) {
+      // Ensure overlay container is relative and clipped
+      media.style.position = 'relative';
+      media.style.overflow = 'hidden';
+
       const picture = document.createElement('picture');
+      picture.style.display = 'block';
+
+      // If cropping is enabled, use padding-bottom technique on the picture itself
+      if (post.hero_crop_overlay && post.hero_image_height) {
+        picture.style.height = '0';
+        picture.style.paddingBottom = post.hero_image_height + '%';
+        picture.style.position = 'relative';
+      }
+
       if (post.hero_srcset_webp) {
         const srcWebp = document.createElement('source');
         srcWebp.type = 'image/webp';
@@ -57,30 +73,55 @@
         img.setAttribute('sizes', '100vw');
         img.alt = post.title || 'Post image';
 
-        // Apply cropping if hero_crop_overlay is enabled
         if (post.hero_crop_overlay && post.hero_image_height) {
-          // Use padding-bottom technique for consistent aspect ratio
-          const wrapper = document.createElement('div');
-          wrapper.style.position = 'relative';
-          wrapper.style.paddingBottom = post.hero_image_height + '%';
-          wrapper.style.overflow = 'hidden';
-          wrapper.style.maxHeight = '600px';
-
+          // Fill the padded box and center the image
           img.style.position = 'absolute';
           img.style.top = '0';
           img.style.left = '0';
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.objectFit = 'cover';
-
-          wrapper.appendChild(img);
-          picture.appendChild(wrapper);
+          img.style.objectPosition = 'center center';
         } else {
-          // Show full image without cropping
-          picture.appendChild(img);
+          // Natural image height (full image), centered
+          img.style.display = 'block';
+          img.style.width = '100%';
+          img.style.height = 'auto';
+          img.style.objectFit = 'contain';
+          img.style.objectPosition = 'center center';
         }
+
+        // Apply brightness filter if title overlay is enabled
+        if (showTitleOverlay) {
+          const opacity = post.hero_overlay_opacity || 0.70;
+          img.style.filter = `brightness(${opacity})`;
+        }
+
+        picture.appendChild(img);
       }
+
       media.appendChild(picture);
+
+      // Title overlay is a sibling inside media so it never sits behind card-body
+      if (showTitleOverlay) {
+        const titleOverlay = document.createElement('div');
+        titleOverlay.className = 'overlay-hero-title';
+        const titleElement = document.createElement('h2');
+        titleElement.className = 'text-white mb-0';
+        titleElement.textContent = post.title || '';
+        titleOverlay.appendChild(titleElement);
+        media.appendChild(titleOverlay);
+
+        // Hide the title in card-body when it's in the overlay
+        overlayTitle.style.display = 'none';
+      } else {
+        overlayTitle.textContent = post.title || '';
+        overlayTitle.style.display = 'block';
+      }
+    } else {
+      // No hero image, show title in card-body
+      overlayTitle.textContent = post.title || '';
+      overlayTitle.style.display = 'block';
     }
 
     // Display gallery images in body content if present
@@ -706,10 +747,32 @@ document.addEventListener('DOMContentLoaded', function() {
               if (heroCropToggle) {
                 heroCropToggle.checked = post.hero_crop_overlay == 1;
               }
+              // Set title overlay toggle
+              const heroTitleToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+              if (heroTitleToggle) {
+                heroTitleToggle.checked = post.hero_title_overlay == 1 || post.hero_title_overlay === undefined;
+              }
+              // Set overlay opacity slider
+              const heroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+              const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+              if (heroOverlayOpacity) {
+                const opacityToSet = post.hero_overlay_opacity || 0.70;
+                heroOverlayOpacity.value = opacityToSet;
+                if (overlayOpacityValue) {
+                  overlayOpacityValue.textContent = opacityToSet.toFixed(2);
+                }
+              }
               // Show height control when there's a hero image
               if (heroHeightControl) {
                 heroHeightControl.style.display = 'block';
               }
+
+              // Update preview after loading all settings
+              setTimeout(() => {
+                if (typeof updateHeroPreview === 'function') {
+                  updateHeroPreview();
+                }
+              }, 100);
             }
 
             // Load gallery images
@@ -769,6 +832,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
     const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
     const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+    const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+    const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+    const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
+    const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+    const postTitleInput = postEditorContainer.querySelector('.post-title');
+    const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
+
+    // Function to update preview based on settings
+    const updateHeroPreview = () => {
+      if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
+
+      const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+      const opacity = parseFloat(heroOverlayOpacitySlider?.value || 0.70);
+      const titleText = postTitleInput?.value || 'Post Title Preview';
+
+      // Show/hide opacity control based on title overlay toggle
+      if (heroOverlayOpacityControl) {
+        heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+      }
+
+      // Update image brightness
+      if (showTitleOverlay) {
+        heroPreviewImg.style.filter = `brightness(${opacity})`;
+      } else {
+        heroPreviewImg.style.filter = 'none';
+      }
+
+      // Update title overlay visibility and text
+      if (showTitleOverlay) {
+        heroPreviewTitleOverlay.style.display = 'block';
+        const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+        if (titleElement) {
+          titleElement.textContent = titleText || 'Post Title Preview';
+        }
+      } else {
+        heroPreviewTitleOverlay.style.display = 'none';
+      }
+    };
 
     if (heroSelect) {
       heroSelect.addEventListener('change', function() {
@@ -792,6 +893,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (heroPreviewDiv) {
                   heroPreviewDiv.style.paddingBottom = currentHeight + '%';
                 }
+
+                // Update preview with current settings
+                if (typeof updateHeroPreview === 'function') {
+                  updateHeroPreview();
+                }
               }
             });
         } else {
@@ -811,6 +917,25 @@ document.addEventListener('DOMContentLoaded', function() {
           heroPreviewDiv.style.paddingBottom = heightPercent + '%';
         }
       });
+    }
+
+    // Opacity slider and overlay toggle handlers
+    if (heroOverlayOpacitySlider && overlayOpacityValue) {
+      heroOverlayOpacitySlider.addEventListener('input', function() {
+        const opacity = parseFloat(this.value);
+        overlayOpacityValue.textContent = opacity.toFixed(2);
+        updateHeroPreview();
+      });
+    }
+
+    // Title overlay toggle handler
+    if (heroTitleOverlayToggle) {
+      heroTitleOverlayToggle.addEventListener('change', updateHeroPreview);
+    }
+
+    // Update preview when title changes
+    if (postTitleInput) {
+      postTitleInput.addEventListener('input', updateHeroPreview);
     }
 
     // Show trash icon on hover
@@ -1155,6 +1280,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
         const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
         const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
+        const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
+        const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
 
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
@@ -1163,6 +1290,8 @@ document.addEventListener('DOMContentLoaded', function() {
           hero_media_id: uploadedHeroId,
           hero_image_height: heroImageHeightValue,
           hero_crop_overlay: heroCropOverlayValue,
+          hero_title_overlay: heroTitleOverlayValue,
+          hero_overlay_opacity: heroOverlayOpacityValue,
           gallery_media_ids: galleryMediaIds
         };
 

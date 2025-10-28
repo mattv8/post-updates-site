@@ -112,6 +112,25 @@
   margin-top: 0;
 }
 
+/* Hero title overlay in post detail modal */
+.overlay-hero-title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%);
+  padding: 4rem 2rem 2rem;
+  z-index: 2;
+}
+
+.overlay-hero-title h2 {
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 /* Ensure card body has proper padding */
 .post-overlay-content .card-body {
   padding: 1rem 1.5rem;
@@ -120,6 +139,14 @@
 /* Mobile adjustments */
 @media (max-width: 768px) {
   #overlay-title {
+    font-size: 1.5rem;
+  }
+
+  .overlay-hero-title {
+    padding: 2rem 1.5rem 1rem;
+  }
+
+  .overlay-hero-title h2 {
     font-size: 1.5rem;
   }
 

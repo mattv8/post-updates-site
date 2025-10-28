@@ -22,13 +22,20 @@
             {/if}
             {if $jpg_srcset}
               <img class="card-img-top" srcset="{$jpg_srcset}" sizes="(max-width: 768px) 100vw, 50vw" alt="{$post.title|escape}"
-                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center;" />
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; {if $post.hero_title_overlay|default:1}filter: brightness({$post.hero_overlay_opacity|default:0.70});{/if}" />
             {/if}
           </picture>
+          {if $post.hero_title_overlay|default:1}
+            <div class="hero-title-overlay">
+              <h5 class="card-title text-white mb-0">{$post.title|escape}</h5>
+            </div>
+          {/if}
         </div>
       {/if}
       <div class="card-body">
-        <h5 class="card-title">{$post.title|escape}</h5>
+        {if !$post.hero_title_overlay|default:1 || !($jpg_srcset || $webp_srcset)}
+          <h5 class="card-title">{$post.title|escape}</h5>
+        {/if}
         {if $post.author_first || $post.author_last}
           <p class="text-muted small mb-2">
             <em>By {if $post.author_first}{$post.author_first}{/if} {if $post.author_last}{$post.author_last}{/if}</em>
