@@ -27,6 +27,12 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 # Enable PHP extensions
 RUN docker-php-ext-enable gd pdo pdo_mysql mbstring exif pcntl bcmath zip mysqli
 
+# Configure PHP upload limits (20MB max file size)
+RUN echo "upload_max_filesize = 20M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size = 25M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "max_execution_time = 60" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # Create media storage directories and set permissions
 RUN mkdir -p /var/www/html/storage/uploads/originals \
     && mkdir -p /var/www/html/storage/uploads/variants/400 \

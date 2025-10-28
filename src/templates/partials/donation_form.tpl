@@ -14,5 +14,5 @@
     <small class="editor-autosave-indicator" id="{$prefix}donation-autosave-status"></small>
   </div>
   <small class="text-muted d-block mb-2">This content appears in the donation card in the sidebar</small>
-  <textarea id="{$prefix}donate_text_html" class="form-control" rows="8"></textarea>
+  <div id="{$prefix}donate_text_html" class="form-control"></div>
 </div>

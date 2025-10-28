@@ -8,7 +8,7 @@
   /**
    * Initialize AI title generation for a specific post editor container
    * @param {Element} container - The post editor container element
-   * @param {Object} editorInstance - The CKEditor instance (if available)
+   * @param {Object} editorInstance - The editor instance (Quill or CKEditor)
    */
   window.initAITitleGenerator = function(container, editorInstance = null) {
     const generateBtn = container.querySelector('.btn-generate-title');
@@ -17,10 +17,17 @@
     if (!generateBtn || !titleInput) return;
 
     generateBtn.addEventListener('click', async function() {
-      // Get content from CKEditor or textarea
+      // Get content from editor or textarea
       let content = '';
-      if (editorInstance && typeof editorInstance.getData === 'function') {
-        content = editorInstance.getData();
+      if (editorInstance) {
+        // Check if it's Quill editor
+        if (typeof window.getQuillHTML === 'function' && editorInstance.root) {
+          content = window.getQuillHTML(editorInstance);
+        }
+        // Check if it's CKEditor (legacy support)
+        else if (typeof editorInstance.getData === 'function') {
+          content = editorInstance.getData();
+        }
       } else {
         const textarea = container.querySelector('.post-body');
         content = textarea ? textarea.value : '';

@@ -11,46 +11,36 @@
   let editor = null;
   let galleryMediaIds = []; // Track gallery image IDs in order
 
-  // Initialize CKEditor when modal is shown
+  // Initialize Quill editor when modal is shown
   modal.addEventListener('shown.bs.modal', function() {
-    const textarea = modal.querySelector('.post-body');
-    if (textarea && !editor) {
-      ClassicEditor
-        .create(textarea, {
-          toolbar: {
-            items: [
-              'heading', '|',
-              'bold', 'italic', 'link', '|',
-              'bulletedList', 'numberedList', '|',
-              'imageUpload', 'blockQuote', '|',
-              'undo', 'redo'
-            ]
-          },
-          image: {
-            toolbar: [
-              'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-            ]
-          },
-          extraPlugins: [window.MediaUploadAdapterPlugin]
-        })
-        .then(newEditor => {
-          editor = newEditor;
-          // Initialize AI title generator with editor instance
-          if (typeof window.initAITitleGenerator === 'function') {
-            window.initAITitleGenerator(modal, editor);
-          }
-        })
-        .catch(error => {
-          console.error('CKEditor initialization error:', error);
-        });
+    const editorContainer = modal.querySelector('.post-body');
+    if (editorContainer && !editor) {
+      // Initialize Quill editor
+      editor = window.initQuillEditor(editorContainer, {
+        placeholder: 'Write your post content here...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
+
+      // Initialize AI title generator with editor instance
+      if (typeof window.initAITitleGenerator === 'function') {
+        window.initAITitleGenerator(modal, editor);
+      }
     }
   });
 
   // Clean up editor when modal is hidden
   modal.addEventListener('hidden.bs.modal', function() {
     if (editor) {
-      editor.destroy();
-      editor = null;
+      // Clear editor content
+      window.clearQuillEditor(editor);
+      // Don't destroy - reuse the instance
     }
     // Reset form
     modal.querySelector('.post-title').value = '';
@@ -378,7 +368,7 @@
       const status = modal.querySelector('.post-status').value;
       const heroMediaId = modal.querySelector('.post-hero-media').value || null;
       const heroImageHeight = heroMediaId ? parseInt(modal.querySelector('.post-hero-height').value) : null;
-      const bodyHtml = editor ? editor.getData() : '';
+      const bodyHtml = editor ? window.getQuillHTML(editor) : '';
 
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 

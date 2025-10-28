@@ -517,55 +517,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-    // Initialize CKEditor when modal is first shown
+    // Initialize Quill editor when modal is first shown
     let editorInitialized = false;
     modal.addEventListener('shown.bs.modal', function() {
       // Initialize editor if not already done
-      if (!editorInitialized && window.ClassicEditor) {
+      if (!editorInitialized && window.initQuillEditor) {
         const postBodyTextarea = postEditorContainer.querySelector('.post-body');
-        ClassicEditor
-          .create(postBodyTextarea, {
-            toolbar: {
-              items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'imageUpload', 'blockQuote', '|',
-                'undo', 'redo'
-              ]
-            },
-            image: {
-              toolbar: [
-                'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-              ]
-            },
-            extraPlugins: [window.MediaUploadAdapterPlugin],
-            placeholder: 'Write your post content here...'
-          })
-          .then(editor => {
-            postBodyEditor = editor;
-            const editorElement = editor.ui.view.editable.element;
-            if (editorElement) {
-              editorElement.style.minHeight = '400px';
-              editorElement.style.maxHeight = '1000px';
-              editorElement.style.overflowY = 'auto';
-              editorElement.style.resize = 'vertical';
-            }
-            editorInitialized = true;
-            // Initialize AI title generator with editor instance
-            if (typeof window.initAITitleGenerator === 'function') {
-              window.initAITitleGenerator(postEditorContainer, postBodyEditor);
-            }
-            // Load post data now that editor is ready
-            loadPostData();
-            // Bind status toggle change (edit mode)
-            const tgl = postEditorContainer.querySelector('.post-status-toggle');
-            if (tgl && !tgl.dataset.bound) {
-              tgl.dataset.bound = '1';
-              tgl.addEventListener('change', async () => {
-                const label = postEditorContainer.querySelector('.status-label');
-                if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-                const saveEl = postEditorContainer.querySelector('#post-status-save');
+        postBodyEditor = window.initQuillEditor(postBodyTextarea, {
+          placeholder: 'Write your post content here...',
+          toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'link'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'align': [] }],
+            ['blockquote', 'image'],
+            ['clean']
+          ]
+        });
+
+        editorInitialized = true;
+        // Initialize AI title generator with editor instance
+        if (typeof window.initAITitleGenerator === 'function') {
+          window.initAITitleGenerator(postEditorContainer, postBodyEditor);
+        }
+        // Load post data now that editor is ready
+        loadPostData();
+        // Bind status toggle change (edit mode)
+        const tgl = postEditorContainer.querySelector('.post-status-toggle');
+        if (tgl && !tgl.dataset.bound) {
+          tgl.dataset.bound = '1';
+          tgl.addEventListener('change', async () => {
+            const label = postEditorContainer.querySelector('.status-label');
+            if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+            const saveEl = postEditorContainer.querySelector('#post-status-save');
                 if (saveEl) saveEl.textContent = 'Saving…';
                 tgl.disabled = true;
                 try {
@@ -593,10 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
               });
             }
-          })
-          .catch(error => {
-            console.error('Post body editor initialization error:', error);
-          });
       } else if (editorInitialized) {
         // Editor already initialized, just load the data
         loadPostData();
@@ -676,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (postBodyEditor) {
-              postBodyEditor.setData(post.body_html || '');
+              window.setQuillHTML(postBodyEditor, post.body_html || '');
             } else {
               postEditorContainer.querySelector('.post-body').value = post.body_html || '';
             }
@@ -1155,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
-          body_html: postBodyEditor ? postBodyEditor.getData() : postEditorContainer.querySelector('.post-body').value,
+          body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
           status: statusVal,
           hero_media_id: uploadedHeroId,
           hero_image_height: heroImageHeightValue,

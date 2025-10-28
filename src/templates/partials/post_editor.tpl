@@ -39,7 +39,7 @@
         <span class="text-muted">Auto-save enabled</span>
       </small>
     </label>
-    <textarea class="form-control post-body" rows="10"></textarea>
+    <div class="form-control post-body"></div>
   </div>
 
   {* Hero Image Section *}

@@ -14,5 +14,5 @@
     <small class="editor-autosave-indicator" id="{$prefix}about-autosave-status"></small>
   </div>
   <small class="text-muted d-block mb-2">This content appears in the sidebar on the home page</small>
-  <textarea id="{$prefix}site_bio_html" class="form-control" rows="8"></textarea>
+  <div id="{$prefix}site_bio_html" class="form-control"></div>
 </div>

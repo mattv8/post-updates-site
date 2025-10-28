@@ -34,7 +34,7 @@
     return setInterval(() => {
       if (!editor) return;
 
-      const currentContent = editor.getData();
+      const currentContent = window.getQuillHTML(editor);
 
       if (!initialized) {
         lastSavedContent = currentContent;
@@ -92,7 +92,7 @@
     modal.querySelector('#modal_hero_height').value = settings.hero_height || 400;
 
     if (heroEditor) {
-      heroEditor.setData(settings.hero_html || '');
+      window.setQuillHTML(heroEditor, settings.hero_html || '');
     }
 
     // Show hero preview if media selected
@@ -108,7 +108,7 @@
     modal.querySelector('#modal_show_about').checked = settings.show_about == 1;
 
     if (aboutEditor) {
-      aboutEditor.setData(settings.site_bio_html || '');
+      window.setQuillHTML(aboutEditor, settings.site_bio_html || '');
     }
   }
 
@@ -119,7 +119,7 @@
     modal.querySelector('#modal_show_donation').checked = settings.show_donation == 1;
 
     if (donationEditor) {
-      donationEditor.setData(settings.donate_text_html || '');
+      window.setQuillHTML(donationEditor, settings.donate_text_html || '');
     }
   }
 
@@ -133,40 +133,24 @@
       SettingsManager.loadMediaOptions(heroMediaSelect);
     }
 
-    // Initialize CKEditor when modal is first shown
+    // Initialize Quill editor when modal is first shown
     heroModal.addEventListener('shown.bs.modal', async function() {
-      const textarea = heroModal.querySelector('#modal_hero_html');
+      const editorContainer = heroModal.querySelector('#modal_hero_html');
 
       // Initialize editor only once
-      if (textarea && !heroEditor) {
+      if (editorContainer && !heroEditor) {
         try {
-          heroEditor = await ClassicEditor.create(textarea, {
-            toolbar: {
-              items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'imageUpload', 'blockQuote', '|',
-                'undo', 'redo'
-              ]
-            },
-            image: {
-              toolbar: ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side']
-            },
-            extraPlugins: [window.MediaUploadAdapterPlugin],
-            autosave: { save(editor) { return Promise.resolve(); } },
-            initialData: '',
-            placeholder: 'Enter hero banner text...'
+          heroEditor = window.initQuillEditor(editorContainer, {
+            placeholder: 'Enter hero banner text...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
           });
-
-          // Make it resizable
-          const editorElement = heroEditor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '200px';
-            editorElement.style.maxHeight = '600px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
 
           // Setup auto-save
           heroAutoSave = setupAutoSave(heroEditor, 'hero_html', 'modal_hero-autosave-status', 10000);
@@ -236,7 +220,7 @@
         const payload = {
           show_hero: heroModal.querySelector('#modal_show_hero').checked ? 1 : 0,
           hero_media_id: heroModal.querySelector('#modal_hero_media_id').value || null,
-          hero_html: heroEditor ? heroEditor.getData() : heroModal.querySelector('#modal_hero_html').value,
+          hero_html: heroEditor ? window.getQuillHTML(heroEditor) : heroModal.querySelector('#modal_hero_html').value,
           cta_text: heroModal.querySelector('#modal_cta_text').value,
           cta_url: heroModal.querySelector('#modal_cta_url').value,
           hero_overlay_opacity: heroModal.querySelector('#modal_hero_overlay_opacity').value,
@@ -283,38 +267,22 @@
   const aboutModal = document.getElementById('editAboutModal');
   if (aboutModal) {
     aboutModal.addEventListener('shown.bs.modal', async function() {
-      const textarea = aboutModal.querySelector('#modal_site_bio_html');
+      const editorContainer = aboutModal.querySelector('#modal_site_bio_html');
 
       // Initialize editor only once
-      if (textarea && !aboutEditor) {
+      if (editorContainer && !aboutEditor) {
         try {
-          aboutEditor = await ClassicEditor.create(textarea, {
-            toolbar: {
-              items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'imageUpload', 'blockQuote', '|',
-                'undo', 'redo'
-              ]
-            },
-            image: {
-              toolbar: ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side']
-            },
-            extraPlugins: [window.MediaUploadAdapterPlugin],
-            autosave: { save(editor) { return Promise.resolve(); } },
-            initialData: '',
-            placeholder: 'Enter about section content...'
+          aboutEditor = window.initQuillEditor(editorContainer, {
+            placeholder: 'Enter about section content...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
           });
-
-          // Make it resizable
-          const editorElement = aboutEditor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '300px';
-            editorElement.style.maxHeight = '800px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
 
           // Setup auto-save
           aboutAutoSave = setupAutoSave(aboutEditor, 'site_bio_html', 'modal_about-autosave-status', 10000);
@@ -369,7 +337,7 @@
       try {
         const payload = {
           show_about: aboutModal.querySelector('#modal_show_about').checked ? 1 : 0,
-          site_bio_html: aboutEditor ? aboutEditor.getData() : aboutModal.querySelector('#modal_site_bio_html').value,
+          site_bio_html: aboutEditor ? window.getQuillHTML(aboutEditor) : aboutModal.querySelector('#modal_site_bio_html').value,
         };
 
         const result = await SettingsManager.saveSettings(payload);
@@ -402,38 +370,22 @@
   const donationModal = document.getElementById('editDonationModal');
   if (donationModal) {
     donationModal.addEventListener('shown.bs.modal', async function() {
-      const textarea = donationModal.querySelector('#modal_donate_text_html');
+      const editorContainer = donationModal.querySelector('#modal_donate_text_html');
 
       // Initialize editor only once
-      if (textarea && !donationEditor) {
+      if (editorContainer && !donationEditor) {
         try {
-          donationEditor = await ClassicEditor.create(textarea, {
-            toolbar: {
-              items: [
-                'heading', '|',
-                'bold', 'italic', 'link', '|',
-                'bulletedList', 'numberedList', '|',
-                'imageUpload', 'blockQuote', '|',
-                'undo', 'redo'
-              ]
-            },
-            image: {
-              toolbar: ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side']
-            },
-            extraPlugins: [window.MediaUploadAdapterPlugin],
-            autosave: { save(editor) { return Promise.resolve(); } },
-            initialData: '',
-            placeholder: 'Enter donation section content...'
+          donationEditor = window.initQuillEditor(editorContainer, {
+            placeholder: 'Enter donation section content...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
           });
-
-          // Make it resizable
-          const editorElement = donationEditor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '300px';
-            editorElement.style.maxHeight = '800px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
 
           // Setup auto-save
           donationAutoSave = setupAutoSave(donationEditor, 'donate_text_html', 'modal_donation-autosave-status', 10000);
@@ -488,7 +440,7 @@
       try {
         const payload = {
           show_donation: donationModal.querySelector('#modal_show_donation').checked ? 1 : 0,
-          donate_text_html: donationEditor ? donationEditor.getData() : donationModal.querySelector('#modal_donate_text_html').value,
+          donate_text_html: donationEditor ? window.getQuillHTML(donationEditor) : donationModal.querySelector('#modal_donate_text_html').value,
         };
 
         const result = await SettingsManager.saveSettings(payload);

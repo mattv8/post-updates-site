@@ -3,7 +3,7 @@
   if (!root) return;
   const CSRF = root.getAttribute('data-csrf') || '';
 
-  // CKEditor instances
+  // Quill editor instances
   let heroEditor = null;
   let bioEditor = null;
   let donateEditor = null;
@@ -40,7 +40,7 @@
     return setInterval(() => {
       if (!editor) return;
 
-      const currentContent = editor.getData();
+      const currentContent = window.getQuillHTML(editor);
 
       // Initialize lastSavedContent on first run
       if (!initialized) {
@@ -222,7 +222,7 @@
       // Load hero HTML into editor
       const heroHtml = j.data.hero_html||'';
       if (heroEditor) {
-        heroEditor.setData(heroHtml);
+        window.setQuillHTML(heroEditor, heroHtml);
       } else {
         document.getElementById('hero_html').value = heroHtml;
       }
@@ -235,7 +235,7 @@
       // Load bio HTML into editor
       const bioHtml = j.data.site_bio_html||'';
       if (bioEditor) {
-        bioEditor.setData(bioHtml);
+        window.setQuillHTML(bioEditor, bioHtml);
       } else {
         document.getElementById('site_bio_html').value = bioHtml;
       }
@@ -243,7 +243,7 @@
       // Load donate HTML into editor
       const donateHtml = j.data.donate_text_html||'';
       if (donateEditor) {
-        donateEditor.setData(donateHtml);
+        window.setQuillHTML(donateEditor, donateHtml);
       } else {
         document.getElementById('donate_text_html').value = donateHtml;
       }
@@ -264,7 +264,7 @@
     const payload = {
       show_hero: document.getElementById('show_hero').checked ? 1 : 0,
       hero_media_id: document.getElementById('hero_media_id').value || null,
-      hero_html: heroEditor ? heroEditor.getData() : document.getElementById('hero_html').value,
+      hero_html: heroEditor ? window.getQuillHTML(heroEditor) : document.getElementById('hero_html').value,
       cta_text: document.getElementById('cta_text').value,
       cta_url: document.getElementById('cta_url').value,
       hero_overlay_opacity: document.getElementById('hero_overlay_opacity').value,
@@ -279,7 +279,7 @@
     e.preventDefault();
     const payload = {
       show_about: document.getElementById('show_about').checked ? 1 : 0,
-      site_bio_html: bioEditor ? bioEditor.getData() : document.getElementById('site_bio_html').value,
+      site_bio_html: bioEditor ? window.getQuillHTML(bioEditor) : document.getElementById('site_bio_html').value,
     };
     api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
       alert(j.success? 'Saved about section' : ('Error: '+j.error));
@@ -290,7 +290,7 @@
     e.preventDefault();
     const payload = {
       show_donation: document.getElementById('show_donation').checked ? 1 : 0,
-      donate_text_html: donateEditor ? donateEditor.getData() : document.getElementById('donate_text_html').value,
+      donate_text_html: donateEditor ? window.getQuillHTML(donateEditor) : document.getElementById('donate_text_html').value,
     };
     api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
       alert(j.success? 'Saved donation section' : ('Error: '+j.error));
@@ -727,7 +727,7 @@
 
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,
-        body_html: postBodyEditor ? postBodyEditor.getData() : postEditorContainer.querySelector('.post-body').value,
+        body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
         status: postEditorContainer.querySelector('.post-status').value,
         hero_media_id: heroSelect.value || null,
         gallery_media_ids: galleryMediaIds
@@ -976,210 +976,94 @@
     });
   });
 
-  // Initialize CKEditor instances for hero and bio
+  // Initialize Quill editor instances for hero and bio
   // Wait a bit for the DOM to be ready and tabs to be rendered
   setTimeout(() => {
     // Hero HTML editor
     const heroTextarea = document.getElementById('hero_html');
     if (heroTextarea) {
-      ClassicEditor
-        .create(heroTextarea, {
-          toolbar: {
-            items: [
-              'heading', '|',
-              'bold', 'italic', 'link', '|',
-              'bulletedList', 'numberedList', '|',
-              'imageUpload', 'blockQuote', '|',
-              'undo', 'redo'
-            ]
-          },
-          image: {
-            toolbar: [
-              'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-            ]
-          },
-          extraPlugins: [window.MediaUploadAdapterPlugin],
-          autosave: {
-            save(editor) {
-              return Promise.resolve();
-            }
-          },
-          initialData: '',
-          placeholder: 'Enter hero banner text...'
-        })
-        .then(editor => {
-          heroEditor = editor;
+      heroEditor = window.initQuillEditor(heroTextarea, {
+        placeholder: 'Enter hero banner text...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
 
-          // Set up auto-save every 10 seconds
-          heroAutoSave = setupAutoSave(editor, 'hero_html', 10000);
+      // Set up auto-save every 10 seconds
+      heroAutoSave = setupAutoSave(heroEditor, 'hero_html', 10000);
 
-          // Apply custom height styles to make it resizable
-          const editorElement = editor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '200px';
-            editorElement.style.maxHeight = '600px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
-
-          // Reload settings to populate editor
-          loadSettings();
-        })
-        .catch(error => {
-          console.error('Hero editor initialization error:', error);
-        });
+      // Reload settings to populate editor
+      loadSettings();
     }
 
     // Site Bio editor
     const bioTextarea = document.getElementById('site_bio_html');
     if (bioTextarea) {
-      ClassicEditor
-        .create(bioTextarea, {
-          toolbar: {
-            items: [
-              'heading', '|',
-              'bold', 'italic', 'link', '|',
-              'bulletedList', 'numberedList', '|',
-              'imageUpload', 'blockQuote', '|',
-              'undo', 'redo'
-            ]
-          },
-          image: {
-            toolbar: [
-              'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-            ]
-          },
-          extraPlugins: [window.MediaUploadAdapterPlugin],
-          autosave: {
-            save(editor) {
-              return Promise.resolve();
-            }
-          },
-          initialData: '',
-          placeholder: 'Enter about section content...'
-        })
-        .then(editor => {
-          bioEditor = editor;
+      bioEditor = window.initQuillEditor(bioTextarea, {
+        placeholder: 'Enter about section content...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
 
-          // Set up auto-save every 10 seconds
-          bioAutoSave = setupAutoSave(editor, 'site_bio_html', 10000);
+      // Set up auto-save every 10 seconds
+      bioAutoSave = setupAutoSave(bioEditor, 'site_bio_html', 10000);
 
-          // Apply custom height styles to make it resizable
-          const editorElement = editor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '300px';
-            editorElement.style.maxHeight = '800px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
-
-          // Reload settings to populate editor
-          loadSettings();
-        })
-        .catch(error => {
-          console.error('Bio editor initialization error:', error);
-        });
+      // Reload settings to populate editor
+      loadSettings();
     }
 
     // Donate editor
     const donateTextarea = document.getElementById('donate_text_html');
     if (donateTextarea) {
-      ClassicEditor
-        .create(donateTextarea, {
-          toolbar: {
-            items: [
-              'heading', '|',
-              'bold', 'italic', 'link', '|',
-              'bulletedList', 'numberedList', '|',
-              'imageUpload', 'blockQuote', '|',
-              'undo', 'redo'
-            ]
-          },
-          image: {
-            toolbar: [
-              'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-            ]
-          },
-          extraPlugins: [window.MediaUploadAdapterPlugin],
-          autosave: {
-            save(editor) {
-              return Promise.resolve();
-            }
-          },
-          initialData: '',
-          placeholder: 'Enter donation section content...'
-        })
-        .then(editor => {
-          donateEditor = editor;
+      donateEditor = window.initQuillEditor(donateTextarea, {
+        placeholder: 'Enter donation section content...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
 
-          // Set up auto-save every 10 seconds
-          donateAutoSave = setupAutoSave(editor, 'donate_text_html', 10000);
+      // Set up auto-save every 10 seconds
+      donateAutoSave = setupAutoSave(donateEditor, 'donate_text_html', 10000);
 
-          // Apply custom height styles to make it resizable
-          const editorElement = editor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '300px';
-            editorElement.style.maxHeight = '800px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
-
-          // Reload settings to populate editor
-          loadSettings();
-        })
-        .catch(error => {
-          console.error('Donate editor initialization error:', error);
-        });
+      // Reload settings to populate editor
+      loadSettings();
     }
 
     // Post body editor (initialize early to prevent modal height jumping)
     const postBodyTextarea = postEditorContainer.querySelector('.post-body');
     if (postBodyTextarea) {
-      ClassicEditor
-        .create(postBodyTextarea, {
-          toolbar: {
-            items: [
-              'heading', '|',
-              'bold', 'italic', 'link', '|',
-              'bulletedList', 'numberedList', '|',
-              'imageUpload', 'blockQuote', '|',
-              'undo', 'redo'
-            ]
-          },
-          image: {
-            toolbar: [
-              'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
-            ]
-          },
-          extraPlugins: [window.MediaUploadAdapterPlugin],
-          autosave: {
-            save(editor) {
-              return Promise.resolve();
-            }
-          },
-          initialData: '',
-          placeholder: 'Write your post content here...'
-        })
-        .then(editor => {
-          postBodyEditor = editor;
+      postBodyEditor = window.initQuillEditor(postBodyTextarea, {
+        placeholder: 'Write your post content here...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
 
-          // Apply custom height styles to make it resizable
-          const editorElement = editor.ui.view.editable.element;
-          if (editorElement) {
-            editorElement.style.minHeight = '400px';
-            editorElement.style.maxHeight = '1000px';
-            editorElement.style.overflowY = 'auto';
-            editorElement.style.resize = 'vertical';
-          }
-
-          // Initialize AI title generator with editor instance
-          if (typeof window.initAITitleGenerator === 'function') {
-            window.initAITitleGenerator(postEditorContainer, postBodyEditor);
-          }
-        })
-        .catch(error => {
-          console.error('Post body editor initialization error:', error);
-        });
+      // Initialize AI title generator with editor instance
+      if (typeof window.initAITitleGenerator === 'function') {
+        window.initAITitleGenerator(postEditorContainer, postBodyEditor);
+      }
     }
 
     // Setup modal event handlers
@@ -1207,7 +1091,7 @@
 
             // Set post body in editor
             if (postBodyEditor) {
-              postBodyEditor.setData(post.body_html || '');
+              window.setQuillHTML(postBodyEditor, post.body_html || '');
 
               // Set up auto-save for this post (only when editing existing post)
               if (postAutoSave) {
@@ -1263,7 +1147,7 @@
         postEditorContainer.querySelector('.post-title').value = '';
         postEditorContainer.querySelector('.post-status').value = 'draft';
         if (postBodyEditor) {
-          postBodyEditor.setData('');
+          window.clearQuillEditor(postBodyEditor);
         } else {
           postEditorContainer.querySelector('.post-body').value = '';
         }

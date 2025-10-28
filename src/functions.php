@@ -690,7 +690,9 @@ function sanitizeHtml($html)
 {
     // Allow a safe subset of tags (including both <em> and <i> for italic formatting)
     $allowed_tags = '<p><br><strong><b><em><i><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
-    $clean = strip_tags($html, $allowed_tags);    // Remove event handlers and javascript: URLs (quick pass)
+    $clean = strip_tags($html, $allowed_tags);
+
+    // Remove event handlers and javascript: URLs (quick pass)
     // Remove on* attributes
     $clean = preg_replace('/\son[a-z]+\s*=\s*"[^"]*"/i', '', $clean);
     $clean = preg_replace("/\son[a-z]+\s*='[^']*'/i", '', $clean);
@@ -707,6 +709,25 @@ function sanitizeHtml($html)
     $dom = new DOMDocument('1.0', 'UTF-8');
     // Load HTML fragment
     $dom->loadHTML(mb_convert_encoding($clean, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    // Allowed alignment classes from Quill
+    $allowedClasses = ['ql-align-left', 'ql-align-center', 'ql-align-right', 'ql-align-justify'];
+
+    // Process all elements to clean up class attributes
+    $xpath = new DOMXPath($dom);
+    $elementsWithClass = $xpath->query('//*[@class]');
+    foreach ($elementsWithClass as $element) {
+        $classes = explode(' ', $element->getAttribute('class'));
+        $safeClasses = array_filter($classes, function($cls) use ($allowedClasses) {
+            return in_array(trim($cls), $allowedClasses);
+        });
+
+        if (empty($safeClasses)) {
+            $element->removeAttribute('class');
+        } else {
+            $element->setAttribute('class', implode(' ', $safeClasses));
+        }
+    }
 
     // Allow only safe link protocols and enforce rel for target=_blank
     $allowedSchemes = ['http', 'https', 'mailto', 'tel', 'sms'];

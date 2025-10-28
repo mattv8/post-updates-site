@@ -7,9 +7,12 @@
 {* Bootstrap Icons *}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-{* CKEditor 5 - WYSIWYG editor *}
-<script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
-<script src="/js/ckeditor-upload-adapter.js"></script>
+{* Quill WYSIWYG Editor *}
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+{* Quill ImageResize Module *}
+<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
+<script src="/js/quill-upload-adapter.js"></script>
 
 {* AI Title Generator - included globally *}
 <script src="/js/ai-title-generator.js"></script>

@@ -23,7 +23,7 @@
     <label class="form-label mb-0">Hero Text</label>
     <small class="editor-autosave-indicator" id="{$prefix}hero-autosave-status"></small>
   </div>
-  <textarea class="form-control" id="{$prefix}hero_html" rows="5"></textarea>
+  <div class="form-control" id="{$prefix}hero_html"></div>
 </div>
 <div class="row g-3">
   <div class="col-sm-6">

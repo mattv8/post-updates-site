@@ -59,27 +59,120 @@
     border: 1px solid #bbdefb;
 }
 
-/* CKEditor auto-height customizations */
-.ck-editor__editable {
-    min-height: 200px !important;
-    resize: vertical !important;
-    overflow-y: auto !important;
+/* Quill Editor Styling */
+.ql-container {
+    font-family: inherit;
+    font-size: inherit;
 }
 
-.ck-editor__editable_inline {
-    overflow-y: auto !important;
+.ql-editor {
+    min-height: 200px;
+    overflow-y: auto;
 }
 
-/* Make CKEditor content area expand with content */
-.ck.ck-content {
-    min-height: inherit;
+/* Remove resize from editor itself - will be applied to container */
+.ql-editor {
+    resize: none !important;
+}
+
+.ql-editor.ql-blank::before {
+    font-style: normal;
+    color: #adb5bd;
+}
+
+/* Quill toolbar styling */
+.ql-toolbar {
+    background-color: #f8f9fa;
+    border-color: #dee2e6 !important;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.ql-container {
+    border-color: #dee2e6 !important;
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* Quill image resize handles */
+.ql-editor img {
+    cursor: pointer;
+    max-width: 100%;
     height: auto;
 }
 
-/* Ensure resize handle is visible */
-.ck.ck-editor__editable.ck-focused,
-.ck.ck-editor__editable {
-    resize: vertical !important;
+/* Quill text alignment support - applies both in editor and displayed content */
+.ql-align-center,
+p.ql-align-center,
+h1.ql-align-center,
+h2.ql-align-center,
+h3.ql-align-center,
+h4.ql-align-center,
+h5.ql-align-center,
+h6.ql-align-center {
+    text-align: center;
+}
+
+.ql-align-right,
+p.ql-align-right,
+h1.ql-align-right,
+h2.ql-align-right,
+h3.ql-align-right,
+h4.ql-align-right,
+h5.ql-align-right,
+h6.ql-align-right {
+    text-align: right;
+}
+
+.ql-align-justify,
+p.ql-align-justify {
+    text-align: justify;
+}
+
+/* Default left alignment */
+.ql-align-left,
+p.ql-align-left,
+h1.ql-align-left,
+h2.ql-align-left,
+h3.ql-align-left,
+h4.ql-align-left,
+h5.ql-align-left,
+h6.ql-align-left {
+    text-align: left;
+}
+
+/* Image alignment within aligned containers - ensure images respect parent alignment */
+/* Force images to be inline-block so text-align works properly */
+.ql-align-center img,
+p.ql-align-center img {
+    display: inline-block !important;
+}
+
+.ql-align-right img,
+p.ql-align-right img {
+    display: inline-block !important;
+}
+
+.ql-align-left img,
+p.ql-align-left img {
+    display: inline-block !important;
+}
+
+/* For standalone images with alignment classes applied directly */
+img.ql-align-center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+img.ql-align-right {
+    display: block;
+    margin-left: auto;
+    margin-right: 0;
+}
+
+img.ql-align-left {
+    display: block;
+    margin-left: 0;
+    margin-right: auto;
 }
 
 /* Auto-save indicator */
@@ -107,14 +200,28 @@
     color: #6c757d;
 }
 
-/* Ensure CKEditor floating panels appear above Bootstrap modals/overlays */
-.ck.ck-balloon-panel,
-.ck.ck-dropdown__panel,
-.ck.ck-tooltip {
-    z-index: 2000 !important; /* Bootstrap modal is 1055; keep CKEditor UI above */
+/* Ensure Quill tooltips and dropdowns appear above modals */
+.ql-tooltip,
+.ql-picker-options {
+    z-index: 2000 !important;
 }
 
-/* Also ensure contextual toolbar is visible in modals */
-.ck-body-wrapper {
+/* Fix for Quill pickers in modals */
+.modal .ql-toolbar .ql-picker-options {
     z-index: 2000 !important;
+}
+
+/* Ensure Quill editor and toolbar stay within modal */
+.modal .ql-container,
+.modal .ql-toolbar {
+    position: relative;
+}
+
+/* Fix ARIA accessibility issue with Quill pickers */
+.ql-picker-options[aria-hidden="true"] {
+    pointer-events: none;
+}
+
+.ql-picker.ql-expanded .ql-picker-options {
+    pointer-events: auto;
 }
