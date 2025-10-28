@@ -688,11 +688,9 @@ function decodeHtmlEntities($data)
  */
 function sanitizeHtml($html)
 {
-    // Allow a safe subset of tags
-    $allowed_tags = '<p><br><strong><em><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
-    $clean = strip_tags($html, $allowed_tags);
-
-    // Remove event handlers and javascript: URLs (quick pass)
+    // Allow a safe subset of tags (including both <em> and <i> for italic formatting)
+    $allowed_tags = '<p><br><strong><b><em><i><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
+    $clean = strip_tags($html, $allowed_tags);    // Remove event handlers and javascript: URLs (quick pass)
     // Remove on* attributes
     $clean = preg_replace('/\son[a-z]+\s*=\s*"[^"]*"/i', '', $clean);
     $clean = preg_replace("/\son[a-z]+\s*='[^']*'/i", '', $clean);

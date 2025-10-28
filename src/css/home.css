@@ -274,6 +274,82 @@
   margin-bottom: 0;
 }
 
+/* CKEditor content formatting in preview */
+.post-preview-content h1,
+.post-preview-content h2,
+.post-preview-content h3,
+.post-preview-content h4,
+.post-preview-content h5,
+.post-preview-content h6 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.post-preview-content h1 { font-size: 1.5rem; }
+.post-preview-content h2 { font-size: 1.35rem; }
+.post-preview-content h3 { font-size: 1.2rem; }
+.post-preview-content h4 { font-size: 1.1rem; }
+.post-preview-content h5 { font-size: 1rem; }
+.post-preview-content h6 { font-size: 0.95rem; }
+
+.post-preview-content p {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.post-preview-content strong,
+.post-preview-content b {
+  font-weight: 700;
+}
+
+.post-preview-content em,
+.post-preview-content i {
+  font-style: italic;
+}
+
+.post-preview-content blockquote {
+  border-left: 3px solid #0d6efd;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.post-preview-content ul,
+.post-preview-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.post-preview-content li {
+  margin-bottom: 0.25rem;
+}
+
+.post-preview-content a {
+  color: #0d6efd;
+  text-decoration: underline;
+}
+
+.post-preview-content code {
+  background-color: #f8f9fa;
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.2rem;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.85em;
+  color: #d63384;
+}
+
 /* Edit button on post cards */
 .btn-edit-post-home {
   z-index: 10;

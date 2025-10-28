@@ -20,6 +20,130 @@
   height: auto;
 }
 
+/* CKEditor content formatting styles */
+#overlay-body h1,
+#overlay-body h2,
+#overlay-body h3,
+#overlay-body h4,
+#overlay-body h5,
+#overlay-body h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+#overlay-body h1:first-child,
+#overlay-body h2:first-child,
+#overlay-body h3:first-child,
+#overlay-body h4:first-child,
+#overlay-body h5:first-child,
+#overlay-body h6:first-child {
+  margin-top: 0;
+}
+
+#overlay-body h1 { font-size: 2.5rem; }
+#overlay-body h2 { font-size: 2rem; }
+#overlay-body h3 { font-size: 1.75rem; }
+#overlay-body h4 { font-size: 1.5rem; }
+#overlay-body h5 { font-size: 1.25rem; }
+#overlay-body h6 { font-size: 1rem; }
+
+#overlay-body p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+#overlay-body strong,
+#overlay-body b {
+  font-weight: 700;
+}
+
+#overlay-body em,
+#overlay-body i {
+  font-style: italic;
+}
+
+#overlay-body blockquote {
+  border-left: 4px solid #0d6efd;
+  padding-left: 1.5rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  padding: 1rem 1rem 1rem 1.5rem;
+  border-radius: 0.25rem;
+}
+
+#overlay-body blockquote p {
+  margin-bottom: 0.5rem;
+}
+
+#overlay-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+#overlay-body ul,
+#overlay-body ol {
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+#overlay-body li {
+  margin-bottom: 0.5rem;
+}
+
+#overlay-body a {
+  color: #0d6efd;
+  text-decoration: underline;
+}
+
+#overlay-body a:hover {
+  color: #0a58ca;
+  text-decoration: none;
+}
+
+#overlay-body code {
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.875em;
+  color: #d63384;
+}
+
+#overlay-body pre {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+#overlay-body pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+/* Mobile responsive typography */
+@media (max-width: 768px) {
+  #overlay-body h1 { font-size: 2rem; }
+  #overlay-body h2 { font-size: 1.75rem; }
+  #overlay-body h3 { font-size: 1.5rem; }
+  #overlay-body h4 { font-size: 1.25rem; }
+
+  #overlay-body blockquote {
+    padding-left: 1rem;
+  }
+}
+
 /* Gallery Grid Layout */
 .post-gallery {
   display: grid;
