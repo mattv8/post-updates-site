@@ -31,7 +31,7 @@
             <em>By {if $post.author_first}{$post.author_first}{/if} {if $post.author_last}{$post.author_last}{/if}</em>
           </p>
         {/if}
-        <p class="card-text">{$post.excerpt|escape}</p>
+        <div class="card-text post-preview-content">{$post.body_html nofilter}</div>
         <div class="d-flex justify-content-between align-items-center">
           <small class="text-muted fst-italic">
             <span class="d-none d-md-inline">Click to read more</span>

@@ -129,6 +129,51 @@
   pointer-events: none;
 }
 
+/* Post preview content - show formatted HTML with truncation */
+.post-preview-content {
+  max-height: 150px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.post-preview-content::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to bottom, transparent, white);
+  pointer-events: none;
+}
+
+.post-preview-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.post-preview-content figure {
+  max-width: 100%;
+  margin: 0.5rem 0;
+}
+
+.post-preview-content figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+.post-preview-content > *:first-child {
+  margin-top: 0;
+}
+
+.post-preview-content > *:last-child {
+  margin-bottom: 0;
+}
+
 /* Edit button on post cards */
 .btn-edit-post-home {
   z-index: 10;

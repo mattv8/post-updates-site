@@ -2,6 +2,24 @@
 .post-overlay-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.65); }
 .post-overlay-content { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); width: min(900px, 92vw); max-height: 90vh; overflow: auto; }
 
+/* Constrain images in overlay body content */
+#overlay-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+}
+
+#overlay-body figure {
+  max-width: 100%;
+  margin: 1rem auto;
+}
+
+#overlay-body figure img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Gallery Grid Layout */
 .post-gallery {
   display: grid;
