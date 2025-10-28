@@ -1,24 +1,26 @@
 <div class="container py-4">
-  {if $settings.show_hero && $settings.hero_media_id}
+  {if $settings.show_hero && ($settings.hero_media_id || $settings.hero_html)}
     <div class="hero position-relative mb-4">
       {if $is_authenticated|default:false}
         <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editHeroModal" title="Edit Hero Banner">
           <i class="bi bi-pencil"></i> Edit
         </button>
       {/if}
-      <picture>
-        {if $hero_webp}
-          <source type="image/webp" srcset="{$hero_webp}" sizes="100vw" />
+      {if $settings.hero_media_id}
+        <picture>
+          {if $hero_webp}
+            <source type="image/webp" srcset="{$hero_webp}" sizes="100vw" />
+          {/if}
+          {if $hero_jpg}
+            <img class="w-100 rounded" srcset="{$hero_jpg}" sizes="100vw" alt="Hero image" />
+          {/if}
+        </picture>
+        {if $settings.hero_overlay_opacity}
+          <div class="hero-overlay position-absolute top-0 start-0 w-100 h-100" style="background-color: {$settings.hero_overlay_color|default:'#000'}; opacity: {$settings.hero_overlay_opacity|default:'0.3'}"></div>
         {/if}
-        {if $hero_jpg}
-          <img class="w-100 rounded" srcset="{$hero_jpg}" sizes="100vw" alt="Hero image" />
-        {/if}
-      </picture>
-      {if $settings.hero_overlay_opacity}
-        <div class="hero-overlay position-absolute top-0 start-0 w-100 h-100" style="background-color: {$settings.hero_overlay_color|default:'#000'}; opacity: {$settings.hero_overlay_opacity|default:'0.3'}"></div>
       {/if}
       {if $settings.hero_html}
-        <div class="hero-content position-absolute top-50 start-50 translate-middle text-white p-3 text-center">
+        <div class="hero-content {if $settings.hero_media_id}position-absolute top-50 start-50 translate-middle text-white{else}w-100 text-center mx-auto{/if} p-3">
           {$settings.hero_html nofilter}
         </div>
       {/if}

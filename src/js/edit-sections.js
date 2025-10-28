@@ -223,8 +223,13 @@
     // Save hero settings
     document.getElementById('saveHeroModal')?.addEventListener('click', async function() {
       const btn = this;
+      const statusElement = document.getElementById('modal_hero-autosave-status');
       btn.disabled = true;
       btn.textContent = 'Saving...';
+
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
 
       try {
         const payload = {
@@ -240,14 +245,21 @@
         const result = await SettingsManager.saveSettings(payload);
 
         if (result.success) {
-          alert('Hero settings saved successfully!');
-          bootstrap.Modal.getInstance(heroModal).hide();
-          window.location.reload();
+          const timestamp = new Date().toLocaleTimeString();
+          if (statusElement) {
+            statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
         } else {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
           alert('Error: ' + (result.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving hero settings:', error);
+        if (statusElement) {
+          statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
         alert('An error occurred while saving');
       } finally {
         btn.disabled = false;
@@ -335,8 +347,13 @@
     // Save about settings
     document.getElementById('saveAboutModal')?.addEventListener('click', async function() {
       const btn = this;
+      const statusElement = document.getElementById('modal_about-autosave-status');
       btn.disabled = true;
       btn.textContent = 'Saving...';
+
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
 
       try {
         const payload = {
@@ -347,14 +364,21 @@
         const result = await SettingsManager.saveSettings(payload);
 
         if (result.success) {
-          alert('About section saved successfully!');
-          bootstrap.Modal.getInstance(aboutModal).hide();
-          window.location.reload();
+          const timestamp = new Date().toLocaleTimeString();
+          if (statusElement) {
+            statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
         } else {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
           alert('Error: ' + (result.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving about section:', error);
+        if (statusElement) {
+          statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
         alert('An error occurred while saving');
       } finally {
         btn.disabled = false;
@@ -442,8 +466,13 @@
     // Save donation settings
     document.getElementById('saveDonationModal')?.addEventListener('click', async function() {
       const btn = this;
+      const statusElement = document.getElementById('modal_donation-autosave-status');
       btn.disabled = true;
       btn.textContent = 'Saving...';
+
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
 
       try {
         const payload = {
@@ -454,14 +483,21 @@
         const result = await SettingsManager.saveSettings(payload);
 
         if (result.success) {
-          alert('Donation section saved successfully!');
-          bootstrap.Modal.getInstance(donationModal).hide();
-          window.location.reload();
+          const timestamp = new Date().toLocaleTimeString();
+          if (statusElement) {
+            statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
         } else {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
           alert('Error: ' + (result.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving donation section:', error);
+        if (statusElement) {
+          statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
         alert('An error occurred while saving');
       } finally {
         btn.disabled = false;
