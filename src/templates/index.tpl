@@ -51,8 +51,8 @@
 
     {* Simple public navigation for unauthenticated users *}
     <nav class="navbar navbar-light bg-light shadow-sm">
-      <div class="container">
-        <a class="navbar-brand" href="?page=home">
+      <div class="container d-flex align-items-center">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2" href="?page=home">
           {if $settings.site_title}
             {$settings.site_title|escape}
           {else}
@@ -90,8 +90,8 @@
 
     {* Public page with authenticated menu *}
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="?page=home">
+      <div class="container-fluid d-flex align-items-center">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2" href="?page=home">
           {if $settings.site_title}
             {$settings.site_title|escape}
           {else}
