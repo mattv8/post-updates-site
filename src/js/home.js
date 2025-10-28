@@ -21,9 +21,9 @@
       authorHtml = `<p class="text-muted small mb-3"><em>By ${authorName}</em></p>`;
     }
 
-  body.innerHTML = authorHtml + (post.body_html || '');
-  // Ensure links in overlay open in a new tab and are safe
-  ensureAnchorsOpenNewTab(body);
+    body.innerHTML = authorHtml + (post.body_html || '');
+    // Ensure links in overlay open in a new tab and are safe
+    ensureAnchorsOpenNewTab(body);
 
     const media = qs('#overlay-media');
     media.innerHTML = '';
@@ -41,10 +41,52 @@
       editBtn.setAttribute('data-post-id', post.id);
     }
 
-    // Display gallery images if present
+    // Display hero image at the top (edge-to-edge)
+    if (post.hero_srcset_webp || post.hero_srcset_jpg) {
+      const picture = document.createElement('picture');
+      if (post.hero_srcset_webp) {
+        const srcWebp = document.createElement('source');
+        srcWebp.type = 'image/webp';
+        srcWebp.setAttribute('srcset', post.hero_srcset_webp);
+        srcWebp.setAttribute('sizes', '100vw');
+        picture.appendChild(srcWebp);
+      }
+      if (post.hero_srcset_jpg) {
+        const img = document.createElement('img');
+        img.setAttribute('srcset', post.hero_srcset_jpg);
+        img.setAttribute('sizes', '100vw');
+        img.alt = post.title || 'Post image';
+
+        // Apply cropping if hero_crop_overlay is enabled
+        if (post.hero_crop_overlay && post.hero_image_height) {
+          // Use padding-bottom technique for consistent aspect ratio
+          const wrapper = document.createElement('div');
+          wrapper.style.position = 'relative';
+          wrapper.style.paddingBottom = post.hero_image_height + '%';
+          wrapper.style.overflow = 'hidden';
+          wrapper.style.maxHeight = '600px';
+
+          img.style.position = 'absolute';
+          img.style.top = '0';
+          img.style.left = '0';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+
+          wrapper.appendChild(img);
+          picture.appendChild(wrapper);
+        } else {
+          // Show full image without cropping
+          picture.appendChild(img);
+        }
+      }
+      media.appendChild(picture);
+    }
+
+    // Display gallery images in body content if present
     if (post.gallery_images && post.gallery_images.length > 0) {
       const gallery = document.createElement('div');
-      gallery.className = 'post-gallery';
+      gallery.className = 'post-gallery mt-4 mb-3';
 
       post.gallery_images.forEach((img, index) => {
         const item = document.createElement('div');
@@ -78,27 +120,7 @@
         item.addEventListener('click', () => openLightbox(post.gallery_images, index));
       });
 
-      media.appendChild(gallery);
-    } else if (post.hero_srcset_webp || post.hero_srcset_jpg) {
-      // Fallback to hero image if no gallery
-      const picture = document.createElement('picture');
-      if (post.hero_srcset_webp) {
-        const srcWebp = document.createElement('source');
-        srcWebp.type = 'image/webp';
-        srcWebp.setAttribute('srcset', post.hero_srcset_webp);
-        srcWebp.setAttribute('sizes', '100vw');
-        picture.appendChild(srcWebp);
-      }
-      if (post.hero_srcset_jpg) {
-        const img = document.createElement('img');
-        img.className = 'img-fluid rounded';
-        img.setAttribute('srcset', post.hero_srcset_jpg);
-        img.setAttribute('sizes', '100vw');
-        img.alt = post.title || 'Post image';
-        // Overlay shows full image without cropping
-        picture.appendChild(img);
-      }
-      media.appendChild(picture);
+      body.appendChild(gallery);
     }
 
     overlay.classList.remove('d-none');
@@ -667,6 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
               // Set hero height and show control
               const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
               const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+              const heroCropToggle = postEditorContainer.querySelector('.post-hero-crop-overlay');
               const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
               const heightToSet = post.hero_image_height || 100;
               if (heroHeightSlider) {
@@ -678,6 +701,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (heroPreviewDiv) {
                   heroPreviewDiv.style.paddingBottom = heightToSet + '%';
                 }
+              }
+              // Set crop overlay toggle
+              if (heroCropToggle) {
+                heroCropToggle.checked = post.hero_crop_overlay == 1;
               }
               // Show height control when there's a hero image
               if (heroHeightControl) {
@@ -1127,6 +1154,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
         const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
         const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
+        const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
 
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
@@ -1134,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', function() {
           status: statusVal,
           hero_media_id: uploadedHeroId,
           hero_image_height: heroImageHeightValue,
+          hero_crop_overlay: heroCropOverlayValue,
           gallery_media_ids: galleryMediaIds
         };
 

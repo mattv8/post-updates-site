@@ -38,10 +38,6 @@
             <small class="text-muted">50%</small>
             <small class="text-muted">100%</small>
           </div>
-          <div class="alert alert-info mt-3 py-2 px-3 small mb-0">
-            <i class="bi bi-info-circle me-1"></i>
-            Controls the aspect ratio of the hero banner. Lower values create shorter, wider displays.
-          </div>
         </div>
       </div>
     </div>

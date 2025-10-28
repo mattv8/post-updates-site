@@ -2,22 +2,25 @@
 <div id="post-overlay" class="post-overlay d-none">
   <div class="post-overlay-backdrop"></div>
   <div class="post-overlay-content card shadow">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0" id="overlay-title"></h5>
-      <div class="d-flex gap-2">
-        {if $is_authenticated|default:false}
-          <button type="button" class="btn btn-sm btn-outline-primary" id="overlay-edit" style="display: none;">
-            <i class="bi bi-pencil"></i> Edit
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-danger" id="overlay-delete" style="display: none;">
-            <i class="bi bi-trash"></i> Delete
-          </button>
-        {/if}
-        <button type="button" class="btn-close" aria-label="Close" id="overlay-close"></button>
-      </div>
+    {* Hero image container - full width at top *}
+    <div id="overlay-media" class="overlay-hero-container"></div>
+
+    {* Action buttons positioned over hero image *}
+    <div class="overlay-actions">
+      {if $is_authenticated|default:false}
+        <button type="button" class="btn btn-sm btn-outline-light" id="overlay-edit" style="display: none;">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-light" id="overlay-delete" style="display: none;">
+          <i class="bi bi-trash"></i> Delete
+        </button>
+      {/if}
+      <button type="button" class="btn-close btn-close-white" aria-label="Close" id="overlay-close"></button>
     </div>
+
+    {* Content section with title and body *}
     <div class="card-body">
-      <div id="overlay-media" class="mb-3"></div>
+      <h2 class="mb-3" id="overlay-title"></h2>
       <div id="overlay-body"></div>
     </div>
   </div>

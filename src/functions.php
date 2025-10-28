@@ -864,7 +864,8 @@ function createPost($db_conn, $data)
     $body_html = sanitizeHtml($data['body_html'] ?? '');
     $excerpt = $data['excerpt'] ?? generateExcerpt($body_html, 250);
     $hero_media_id = !empty($data['hero_media_id']) ? (int)$data['hero_media_id'] : null;
-    $hero_image_height = !empty($data['hero_image_height']) ? (int)$data['hero_image_height'] : 400;
+    $hero_image_height = !empty($data['hero_image_height']) ? (int)$data['hero_image_height'] : 100;
+    $hero_crop_overlay = isset($data['hero_crop_overlay']) ? (int)(bool)$data['hero_crop_overlay'] : 0;
     $gallery_media_ids = !empty($data['gallery_media_ids']) ? json_encode($data['gallery_media_ids']) : null;
     $status = in_array(($data['status'] ?? 'draft'), ['draft','published']) ? $data['status'] : 'draft';
     $published_at = !empty($data['published_at']) ? $data['published_at'] : null;
@@ -875,8 +876,8 @@ function createPost($db_conn, $data)
         $published_at = date('Y-m-d H:i:s');
     }
 
-    $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, hero_image_height, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, 'sssiissss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $gallery_media_ids, $status, $published_at, $created_by);
+    $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, hero_image_height, hero_crop_overlay, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    mysqli_stmt_bind_param($stmt, 'sssiiiisss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $hero_crop_overlay, $gallery_media_ids, $status, $published_at, $created_by);
     if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
@@ -891,6 +892,7 @@ function updatePost($db_conn, $id, $data)
     $excerpt = $data['excerpt'] ?? null;
     $hero_media_id = array_key_exists('hero_media_id', $data) ? (is_null($data['hero_media_id']) ? null : (int)$data['hero_media_id']) : null;
     $hero_image_height = array_key_exists('hero_image_height', $data) ? (is_null($data['hero_image_height']) ? null : (int)$data['hero_image_height']) : null;
+    $hero_crop_overlay = array_key_exists('hero_crop_overlay', $data) ? (int)(bool)$data['hero_crop_overlay'] : null;
     $gallery_media_ids = array_key_exists('gallery_media_ids', $data) ? json_encode($data['gallery_media_ids']) : null;
     $status = isset($data['status']) && in_array($data['status'], ['draft','published']) ? $data['status'] : null;
     $published_at = $data['published_at'] ?? null;
@@ -914,6 +916,7 @@ function updatePost($db_conn, $id, $data)
     if (!is_null($excerpt)) { $fields[] = 'excerpt = ?'; $params[] = $excerpt; $types .= 's'; }
     if (!is_null($hero_media_id) || array_key_exists('hero_media_id', $data)) { $fields[] = 'hero_media_id = ?'; $params[] = $hero_media_id; $types .= 'i'; }
     if (!is_null($hero_image_height) || array_key_exists('hero_image_height', $data)) { $fields[] = 'hero_image_height = ?'; $params[] = $hero_image_height; $types .= 'i'; }
+    if (!is_null($hero_crop_overlay) || array_key_exists('hero_crop_overlay', $data)) { $fields[] = 'hero_crop_overlay = ?'; $params[] = $hero_crop_overlay; $types .= 'i'; }
     if (!is_null($gallery_media_ids) || array_key_exists('gallery_media_ids', $data)) { $fields[] = 'gallery_media_ids = ?'; $params[] = $gallery_media_ids; $types .= 's'; }
     if (!is_null($status)) { $fields[] = 'status = ?'; $params[] = $status; $types .= 's'; }
     if (!is_null($published_at)) { $fields[] = 'published_at = ?'; $params[] = $published_at; $types .= 's'; }

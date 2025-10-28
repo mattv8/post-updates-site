@@ -73,10 +73,17 @@
                 <small class="text-muted">50%</small>
                 <small class="text-muted">100%</small>
               </div>
-              <div class="alert alert-info mt-3 py-2 px-3 small mb-0">
-                <i class="bi bi-info-circle me-1"></i>
-                Controls the aspect ratio of the hero image. Lower values create shorter, wider displays. Higher values show more vertical content.
+
+              {* Crop Overlay Toggle *}
+              <div class="form-check form-switch mt-3">
+                <input class="form-check-input post-hero-crop-overlay" type="checkbox" id="heroCropOverlay">
+                <label class="form-check-label" for="heroCropOverlay">
+                  Apply cropping in post view
+                </label>
               </div>
+              <small class="form-text text-muted d-block mt-1">
+                When enabled, the post detail view will use the same cropped aspect ratio. When disabled, the full image is shown.
+              </small>
             </div>
           </div>
         </div>

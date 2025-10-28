@@ -388,6 +388,7 @@
             status: status,
             hero_media_id: heroMediaId,
             hero_image_height: heroImageHeight,
+            hero_crop_overlay: modal.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0,
             gallery_media_ids: galleryMediaIds
           })
         });

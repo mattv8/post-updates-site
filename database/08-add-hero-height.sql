@@ -52,3 +52,25 @@ ALTER TABLE `posts` MODIFY COLUMN `hero_image_height` INT(11) DEFAULT 100 COMMEN
 
 -- Update existing rows to use percentage instead of pixels
 UPDATE `posts` SET `hero_image_height` = 100 WHERE `hero_image_height` > 100 OR `hero_image_height` IS NULL;
+
+-- Add hero_crop_overlay column to posts table (idempotent)
+-- Controls whether overlay shows full image (0) or uses hero_image_height cropping (1)
+SET @crop_overlay_exists = (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @dbname
+    AND TABLE_NAME = 'posts'
+    AND COLUMN_NAME = 'hero_crop_overlay'
+);
+
+-- Add column if it doesn't exist
+SET @sql3 = IF(@crop_overlay_exists = 0,
+    'ALTER TABLE `posts` ADD COLUMN `hero_crop_overlay` TINYINT(1) DEFAULT 0 COMMENT ''Apply hero_image_height cropping in overlay (0=full image, 1=cropped)'' AFTER `hero_image_height`',
+    'SELECT "Column hero_crop_overlay already exists, will modify it" AS message'
+);
+PREPARE stmt3 FROM @sql3;
+EXECUTE stmt3;
+DEALLOCATE PREPARE stmt3;
+
+-- Always modify the column to ensure correct definition
+ALTER TABLE `posts` MODIFY COLUMN `hero_crop_overlay` TINYINT(1) DEFAULT 0 COMMENT 'Apply hero_image_height cropping in overlay (0=full image, 1=cropped)';
