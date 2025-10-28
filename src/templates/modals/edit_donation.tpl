@@ -1,5 +1,5 @@
 {* Edit Donation Modal - Reusable component for editing donation section *}
-<div class="modal fade" id="editDonationModal" tabindex="-1" aria-labelledby="editDonationModalLabel" aria-hidden="true">
+<div class="modal fade" id="editDonationModal" tabindex="-1" aria-labelledby="editDonationModalLabel" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

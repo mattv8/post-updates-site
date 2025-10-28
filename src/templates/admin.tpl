@@ -96,7 +96,7 @@
 </div>
 
 {* Post Editor Modal - Will be moved to body by JS *}
-<div class="modal fade" id="postEditorModal" tabindex="-1" aria-labelledby="postEditorModalLabel" aria-hidden="true">
+<div class="modal fade" id="postEditorModal" tabindex="-1" aria-labelledby="postEditorModalLabel" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">

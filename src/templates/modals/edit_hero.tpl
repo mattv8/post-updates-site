@@ -1,6 +1,6 @@
 {* Edit Hero Modal - Reusable component for editing hero banner *}
 {* Edit Hero Modal *}
-<div class="modal fade" id="editHeroModal" tabindex="-1">
+<div class="modal fade" id="editHeroModal" tabindex="-1" data-bs-focus="false">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

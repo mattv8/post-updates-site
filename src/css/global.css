@@ -106,3 +106,15 @@
 .editor-autosave-indicator .text-muted {
     color: #6c757d;
 }
+
+/* Ensure CKEditor floating panels appear above Bootstrap modals/overlays */
+.ck.ck-balloon-panel,
+.ck.ck-dropdown__panel,
+.ck.ck-tooltip {
+    z-index: 2000 !important; /* Bootstrap modal is 1055; keep CKEditor UI above */
+}
+
+/* Also ensure contextual toolbar is visible in modals */
+.ck-body-wrapper {
+    z-index: 2000 !important;
+}

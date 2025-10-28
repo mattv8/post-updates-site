@@ -1,5 +1,5 @@
 {* Edit About Modal - Reusable component for editing about section *}
-<div class="modal fade" id="editAboutModal" tabindex="-1" aria-labelledby="editAboutModalLabel" aria-hidden="true">
+<div class="modal fade" id="editAboutModal" tabindex="-1" aria-labelledby="editAboutModalLabel" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

@@ -1,5 +1,5 @@
 {* Create Post Modal - shown when authenticated user clicks "Create Post" from public site *}
-<div class="modal fade" id="createPostModal" tabindex="-1" aria-labelledby="createPostModalLabel" aria-hidden="true">
+<div class="modal fade" id="createPostModal" tabindex="-1" aria-labelledby="createPostModalLabel" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

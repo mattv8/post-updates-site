@@ -150,6 +150,7 @@
   pointer-events: none;
 }
 
+/* Let CKEditor dimensions be honored but constrain to container */
 .post-preview-content img {
   max-width: 100%;
   height: auto;

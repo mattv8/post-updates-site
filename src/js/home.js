@@ -21,7 +21,9 @@
       authorHtml = `<p class="text-muted small mb-3"><em>By ${authorName}</em></p>`;
     }
 
-    body.innerHTML = authorHtml + (post.body_html || '');
+  body.innerHTML = authorHtml + (post.body_html || '');
+  // Ensure links in overlay open in a new tab and are safe
+  ensureAnchorsOpenNewTab(body);
 
     const media = qs('#overlay-media');
     media.innerHTML = '';
@@ -224,6 +226,18 @@
           return;
         }
 
+        // Allow links inside the card to be clicked normally (open in new tab)
+        const anchor = e.target.closest('a');
+        if (anchor) {
+          // Make sure it opens in a new tab securely
+          anchor.setAttribute('target', '_blank');
+          const rel = (anchor.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+          if (!rel.includes('noopener')) rel.push('noopener');
+          if (!rel.includes('noreferrer')) rel.push('noreferrer');
+          anchor.setAttribute('rel', rel.join(' '));
+          return; // Do not open overlay
+        }
+
         // Find the post ID from the parent timeline-item
         const timelineItem = card.closest('.timeline-item');
         if (!timelineItem) return;
@@ -330,6 +344,20 @@
       });
     }
 
+    // Global handler: make any links in previews open in a new tab and not trigger overlay
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('.post-preview-content a, #overlay-body a');
+      if (a) {
+        a.setAttribute('target', '_blank');
+        const rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+        if (!rel.includes('noopener')) rel.push('noopener');
+        if (!rel.includes('noreferrer')) rel.push('noreferrer');
+        a.setAttribute('rel', rel.join(' '));
+        // Prevent parent click handlers (like card click) from firing
+        e.stopPropagation();
+      }
+    }, true); // capture phase to run before card click handler
+
     // Donate button
     const donateBtn = qs('#donate-btn');
     if (donateBtn) {
@@ -354,6 +382,18 @@
 
   document.addEventListener('DOMContentLoaded', bindEvents);
 })();
+
+// Utility to force anchors within a container to open in new tab securely
+function ensureAnchorsOpenNewTab(container) {
+  if (!container) return;
+  container.querySelectorAll('a[href]').forEach(a => {
+    a.setAttribute('target', '_blank');
+    const rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+    if (!rel.includes('noopener')) rel.push('noopener');
+    if (!rel.includes('noreferrer')) rel.push('noreferrer');
+    a.setAttribute('rel', rel.join(' '));
+  });
+}
 
 // Post editor functionality (only for authenticated users)
 // Wait for DOM to load before checking for modal

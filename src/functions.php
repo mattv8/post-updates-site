@@ -692,7 +692,7 @@ function sanitizeHtml($html)
     $allowed_tags = '<p><br><strong><em><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
     $clean = strip_tags($html, $allowed_tags);
 
-    // Remove event handlers and javascript: URLs
+    // Remove event handlers and javascript: URLs (quick pass)
     // Remove on* attributes
     $clean = preg_replace('/\son[a-z]+\s*=\s*"[^"]*"/i', '', $clean);
     $clean = preg_replace("/\son[a-z]+\s*='[^']*'/i", '', $clean);
@@ -700,6 +700,96 @@ function sanitizeHtml($html)
     $clean = preg_replace('/(href|src)\s*=\s*"javascript:[^"]*"/i', '$1="#"', $clean);
     $clean = preg_replace("/(href|src)\s*=\s*'javascript:[^']*'/i", '$1="#"', $clean);
 
+    // Deep sanitize anchors and images using DOM to preserve allowed attributes safely
+    if (trim($clean) === '') {
+        return $clean;
+    }
+
+    $prevUseInternalErrors = libxml_use_internal_errors(true);
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    // Load HTML fragment
+    $dom->loadHTML(mb_convert_encoding($clean, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    // Allow only safe link protocols and enforce rel for target=_blank
+    $allowedSchemes = ['http', 'https', 'mailto', 'tel', 'sms'];
+    foreach ($dom->getElementsByTagName('a') as $a) {
+        $href = $a->getAttribute('href');
+        $hrefTrim = trim($href);
+
+        $isRelative = (strpos($hrefTrim, '/') === 0) || (strpos($hrefTrim, '#') === 0) || ($hrefTrim === '');
+        $ok = $isRelative;
+
+        // If there is no scheme but it looks like a domain or email, normalize it
+        if (!$isRelative && $hrefTrim && !preg_match('/^[a-z][a-z0-9+.-]*:/i', $hrefTrim)) {
+            if (filter_var($hrefTrim, FILTER_VALIDATE_EMAIL)) {
+                $hrefTrim = 'mailto:' . $hrefTrim;
+            } elseif (preg_match('/^(www\.|[a-z0-9.-]+\.[a-z]{2,})(\/.*)?$/i', $hrefTrim)) {
+                // Looks like a bare domain, default to https
+                $hrefTrim = 'https://' . $hrefTrim;
+            }
+        }
+
+        if (!$ok && $hrefTrim) {
+            $parts = parse_url($hrefTrim);
+            $scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
+            if (in_array($scheme, $allowedSchemes, true)) {
+                $ok = true;
+            }
+        }
+
+        if ($ok) {
+            // Persist normalized href if changed
+            if ($hrefTrim !== $href) {
+                $a->setAttribute('href', $hrefTrim);
+            }
+        } else {
+            // Fallback to harmless link
+            $a->setAttribute('href', '#');
+        }
+
+        // If opening in a new tab, add safe rel attributes
+        if (strtolower($a->getAttribute('target')) === '_blank') {
+            $rel = strtolower($a->getAttribute('rel'));
+            $rels = array_filter(array_unique(array_merge(
+                $rel ? preg_split('/\s+/', $rel) : [],
+                ['noopener', 'noreferrer']
+            )));
+            $a->setAttribute('rel', implode(' ', $rels));
+        }
+
+        // Strip any event handler attributes that might remain
+        $attrsToRemove = [];
+        foreach ($a->attributes as $attr) {
+            if (preg_match('/^on/i', $attr->name)) {
+                $attrsToRemove[] = $attr->name;
+            }
+        }
+        foreach ($attrsToRemove as $attrName) {
+            $a->removeAttribute($attrName);
+        }
+    }
+
+    // For images: ensure no javascript: in src
+    foreach ($dom->getElementsByTagName('img') as $img) {
+        $src = $img->getAttribute('src');
+        if (preg_match('/^\s*javascript:/i', $src)) {
+            $img->setAttribute('src', '');
+        }
+        // Remove event handlers
+        $attrsToRemove = [];
+        foreach ($img->attributes as $attr) {
+            if (preg_match('/^on/i', $attr->name)) {
+                $attrsToRemove[] = $attr->name;
+            }
+        }
+        foreach ($attrsToRemove as $attrName) {
+            $img->removeAttribute($attrName);
+        }
+    }
+
+    $clean = $dom->saveHTML();
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevUseInternalErrors);
     return $clean;
 }
 
