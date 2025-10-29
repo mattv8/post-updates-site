@@ -47,7 +47,7 @@
       </div>
     </div>
     <div class="col-12 col-lg-4">
-      <div class="sticky-top" style="top: 90px;">
+      <div class="sticky-top" style="top: 30px;">
         {if $settings.show_about}
           <div class="card mb-4 position-relative">
             {if $is_authenticated|default:false}
