@@ -1,6 +1,6 @@
-# Janssen Health Updates Platform
+# Post Updates Platform
 
-A minimal, health-updates website (CaringBridge style) for sharing health journey updates with loved ones. Built on PHP with Smarty templates, featuring responsive image galleries, WYSIWYG content editing, and integrated Stripe donations.
+A minimal post-updates website. Built on PHP with Smarty templates, featuring responsive image galleries, and WYSIWYG content editing.
 
 ## Quick Start for Development
 
@@ -13,15 +13,13 @@ A minimal, health-updates website (CaringBridge style) for sharing health journe
 
 1. **Clone this repository:**
    ```bash
-   git clone git@github.com:mattv8/janssen-care-bridge.git janssen-care-bridge
-   cd janssen-care-bridge
+   git clone git@github.com:mattv8/post-updates-site.git post-updates-site
    ```
 
 2. **Clone the Smarty Portal Framework:**
    ```bash
    cd ..
    git clone https://github.com/mattv8/smarty-portal-framework.git
-   cd janssen-care-bridge
    ```
 
    The [Smarty Portal Framework](https://github.com/mattv8/smarty-portal-framework) is a separate repository that provides routing, authentication, and base templates. It's not tracked in this repository but is required for the application to run.
@@ -48,12 +46,6 @@ A minimal, health-updates website (CaringBridge style) for sharing health journe
    $db_name = "devdb";
    $db_username = "admin";
    $db_password = "admin";
-
-   # Stripe API keys (get from https://dashboard.stripe.com/apikeys)
-   $stripe_mode = 'test'; // Use 'test' for development
-   $stripe_test_public_key = 'pk_test_...';
-   $stripe_test_secret_key = 'sk_test_...';
-   ```
 
 5. **Build and start Docker services:**
    ```bash
@@ -129,13 +121,6 @@ sudo docker exec -i mysql bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL
 7. Variants saved to `storage/uploads/variants/{width}/`
 8. Database updated with paths and metadata
 
-### Image Optimization Not Working
-
-**Issue**: WebP variants missing
-- Verify cwebp installed: `sudo docker exec -it php-fpm which cwebp`
-- Check permissions on variants directory
-- Manually test: `cwebp -q 85 input.jpg -o output.webp`
-
 ### Maintenance
 
 **Update Dependencies:**
@@ -159,4 +144,4 @@ See `DEPLOYMENT.md` for complete details, security considerations, and troublesh
 
 ## License
 
-Proprietary - All rights reserved
+TBD

@@ -166,8 +166,63 @@
 #overlay-body img {
   max-width: 100%;
   height: auto;
+}
+
+/* Default centered images only when no alignment class is present AND not in a list */
+#overlay-body p img:not(.ql-align-left):not(.ql-align-right):not(.ql-align-center),
+#overlay-body > img:not(.ql-align-left):not(.ql-align-right):not(.ql-align-center) {
   display: block;
   margin: 1rem auto;
+}
+
+/* Images in list items default to left (normal flow) unless alignment is specified */
+#overlay-body li img {
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+/* Ensure images in aligned paragraphs/containers follow parent alignment */
+#overlay-body .ql-align-center img,
+#overlay-body p.ql-align-center img,
+#overlay-body li.ql-align-center img {
+  display: inline-block !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#overlay-body .ql-align-right img,
+#overlay-body p.ql-align-right img,
+#overlay-body li.ql-align-right img {
+  display: inline-block !important;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+#overlay-body .ql-align-left img,
+#overlay-body p.ql-align-left img,
+#overlay-body li.ql-align-left img {
+  display: inline-block !important;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* For standalone images with alignment classes applied directly */
+#overlay-body img.ql-align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#overlay-body img.ql-align-right {
+  display: block;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+#overlay-body img.ql-align-left {
+  display: block;
+  margin-left: 0;
+  margin-right: auto;
 }
 
 #overlay-body figure {

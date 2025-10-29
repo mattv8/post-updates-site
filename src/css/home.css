@@ -283,7 +283,62 @@
 .post-preview-content img {
   max-width: 100%;
   height: auto;
+}
+
+/* Default block display for images without alignment, but not in lists */
+.post-preview-content p img:not(.ql-align-left):not(.ql-align-right):not(.ql-align-center),
+.post-preview-content > img:not(.ql-align-left):not(.ql-align-right):not(.ql-align-center) {
   display: block;
+}
+
+/* Images in list items default to left (normal flow) unless alignment is specified */
+.post-preview-content li img {
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+/* Ensure images in aligned paragraphs/containers follow parent alignment */
+.post-preview-content .ql-align-center img,
+.post-preview-content p.ql-align-center img,
+.post-preview-content li.ql-align-center img {
+  display: inline-block !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.post-preview-content .ql-align-right img,
+.post-preview-content p.ql-align-right img,
+.post-preview-content li.ql-align-right img {
+  display: inline-block !important;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.post-preview-content .ql-align-left img,
+.post-preview-content p.ql-align-left img,
+.post-preview-content li.ql-align-left img {
+  display: inline-block !important;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* For standalone images with alignment classes applied directly */
+.post-preview-content img.ql-align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.post-preview-content img.ql-align-right {
+  display: block;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.post-preview-content img.ql-align-left {
+  display: block;
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .post-preview-content figure {

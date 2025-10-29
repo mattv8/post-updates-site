@@ -102,6 +102,7 @@
 /* Quill text alignment support - applies both in editor and displayed content */
 .ql-align-center,
 p.ql-align-center,
+li.ql-align-center,
 h1.ql-align-center,
 h2.ql-align-center,
 h3.ql-align-center,
@@ -113,6 +114,7 @@ h6.ql-align-center {
 
 .ql-align-right,
 p.ql-align-right,
+li.ql-align-right,
 h1.ql-align-right,
 h2.ql-align-right,
 h3.ql-align-right,
@@ -123,13 +125,15 @@ h6.ql-align-right {
 }
 
 .ql-align-justify,
-p.ql-align-justify {
+p.ql-align-justify,
+li.ql-align-justify {
     text-align: justify;
 }
 
 /* Default left alignment */
 .ql-align-left,
 p.ql-align-left,
+li.ql-align-left,
 h1.ql-align-left,
 h2.ql-align-left,
 h3.ql-align-left,
@@ -142,17 +146,20 @@ h6.ql-align-left {
 /* Image alignment within aligned containers - ensure images respect parent alignment */
 /* Force images to be inline-block so text-align works properly */
 .ql-align-center img,
-p.ql-align-center img {
+p.ql-align-center img,
+li.ql-align-center img {
     display: inline-block !important;
 }
 
 .ql-align-right img,
-p.ql-align-right img {
+p.ql-align-right img,
+li.ql-align-right img {
     display: inline-block !important;
 }
 
 .ql-align-left img,
-p.ql-align-left img {
+p.ql-align-left img,
+li.ql-align-left img {
     display: inline-block !important;
 }
 
