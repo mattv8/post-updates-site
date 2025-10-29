@@ -707,8 +707,9 @@ function sanitizeHtml($html)
 
     $prevUseInternalErrors = libxml_use_internal_errors(true);
     $dom = new DOMDocument('1.0', 'UTF-8');
-    // Load HTML fragment
-    $dom->loadHTML(mb_convert_encoding($clean, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    // Wrap in a div to properly handle HTML fragments
+    $wrappedHtml = '<div>' . mb_convert_encoding($clean, 'HTML-ENTITIES', 'UTF-8') . '</div>';
+    $dom->loadHTML($wrappedHtml, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
     // Allowed alignment classes from Quill
     $allowedClasses = ['ql-align-left', 'ql-align-center', 'ql-align-right', 'ql-align-justify'];
@@ -806,7 +807,18 @@ function sanitizeHtml($html)
         }
     }
 
-    $clean = $dom->saveHTML();
+    // Extract the content from the wrapper div
+    $body = $dom->getElementsByTagName('div')->item(0);
+    $clean = '';
+    if ($body) {
+        foreach ($body->childNodes as $child) {
+            $clean .= $dom->saveHTML($child);
+        }
+    } else {
+        // Fallback if wrapper not found
+        $clean = $dom->saveHTML();
+    }
+
     libxml_clear_errors();
     libxml_use_internal_errors($prevUseInternalErrors);
     return $clean;
@@ -1048,7 +1060,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','ai_system_prompt','hero_height'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1056,10 +1068,15 @@ function updateSettings($db_conn, $data)
     foreach ($fields as $key) {
         if (array_key_exists($key, $data)) {
             $sets[] = "$key = ?";
-            $params[] = $key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' ? sanitizeHtml($data[$key]) : $data[$key];
-            // hero_media_id and show_* fields are integers
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'hero_height') { $types .= 'i'; }
-            elseif ($key === 'hero_overlay_opacity') { $types .= 'd'; }
+            // Sanitize HTML fields
+            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html') {
+                $params[] = sanitizeHtml($data[$key]);
+            } else {
+                $params[] = $data[$key];
+            }
+            // Set parameter types
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id') { $types .= 'i'; }
+            elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity') { $types .= 'd'; }
             else { $types .= 's'; }
         }
     }

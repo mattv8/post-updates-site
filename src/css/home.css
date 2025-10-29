@@ -518,3 +518,87 @@
     margin-left: -5px;
   }
 }
+
+/* Footer Styles */
+footer {
+  background-color: #f8f9fa;
+  margin-top: 3rem;
+}
+
+footer h5 {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #212529;
+}
+
+footer p {
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+footer a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* Footer with background image */
+footer[style*="background"] h1,
+footer[style*="background"] h2,
+footer[style*="background"] h3,
+footer[style*="background"] h4,
+footer[style*="background"] h5,
+footer[style*="background"] h6,
+footer[style*="background"] p,
+footer[style*="background"] li,
+footer[style*="background"] a {
+  color: white !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Footer edit button */
+footer .btn-edit-section {
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+/* Footer content formatting */
+footer ul,
+footer ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+footer li {
+  margin-bottom: 0.25rem;
+  color: #6c757d;
+}
+
+footer blockquote {
+  border-left: 3px solid #0d6efd;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Single column layout - centered */
+footer .col-12.text-center h5,
+footer .col-12.text-center p,
+footer .col-12.text-center ul,
+footer .col-12.text-center ol {
+  text-align: center;
+}
+
+footer .col-12.text-center ul,
+footer .col-12.text-center ol {
+  list-style-position: inside;
+}
+
+/* Footer preview hover effect */
+.footer-preview-wrapper:hover .btn-remove-footer-bg {
+  opacity: 1 !important;
+}

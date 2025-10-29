@@ -77,6 +77,9 @@
 
   {include file='templates/partials/post_overlay.tpl'}
 
+  {* Footer Section *}
+  {include file='templates/partials/footer_section.tpl'}
+
   {* Create Post Modal - only shown when authenticated *}
   {if $is_authenticated|default:false}
     {include file='templates/modals/create_post.tpl'}
@@ -122,6 +125,7 @@
     {include file='templates/modals/edit_hero.tpl'}
     {include file='templates/modals/edit_about.tpl'}
     {include file='templates/modals/edit_donation.tpl'}
+    {include file='templates/modals/edit_footer.tpl'}
 
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
 

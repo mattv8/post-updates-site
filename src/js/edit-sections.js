@@ -14,11 +14,15 @@
   let heroEditor = null;
   let aboutEditor = null;
   let donationEditor = null;
+  let footerCol1Editor = null;
+  let footerCol2Editor = null;
 
   // Auto-save intervals
   let heroAutoSave = null;
   let aboutAutoSave = null;
   let donationAutoSave = null;
+  let footerCol1AutoSave = null;
+  let footerCol2AutoSave = null;
 
   // Helper function to setup auto-save
   function setupAutoSave(editor, fieldName, statusElementId, interval = 10000) {
@@ -192,6 +196,113 @@
 
     if (donationEditor) {
       window.setQuillHTML(donationEditor, settings.donate_text_html || '');
+    }
+  }
+
+  function populateFooterForm(settings) {
+    const modal = document.getElementById('editFooterModal');
+    if (!modal || !settings) return;
+
+    modal.querySelector('#modal_show_footer').checked = settings.show_footer == 1;
+    modal.querySelector('#modal_footer_media_id').value = settings.footer_media_id || '';
+
+    // Set overlay opacity slider and display value
+    const opacitySlider = modal.querySelector('#modal_footer_overlay_opacity');
+    const opacityValue = modal.querySelector('.footer-overlay-opacity-value');
+    const opacityToSet = parseFloat(settings.footer_overlay_opacity) || 0.5;
+    if (opacitySlider) {
+      opacitySlider.value = opacityToSet;
+      if (opacityValue) {
+        opacityValue.textContent = opacityToSet.toFixed(2);
+      }
+    }
+
+    // Set overlay color picker and hex input
+    const colorPicker = modal.querySelector('#modal_footer_overlay_color');
+    const colorHex = modal.querySelector('#modal_footer_overlay_color_hex');
+    const colorToSet = settings.footer_overlay_color || '#000000';
+    if (colorPicker) colorPicker.value = colorToSet;
+    if (colorHex) colorHex.value = colorToSet;
+
+    // Set layout radio buttons
+    const layoutSingle = modal.querySelector('#modal_footer_layout_single');
+    const layoutDouble = modal.querySelector('#modal_footer_layout_double');
+    if (settings.footer_layout === 'single') {
+      layoutSingle.checked = true;
+    } else {
+      layoutDouble.checked = true;
+    }
+
+    // Update column 2 visibility based on layout
+    updateFooterColumn2Visibility();
+
+    if (footerCol1Editor) {
+      window.setQuillHTML(footerCol1Editor, settings.footer_column1_html || '');
+    }
+
+    if (footerCol2Editor) {
+      window.setQuillHTML(footerCol2Editor, settings.footer_column2_html || '');
+    }
+
+    // Show footer preview if media selected
+    if (settings.footer_media_id) {
+      loadFooterPreview(settings.footer_media_id, modal.querySelector('.footer-preview-container'));
+      // Update preview after a short delay to ensure elements are rendered
+      setTimeout(() => updateFooterPreview(), 100);
+    }
+  }
+
+  // Function to update footer preview
+  function updateFooterPreview() {
+    const modal = document.getElementById('editFooterModal');
+    if (!modal) return;
+
+    const overlayDiv = modal.querySelector('.footer-overlay');
+    const opacitySlider = modal.querySelector('#modal_footer_overlay_opacity');
+    const colorPicker = modal.querySelector('#modal_footer_overlay_color');
+
+    if (!overlayDiv) return;
+
+    // Update overlay color and opacity
+    const opacity = parseFloat(opacitySlider?.value || 0.5);
+    const color = colorPicker?.value || '#000000';
+
+    overlayDiv.style.backgroundColor = color;
+    overlayDiv.style.opacity = opacity;
+  }
+
+  // Load footer background preview
+  async function loadFooterPreview(mediaId, previewContainer) {
+    const previewImg = previewContainer.querySelector('img');
+
+    if (mediaId) {
+      try {
+        const data = await SettingsManager.api(`/api/admin/media.php?id=${mediaId}`);
+        if (data.success && data.data) {
+          const variants = JSON.parse(data.data.variants_json || '{}');
+          const previewUrl = variants['800']?.jpg || '/storage/uploads/originals/' + data.data.filename;
+          previewImg.src = previewUrl;
+          previewImg.alt = data.data.alt_text || '';
+          previewContainer.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading footer preview:', error);
+      }
+    } else {
+      previewContainer.style.display = 'none';
+    }
+  }
+
+  // Helper function to show/hide column 2 based on layout selection
+  function updateFooterColumn2Visibility() {
+    const modal = document.getElementById('editFooterModal');
+    if (!modal) return;
+
+    const layoutSingle = modal.querySelector('#modal_footer_layout_single');
+    const col2Container = modal.querySelector('#modal_footer_column2_container');
+
+    if (col2Container) {
+      col2Container.style.display = layoutSingle.checked ? 'none' : 'block';
     }
   }
 
@@ -597,6 +708,216 @@
         console.error('Error saving donation section:', error);
         if (statusElement) {
           statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
+        alert('An error occurred while saving');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      }
+    });
+  }
+
+  // Initialize Footer Modal
+  const footerModal = document.getElementById('editFooterModal');
+  if (footerModal) {
+    // Load media options on page load
+    const footerMediaSelect = footerModal.querySelector('#modal_footer_media_id');
+    if (footerMediaSelect) {
+      SettingsManager.loadMediaOptions(footerMediaSelect);
+    }
+
+    // Layout radio button handlers
+    footerModal.querySelector('#modal_footer_layout_single')?.addEventListener('change', updateFooterColumn2Visibility);
+    footerModal.querySelector('#modal_footer_layout_double')?.addEventListener('change', updateFooterColumn2Visibility);
+
+    // Overlay opacity slider handler
+    const opacitySlider = footerModal.querySelector('#modal_footer_overlay_opacity');
+    const opacityValue = footerModal.querySelector('.footer-overlay-opacity-value');
+    if (opacitySlider && opacityValue) {
+      opacitySlider.addEventListener('input', function() {
+        const opacity = parseFloat(this.value);
+        opacityValue.textContent = opacity.toFixed(2);
+        updateFooterPreview();
+      });
+    }
+
+    // Color picker handlers - sync between color input and hex input
+    const colorPicker = footerModal.querySelector('#modal_footer_overlay_color');
+    const colorHex = footerModal.querySelector('#modal_footer_overlay_color_hex');
+    if (colorPicker && colorHex) {
+      colorPicker.addEventListener('input', function() {
+        colorHex.value = this.value;
+        updateFooterPreview();
+      });
+
+      colorHex.addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+          colorPicker.value = this.value;
+          updateFooterPreview();
+        }
+      });
+    }
+
+    // Handle footer media selection change
+    footerModal.querySelector('#modal_footer_media_id')?.addEventListener('change', async function() {
+      const previewContainer = footerModal.querySelector('.footer-preview-container');
+      await loadFooterPreview(this.value, previewContainer);
+      setTimeout(() => updateFooterPreview(), 100);
+    });
+
+    // Handle remove footer background
+    footerModal.querySelector('.btn-remove-footer-bg')?.addEventListener('click', function() {
+      footerModal.querySelector('#modal_footer_media_id').value = '';
+      const previewContainer = footerModal.querySelector('.footer-preview-container');
+      if (previewContainer) previewContainer.style.display = 'none';
+    });
+
+    footerModal.addEventListener('shown.bs.modal', async function() {
+      const editorContainer1 = footerModal.querySelector('#modal_footer_column1_html');
+      const editorContainer2 = footerModal.querySelector('#modal_footer_column2_html');
+
+      // Initialize editors only once
+      if (editorContainer1 && !footerCol1Editor) {
+        try {
+          footerCol1Editor = window.initQuillEditor(editorContainer1, {
+            placeholder: 'Enter footer column 1 content...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
+          });
+
+          // Setup auto-save
+          footerCol1AutoSave = setupAutoSave(footerCol1Editor, 'footer_column1_html', 'modal_footer-col1-autosave-status', 10000);
+        } catch (error) {
+          console.error('Footer column 1 editor initialization error:', error);
+        }
+      }
+
+      if (editorContainer2 && !footerCol2Editor) {
+        try {
+          footerCol2Editor = window.initQuillEditor(editorContainer2, {
+            placeholder: 'Enter footer column 2 content...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
+          });
+
+          // Setup auto-save
+          footerCol2AutoSave = setupAutoSave(footerCol2Editor, 'footer_column2_html', 'modal_footer-col2-autosave-status', 10000);
+        } catch (error) {
+          console.error('Footer column 2 editor initialization error:', error);
+        }
+      }
+
+      // Populate form with data from window (set by Smarty)
+      if (window.footerModalSettings) {
+        populateFooterForm(window.footerModalSettings);
+      }
+
+      // Hide loading, show form, enable save button
+      const loadingDiv = footerModal.querySelector('.modal-loading');
+      const form = footerModal.querySelector('#footerFormModal');
+      const saveBtn = document.getElementById('saveFooterModal');
+
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (form) form.style.display = 'block';
+      if (saveBtn) saveBtn.disabled = false;
+    });
+
+    // Clean up when hidden
+    footerModal.addEventListener('hidden.bs.modal', function() {
+      if (footerCol1AutoSave) {
+        clearInterval(footerCol1AutoSave);
+        footerCol1AutoSave = null;
+      }
+
+      if (footerCol2AutoSave) {
+        clearInterval(footerCol2AutoSave);
+        footerCol2AutoSave = null;
+      }
+
+      // Reset loading state for next open
+      const loadingDiv = footerModal.querySelector('.modal-loading');
+      const form = footerModal.querySelector('#footerFormModal');
+      const saveBtn = document.getElementById('saveFooterModal');
+
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
+    });
+
+    // Save footer settings
+    document.getElementById('saveFooterModal')?.addEventListener('click', async function() {
+      const btn = this;
+      const statusElement1 = document.getElementById('modal_footer-col1-autosave-status');
+      const statusElement2 = document.getElementById('modal_footer-col2-autosave-status');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      if (statusElement1) {
+        statusElement1.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
+      if (statusElement2) {
+        statusElement2.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
+
+      try {
+        const layoutSingle = footerModal.querySelector('#modal_footer_layout_single');
+        const payload = {
+          show_footer: footerModal.querySelector('#modal_show_footer').checked ? 1 : 0,
+          footer_layout: layoutSingle.checked ? 'single' : 'double',
+          footer_media_id: footerModal.querySelector('#modal_footer_media_id').value || null,
+          footer_overlay_opacity: parseFloat(footerModal.querySelector('#modal_footer_overlay_opacity').value),
+          footer_overlay_color: footerModal.querySelector('#modal_footer_overlay_color').value,
+          footer_column1_html: footerCol1Editor ? window.getQuillHTML(footerCol1Editor) : footerModal.querySelector('#modal_footer_column1_html').value,
+          footer_column2_html: footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : footerModal.querySelector('#modal_footer_column2_html').value,
+        };
+
+        const result = await SettingsManager.saveSettings(payload);
+
+        if (result.success) {
+          const timestamp = new Date().toLocaleTimeString();
+          if (statusElement1) {
+            statusElement1.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
+          if (statusElement2) {
+            statusElement2.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
+
+          // Close the modal
+          const modalInstance = bootstrap.Modal.getInstance(footerModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh the page to show updated footer
+          window.location.reload();
+        } else {
+          if (statusElement1) {
+            statusElement1.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
+          if (statusElement2) {
+            statusElement2.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
+          alert('Error: ' + (result.error || 'Failed to save'));
+        }
+      } catch (error) {
+        console.error('Error saving footer settings:', error);
+        if (statusElement1) {
+          statusElement1.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
+        if (statusElement2) {
+          statusElement2.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
         }
         alert('An error occurred while saving');
       } finally {
