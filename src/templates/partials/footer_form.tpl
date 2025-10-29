@@ -16,45 +16,19 @@
   <select class="form-select" id="{$prefix}footer_media_id">
     <option value="">None</option>
   </select>
-  <div class="footer-preview-container mt-3" style="display: none;">
-    <div class="row g-3 align-items-start">
-      <div class="col-md-7">
-        <div class="footer-preview-wrapper position-relative" style="overflow: hidden; border-radius: 0.375rem;">
-          <div class="footer-preview" style="display: block; height: 200px; position: relative; overflow: hidden;">
-            <img src="" alt="Footer preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 0;" />
-            <div class="footer-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; opacity: 0.5; pointer-events: none; z-index: 1;"></div>
-            <button type="button" class="btn btn-danger btn-sm btn-remove-footer-bg position-absolute top-0 end-0 m-2"
-                    style="z-index: 10; opacity: 0; transition: opacity 0.2s;" title="Remove footer background">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-          <div class="text-muted small mt-1 text-center">Background Preview</div>
-        </div>
-      </div>
-      <div class="col-md-5">
-        <div class="mb-3">
-          <label for="{$prefix}footer_overlay_opacity" class="form-label fw-semibold">
-            Overlay Opacity: <span class="footer-overlay-opacity-value text-primary">0.50</span>
-          </label>
-          <input type="range" class="form-range" id="{$prefix}footer_overlay_opacity" min="0" max="1" step="0.05" value="0.5">
-          <div class="d-flex justify-content-between mt-1">
-            <small class="text-muted">0% (transparent)</small>
-            <small class="text-muted">100% (solid)</small>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label for="{$prefix}footer_overlay_color" class="form-label fw-semibold">
-            Overlay Color
-          </label>
-          <div class="d-flex align-items-center gap-2">
-            <input type="color" class="form-control form-control-color" id="{$prefix}footer_overlay_color" value="#000000" title="Choose overlay color">
-            <input type="text" class="form-control form-control-sm" id="{$prefix}footer_overlay_color_hex" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" style="width: 100px;">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  {include
+    file='templates/partials/bg_preview.tpl'
+    idPrefix='footer'
+    showHeightControl=true
+    showOverlayControls=true
+    showTextPreview=true
+    previewText='<h3>Footer Text</h3><p>Content will appear here...</p>'
+    minHeight=10
+    maxHeight=60
+    defaultHeight=30
+    previewLabel='Footer Background Preview'
+    removeButtonClass='btn-remove-footer-bg'
+  }
 </div>
 
 <hr class="mb-3" />

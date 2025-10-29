@@ -204,25 +204,6 @@
     if (!modal || !settings) return;
 
     modal.querySelector('#modal_show_footer').checked = settings.show_footer == 1;
-    modal.querySelector('#modal_footer_media_id').value = settings.footer_media_id || '';
-
-    // Set overlay opacity slider and display value
-    const opacitySlider = modal.querySelector('#modal_footer_overlay_opacity');
-    const opacityValue = modal.querySelector('.footer-overlay-opacity-value');
-    const opacityToSet = parseFloat(settings.footer_overlay_opacity) || 0.5;
-    if (opacitySlider) {
-      opacitySlider.value = opacityToSet;
-      if (opacityValue) {
-        opacityValue.textContent = opacityToSet.toFixed(2);
-      }
-    }
-
-    // Set overlay color picker and hex input
-    const colorPicker = modal.querySelector('#modal_footer_overlay_color');
-    const colorHex = modal.querySelector('#modal_footer_overlay_color_hex');
-    const colorToSet = settings.footer_overlay_color || '#000000';
-    if (colorPicker) colorPicker.value = colorToSet;
-    if (colorHex) colorHex.value = colorToSet;
 
     // Set layout radio buttons
     const layoutSingle = modal.querySelector('#modal_footer_layout_single');
@@ -236,6 +217,7 @@
     // Update column 2 visibility based on layout
     updateFooterColumn2Visibility();
 
+    // Populate editors
     if (footerCol1Editor) {
       window.setQuillHTML(footerCol1Editor, settings.footer_column1_html || '');
     }
@@ -244,53 +226,44 @@
       window.setQuillHTML(footerCol2Editor, settings.footer_column2_html || '');
     }
 
-    // Show footer preview if media selected
-    if (settings.footer_media_id) {
-      loadFooterPreview(settings.footer_media_id, modal.querySelector('.footer-preview-container'));
-      // Update preview after a short delay to ensure elements are rendered
-      setTimeout(() => updateFooterPreview(), 100);
+    // Use BackgroundPreviewManager to populate preview
+    if (window.footerPreviewManager) {
+      window.footerPreviewManager.populate(settings);
+      // Update text preview with current footer content
+      updateFooterTextPreview();
     }
   }
 
-  // Function to update footer preview
-  function updateFooterPreview() {
+  // Update footer text preview with editor content
+  function updateFooterTextPreview() {
+    if (!window.footerPreviewManager || !footerCol1Editor) return;
+
     const modal = document.getElementById('editFooterModal');
-    if (!modal) return;
+    const layoutSingle = modal.querySelector('#modal_footer_layout_single');
 
-    const overlayDiv = modal.querySelector('.footer-overlay');
-    const opacitySlider = modal.querySelector('#modal_footer_overlay_opacity');
-    const colorPicker = modal.querySelector('#modal_footer_overlay_color');
-
-    if (!overlayDiv) return;
-
-    // Update overlay color and opacity
-    const opacity = parseFloat(opacitySlider?.value || 0.5);
-    const color = colorPicker?.value || '#000000';
-
-    overlayDiv.style.backgroundColor = color;
-    overlayDiv.style.opacity = opacity;
+    if (layoutSingle && layoutSingle.checked) {
+      // Single column layout
+      window.footerPreviewManager.setLayout('single');
+      const col1HTML = window.getQuillHTML(footerCol1Editor);
+      window.footerPreviewManager.updateTextContent(col1HTML);
+    } else {
+      // Two column layout
+      window.footerPreviewManager.setLayout('double');
+      const col1HTML = window.getQuillHTML(footerCol1Editor);
+      const col2HTML = footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : '';
+      window.footerPreviewManager.updateColumn1(col1HTML);
+      window.footerPreviewManager.updateColumn2(col2HTML);
+    }
+  }  // Function to update footer preview (overlay/color)
+  function updateFooterPreview() {
+    // This is now handled by BackgroundPreviewManager
+    // Keeping function for compatibility, but it's a no-op
   }
 
-  // Load footer background preview
+  // Load footer background preview (legacy function for compatibility)
   async function loadFooterPreview(mediaId, previewContainer) {
-    const previewImg = previewContainer.querySelector('img');
-
-    if (mediaId) {
-      try {
-        const data = await SettingsManager.api(`/api/admin/media.php?id=${mediaId}`);
-        if (data.success && data.data) {
-          const variants = JSON.parse(data.data.variants_json || '{}');
-          const previewUrl = variants['800']?.jpg || '/storage/uploads/originals/' + data.data.filename;
-          previewImg.src = previewUrl;
-          previewImg.alt = data.data.alt_text || '';
-          previewContainer.style.display = 'block';
-        }
-      } catch (error) {
-        console.error('Error loading footer preview:', error);
-      }
-    } else {
-      previewContainer.style.display = 'none';
-    }
+    // This is now handled by BackgroundPreviewManager
+    // Keeping function for compatibility
   }
 
   // Helper function to show/hide column 2 based on layout selection
@@ -727,54 +700,27 @@
     }
 
     // Layout radio button handlers
-    footerModal.querySelector('#modal_footer_layout_single')?.addEventListener('change', updateFooterColumn2Visibility);
-    footerModal.querySelector('#modal_footer_layout_double')?.addEventListener('change', updateFooterColumn2Visibility);
-
-    // Overlay opacity slider handler
-    const opacitySlider = footerModal.querySelector('#modal_footer_overlay_opacity');
-    const opacityValue = footerModal.querySelector('.footer-overlay-opacity-value');
-    if (opacitySlider && opacityValue) {
-      opacitySlider.addEventListener('input', function() {
-        const opacity = parseFloat(this.value);
-        opacityValue.textContent = opacity.toFixed(2);
-        updateFooterPreview();
-      });
-    }
-
-    // Color picker handlers - sync between color input and hex input
-    const colorPicker = footerModal.querySelector('#modal_footer_overlay_color');
-    const colorHex = footerModal.querySelector('#modal_footer_overlay_color_hex');
-    if (colorPicker && colorHex) {
-      colorPicker.addEventListener('input', function() {
-        colorHex.value = this.value;
-        updateFooterPreview();
-      });
-
-      colorHex.addEventListener('input', function() {
-        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
-          colorPicker.value = this.value;
-          updateFooterPreview();
-        }
-      });
-    }
-
-    // Handle footer media selection change
-    footerModal.querySelector('#modal_footer_media_id')?.addEventListener('change', async function() {
-      const previewContainer = footerModal.querySelector('.footer-preview-container');
-      await loadFooterPreview(this.value, previewContainer);
-      setTimeout(() => updateFooterPreview(), 100);
+    footerModal.querySelector('#modal_footer_layout_single')?.addEventListener('change', () => {
+      updateFooterColumn2Visibility();
+      updateFooterTextPreview();
+    });
+    footerModal.querySelector('#modal_footer_layout_double')?.addEventListener('change', () => {
+      updateFooterColumn2Visibility();
+      updateFooterTextPreview();
     });
 
-    // Handle remove footer background
-    footerModal.querySelector('.btn-remove-footer-bg')?.addEventListener('click', function() {
-      footerModal.querySelector('#modal_footer_media_id').value = '';
-      const previewContainer = footerModal.querySelector('.footer-preview-container');
-      if (previewContainer) previewContainer.style.display = 'none';
-    });
+    // Note: Overlay opacity, color, media selection, and remove background
+    // are now handled by BackgroundPreviewManager
 
     footerModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer1 = footerModal.querySelector('#modal_footer_column1_html');
       const editorContainer2 = footerModal.querySelector('#modal_footer_column2_html');
+
+      // Initialize BackgroundPreviewManager for footer
+      if (!window.footerPreviewManager && window.BackgroundPreviewManager) {
+        window.footerPreviewManager = new window.BackgroundPreviewManager('footer');
+        window.footerPreviewManager.init();
+      }
 
       // Initialize editors only once
       if (editorContainer1 && !footerCol1Editor) {
@@ -791,8 +737,13 @@
             ]
           });
 
-          // Setup auto-save
+          // Setup auto-save and text preview updates
           footerCol1AutoSave = setupAutoSave(footerCol1Editor, 'footer_column1_html', 'modal_footer-col1-autosave-status', 10000);
+
+          // Update text preview when editor content changes
+          footerCol1Editor.on('text-change', () => {
+            updateFooterTextPreview();
+          });
         } catch (error) {
           console.error('Footer column 1 editor initialization error:', error);
         }
@@ -812,8 +763,13 @@
             ]
           });
 
-          // Setup auto-save
+          // Setup auto-save and text preview updates
           footerCol2AutoSave = setupAutoSave(footerCol2Editor, 'footer_column2_html', 'modal_footer-col2-autosave-status', 10000);
+
+          // Update text preview when editor content changes
+          footerCol2Editor.on('text-change', () => {
+            updateFooterTextPreview();
+          });
         } catch (error) {
           console.error('Footer column 2 editor initialization error:', error);
         }
@@ -877,8 +833,9 @@
           show_footer: footerModal.querySelector('#modal_show_footer').checked ? 1 : 0,
           footer_layout: layoutSingle.checked ? 'single' : 'double',
           footer_media_id: footerModal.querySelector('#modal_footer_media_id').value || null,
-          footer_overlay_opacity: parseFloat(footerModal.querySelector('#modal_footer_overlay_opacity').value),
-          footer_overlay_color: footerModal.querySelector('#modal_footer_overlay_color').value,
+          footer_height: parseInt(document.getElementById('footer_height')?.value) || 30,
+          footer_overlay_opacity: parseFloat(document.getElementById('footer_overlay_opacity')?.value || 0.5),
+          footer_overlay_color: document.getElementById('footer_overlay_color')?.value || '#000000',
           footer_column1_html: footerCol1Editor ? window.getQuillHTML(footerCol1Editor) : footerModal.querySelector('#modal_footer_column1_html').value,
           footer_column2_html: footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : footerModal.querySelector('#modal_footer_column2_html').value,
         };

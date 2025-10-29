@@ -20,5 +20,8 @@
 {* Settings Manager - shared utilities *}
 <script src="/js/settings-manager.js"></script>
 
+{* Background Preview Manager - reusable component *}
+<script src="/js/bg-preview-manager.js"></script>
+
 {* Validation utilities - included globally *}
 <script src="/js/validation-utils.js"></script>

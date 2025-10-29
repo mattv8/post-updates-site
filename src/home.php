@@ -21,6 +21,9 @@ if (!isset($settings['footer_layout'])) {
 if (!isset($settings['footer_media_id'])) {
     $settings['footer_media_id'] = null;
 }
+if (!isset($settings['footer_height'])) {
+    $settings['footer_height'] = 30;
+}
 if (!isset($settings['footer_overlay_opacity'])) {
     $settings['footer_overlay_opacity'] = 0.50;
 }
