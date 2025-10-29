@@ -12,9 +12,9 @@
     <div class="footer-background-wrapper" style="display: block; height: 0; padding-bottom: {$settings.footer_height|default:30}%; position: relative; overflow: hidden;">
       <picture style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
         {if $footer_webp}
-          <source type="image/webp" srcset="{$footer_webp}" />
+          <source type="image/webp" srcset="{$footer_webp}" sizes="100vw" />
         {/if}
-        <img src="{$footer_jpg}" alt="Footer background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;" />
+        <img srcset="{$footer_jpg}" sizes="100vw" alt="Footer background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;" />
       </picture>
       {if $settings.footer_overlay_opacity}
         <div class="footer-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: {$settings.footer_overlay_color|default:'#000'}; opacity: {$settings.footer_overlay_opacity|default:'0.5'}; z-index: 1;"></div>
