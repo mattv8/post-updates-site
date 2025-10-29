@@ -193,6 +193,7 @@
     if (!modal || !settings) return;
 
     modal.querySelector('#modal_show_donation').checked = settings.show_donation == 1;
+    modal.querySelector('#modal_show_donate_button').checked = settings.show_donate_button == 1;
 
     if (donationEditor) {
       window.setQuillHTML(donationEditor, settings.donate_text_html || '');
@@ -568,6 +569,15 @@
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
           }
+
+          // Close the modal
+          const modalInstance = bootstrap.Modal.getInstance(aboutModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh the page to show updated about section
+          window.location.reload();
         } else {
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
@@ -647,6 +657,30 @@
       if (saveBtn) saveBtn.disabled = true;
     });
 
+    // Immediate save for show donate button toggle
+    const showDonateButtonToggle = donationModal.querySelector('#modal_show_donate_button');
+    if (showDonateButtonToggle) {
+      showDonateButtonToggle.addEventListener('change', async function() {
+        const payload = { show_donate_button: this.checked ? 1 : 0 };
+        try {
+          const result = await SettingsManager.saveSettings(payload);
+          if (result.success) {
+            console.log('Donate button visibility updated:', this.checked);
+          } else {
+            console.error('Error updating donate button visibility:', result.error);
+            // Revert toggle on error
+            this.checked = !this.checked;
+            alert('Error: ' + (result.error || 'Failed to update donate button visibility'));
+          }
+        } catch (error) {
+          console.error('Error updating donate button visibility:', error);
+          // Revert toggle on error
+          this.checked = !this.checked;
+          alert('Error updating donate button visibility');
+        }
+      });
+    }
+
     // Save donation settings
     document.getElementById('saveDonationModal')?.addEventListener('click', async function() {
       const btn = this;
@@ -661,6 +695,7 @@
       try {
         const payload = {
           show_donation: donationModal.querySelector('#modal_show_donation').checked ? 1 : 0,
+          show_donate_button: donationModal.querySelector('#modal_show_donate_button').checked ? 1 : 0,
           donate_text_html: donationEditor ? window.getQuillHTML(donationEditor) : donationModal.querySelector('#modal_donate_text_html').value,
         };
 
@@ -671,6 +706,15 @@
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
           }
+
+          // Close the modal
+          const modalInstance = bootstrap.Modal.getInstance(donationModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh the page to show updated donation section
+          window.location.reload();
         } else {
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';

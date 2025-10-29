@@ -208,6 +208,12 @@
       document.getElementById('show_about').checked = j.data.show_about == 1;
       document.getElementById('show_donation').checked = j.data.show_donation == 1;
 
+      // Load donate button toggle
+      const showDonateButtonCheckbox = document.getElementById('show_donate_button');
+      if (showDonateButtonCheckbox) {
+        showDonateButtonCheckbox.checked = j.data.show_donate_button == 1;
+      }
+
       // Load hero media ID
       const heroMediaId = j.data.hero_media_id || '';
       const heroMediaSelect = document.getElementById('hero_media_id');
@@ -290,6 +296,7 @@
     e.preventDefault();
     const payload = {
       show_donation: document.getElementById('show_donation').checked ? 1 : 0,
+      show_donate_button: document.getElementById('show_donate_button')?.checked ? 1 : 0,
       donate_text_html: donateEditor ? window.getQuillHTML(donateEditor) : document.getElementById('donate_text_html').value,
     };
     api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
@@ -387,6 +394,26 @@
           console.log('Donation visibility updated:', this.checked);
         } else {
           console.error('Error updating donation visibility:', j.error);
+          // Revert checkbox on error
+          this.checked = !this.checked;
+        }
+      });
+    });
+  }
+
+  const showDonateButtonCheckbox = document.getElementById('show_donate_button');
+  if (showDonateButtonCheckbox) {
+    showDonateButtonCheckbox.addEventListener('change', function() {
+      const payload = { show_donate_button: this.checked ? 1 : 0 };
+      api('/api/admin/settings.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(j => {
+        if (j.success) {
+          console.log('Donate button visibility updated:', this.checked);
+        } else {
+          console.error('Error updating donate button visibility:', j.error);
           // Revert checkbox on error
           this.checked = !this.checked;
         }

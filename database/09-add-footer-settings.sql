@@ -6,11 +6,21 @@
 -- Add footer settings columns to settings table (only if they don't exist)
 SET @dbname = DATABASE();
 
+-- Check and add show_donate_button
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = 'settings' AND COLUMN_NAME = 'show_donate_button');
+SET @query = IF(@col_exists = 0,
+  'ALTER TABLE `settings` ADD COLUMN `show_donate_button` tinyint(1) DEFAULT 1 COMMENT \'Show/hide donate button in donation section\' AFTER `show_donation`',
+  'SELECT "Column show_donate_button already exists" AS msg');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Check and add show_footer
 SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
   WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = 'settings' AND COLUMN_NAME = 'show_footer');
 SET @query = IF(@col_exists = 0,
-  'ALTER TABLE `settings` ADD COLUMN `show_footer` tinyint(1) DEFAULT 1 COMMENT \'Show/hide footer section\' AFTER `show_donation`',
+  'ALTER TABLE `settings` ADD COLUMN `show_footer` tinyint(1) DEFAULT 1 COMMENT \'Show/hide footer section\' AFTER `show_donate_button`',
   'SELECT "Column show_footer already exists" AS msg');
 PREPARE stmt FROM @query;
 EXECUTE stmt;
@@ -99,6 +109,7 @@ DEALLOCATE PREPARE stmt;
 -- Update existing settings row with default footer content (only if columns are empty)
 UPDATE `settings`
 SET
+  `show_donate_button` = COALESCE(`show_donate_button`, 1),
   `show_footer` = COALESCE(`show_footer`, 1),
   `footer_layout` = COALESCE(`footer_layout`, 'double'),
   `footer_height` = COALESCE(`footer_height`, 30),

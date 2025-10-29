@@ -7,6 +7,12 @@
     <strong>Show Donation section in sidebar</strong>
   </label>
 </div>
+<div class="mb-3 form-check form-switch">
+  <input class="form-check-input" type="checkbox" id="{$prefix}show_donate_button" />
+  <label class="form-check-label" for="{$prefix}show_donate_button">
+    <strong>Show Donate button</strong>
+  </label>
+</div>
 <hr class="mb-3" />
 <div class="mb-3">
   <div class="d-flex justify-content-between align-items-center mb-2">
