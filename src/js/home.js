@@ -678,6 +678,24 @@ document.addEventListener('DOMContentLoaded', function() {
       let editingPostId = null;
       let postBodyEditor = null;
       let galleryMediaIds = [];
+      let postAutoSave = null;
+
+      // Helper function to setup auto-save for posts
+      function setupPostAutoSave(editor, postId) {
+
+        if (!window.setupAutoSave) {
+          console.error('window.setupAutoSave is not defined!');
+          return null;
+        }
+
+        return window.setupAutoSave(editor, {
+          saveUrl: `/api/admin/posts.php?id=${postId}`,
+          method: 'PUT',
+          buildPayload: (content) => ({ body_html: content }),
+          statusElementId: 'post-autosave-status-home-edit',
+          fieldName: `post ${postId}`
+        });
+      }
 
       // Helper API function
       const api = (url, opts={}) => {
@@ -890,6 +908,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (postBodyEditor) {
               window.setQuillHTML(postBodyEditor, post.body_html || '');
+
+              // Set up auto-save for this post (only when editing existing post)
+              if (postAutoSave) {
+                clearInterval(postAutoSave);
+              }
+              postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
             } else {
               postEditorContainer.querySelector('.post-body').value = post.body_html || '';
             }
@@ -1507,6 +1531,12 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.addEventListener('hidden.bs.modal', function() {
       editingPostId = null;
       galleryMediaIds = [];
+
+      // Clear post auto-save interval
+      if (postAutoSave) {
+        clearInterval(postAutoSave);
+        postAutoSave = null;
+      }
     });
   })(); // End of IIFE
   } // End of if (postEditorModal)

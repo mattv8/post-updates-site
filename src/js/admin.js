@@ -190,11 +190,9 @@
   let donationInstructionsAutoSave = null;
   let postAutoSave = null;
 
-  // Auto-save helper function
-  function setupAutoSave(editor, fieldName, interval = 10000) {
-    let lastSavedContent = '';
-    let statusElementId = '';
-    let initialized = false;
+  // Helper function to setup auto-save for settings fields
+  function setupSettingsAutoSave(editor, fieldName) {
+    console.log('setupSettingsAutoSave called for:', fieldName);
 
     // Map field names to status element IDs
     const statusMap = {
@@ -204,142 +202,37 @@
       'donation_instructions_html': 'donation-instructions-autosave-status'
     };
 
-    statusElementId = statusMap[fieldName];
-    const statusElement = document.getElementById(statusElementId);
-
-    // Set initial status
-    if (statusElement) {
-      statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
-      statusElement.className = 'editor-autosave-indicator';
+    if (!window.setupAutoSave) {
+      console.error('window.setupAutoSave is not defined!');
+      return null;
     }
 
-    return setInterval(() => {
-      if (!editor) return;
-
-      const currentContent = window.getQuillHTML(editor);
-
-      // Initialize lastSavedContent on first run
-      if (!initialized) {
-        lastSavedContent = currentContent;
-        initialized = true;
-        return;
-      }
-
-      // Only save if content has changed
-      if (currentContent !== lastSavedContent) {
-        lastSavedContent = currentContent;
-
-        // Update status to "Saving..." with icon
-        if (statusElement) {
-          statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
-          statusElement.className = 'editor-autosave-indicator';
-        }
-
+    return window.setupAutoSave(editor, {
+      saveUrl: '/api/admin/settings.php',
+      buildPayload: (content) => {
         const payload = {};
-        payload[fieldName] = currentContent;
-
-        // Silent save without alert
-        api('/api/admin/settings.php', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        }).then(j => {
-          if (j.success) {
-            const timestamp = new Date().toLocaleTimeString();
-            console.log(`Auto-saved ${fieldName} at ${timestamp}`);
-
-            // Update status to show last saved time (no icon)
-            if (statusElement) {
-              statusElement.innerHTML = `<span class="saved">Last saved: ${timestamp}</span>`;
-              statusElement.className = 'editor-autosave-indicator';
-            }
-          } else {
-            console.error(`Auto-save failed for ${fieldName}:`, j.error);
-            if (statusElement) {
-              statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
-              statusElement.className = 'editor-autosave-indicator';
-            }
-          }
-        }).catch(err => {
-          console.error(`Auto-save error for ${fieldName}:`, err);
-          if (statusElement) {
-            statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
-            statusElement.className = 'editor-autosave-indicator';
-          }
-        });
-      }
-    }, interval);
+        payload[fieldName] = content;
+        return payload;
+      },
+      statusElementId: statusMap[fieldName],
+      fieldName: fieldName
+    });
   }
 
-  // Auto-save helper function for posts (requires post ID)
-  function setupPostAutoSave(editor, postId, interval = 10000) {
-    let lastSavedContent = '';
-    let initialized = false;
-    const statusElement = document.getElementById('post-autosave-status');
-
-    // Set initial status
-    if (statusElement) {
-      statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
-      statusElement.className = 'editor-autosave-indicator';
+  // Helper function to setup auto-save for posts
+  function setupPostAutoSave(editor, postId) {
+    if (!window.setupAutoSave) {
+      console.error('window.setupAutoSave is not defined!');
+      return null;
     }
 
-    return setInterval(() => {
-      if (!editor || !postId) return;
-
-      const currentContent = editor.getData();
-
-      // Initialize lastSavedContent on first run
-      if (!initialized) {
-        lastSavedContent = currentContent;
-        initialized = true;
-        return;
-      }
-
-      // Only save if content has changed
-      if (currentContent !== lastSavedContent) {
-        lastSavedContent = currentContent;
-
-        // Update status to "Saving..." with icon
-        if (statusElement) {
-          statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
-          statusElement.className = 'editor-autosave-indicator';
-        }
-
-        const payload = {
-          body_html: currentContent
-        };
-
-        // Silent save without alert
-        api(`/api/admin/posts.php?id=${postId}`, {
-          method: 'PUT',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        }).then(j => {
-          if (j.success) {
-            const timestamp = new Date().toLocaleTimeString();
-            console.log(`Auto-saved post ${postId} at ${timestamp}`);
-
-            // Update status to show last saved time (no icon)
-            if (statusElement) {
-              statusElement.innerHTML = `<span class="saved">Last saved: ${timestamp}</span>`;
-              statusElement.className = 'editor-autosave-indicator';
-            }
-          } else {
-            console.error(`Auto-save failed for post ${postId}:`, j.error);
-            if (statusElement) {
-              statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
-              statusElement.className = 'editor-autosave-indicator';
-            }
-          }
-        }).catch(err => {
-          console.error(`Auto-save error for post ${postId}:`, err);
-          if (statusElement) {
-            statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
-            statusElement.className = 'editor-autosave-indicator';
-          }
-        });
-      }
-    }, interval);
+    return window.setupAutoSave(editor, {
+      saveUrl: `/api/admin/posts.php?id=${postId}`,
+      method: 'PUT',
+      buildPayload: (content) => ({ body_html: content }),
+      statusElementId: 'post-autosave-status',
+      fieldName: `post ${postId}`
+    });
   }
 
   // Simple helper
@@ -1283,8 +1176,8 @@
         ]
       });
 
-      // Set up auto-save every 10 seconds
-      heroAutoSave = setupAutoSave(heroEditor, 'hero_html', 10000);
+      // Set up auto-save
+      heroAutoSave = setupSettingsAutoSave(heroEditor, 'hero_html');
 
       // Reload settings to populate editor
       loadSettings();
@@ -1305,8 +1198,8 @@
         ]
       });
 
-      // Set up auto-save every 10 seconds
-      bioAutoSave = setupAutoSave(bioEditor, 'site_bio_html', 10000);
+      // Set up auto-save
+      bioAutoSave = setupSettingsAutoSave(bioEditor, 'site_bio_html');
 
       // Reload settings to populate editor
       loadSettings();
@@ -1327,8 +1220,8 @@
         ]
       });
 
-      // Set up auto-save every 10 seconds
-      donateAutoSave = setupAutoSave(donateEditor, 'donate_text_html', 10000);
+      // Set up auto-save
+      donateAutoSave = setupSettingsAutoSave(donateEditor, 'donate_text_html');
 
       // Reload settings to populate editor
       loadSettings();
@@ -1349,8 +1242,8 @@
         ]
       });
 
-      // Set up auto-save every 10 seconds
-      donationInstructionsAutoSave = setupAutoSave(donationInstructionsEditor, 'donation_instructions_html', 10000);
+      // Set up auto-save
+      donationInstructionsAutoSave = setupSettingsAutoSave(donationInstructionsEditor, 'donation_instructions_html');
 
       // Live preview update on instructions change
       donationInstructionsEditor.on('text-change', () => {
@@ -1448,7 +1341,7 @@
               if (postAutoSave) {
                 clearInterval(postAutoSave);
               }
-              postAutoSave = setupPostAutoSave(postBodyEditor, editingId, 10000);
+              postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
             } else {
               postEditorContainer.querySelector('.post-body').value = post.body_html || '';
             }

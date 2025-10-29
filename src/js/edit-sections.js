@@ -26,62 +26,25 @@
   let footerCol1AutoSave = null;
   let footerCol2AutoSave = null;
 
-  // Helper function to setup auto-save
-  function setupAutoSave(editor, fieldName, statusElementId, interval = 10000) {
-    let lastSavedContent = '';
-    let initialized = false;
-    const statusElement = document.getElementById(statusElementId);
+  // Helper function to setup auto-save for modal editors
+  function setupModalAutoSave(editor, fieldName, statusElementId) {
+    console.log('setupModalAutoSave called for:', fieldName);
 
-    if (statusElement) {
-      statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
-      statusElement.className = 'editor-autosave-indicator';
+    if (!window.setupAutoSave) {
+      console.error('window.setupAutoSave is not defined!');
+      return null;
     }
 
-    return setInterval(() => {
-      if (!editor) return;
-
-      const currentContent = window.getQuillHTML(editor);
-
-      if (!initialized) {
-        lastSavedContent = currentContent;
-        initialized = true;
-        return;
-      }
-
-      if (currentContent !== lastSavedContent) {
-        lastSavedContent = currentContent;
-
-        if (statusElement) {
-          statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
-        }
-
+    return window.setupAutoSave(editor, {
+      saveUrl: '/api/admin/settings.php',
+      buildPayload: (content) => {
         const payload = {};
-        payload[fieldName] = currentContent;
-
-        fetch('/api/admin/settings.php', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        }).then(r => r.json()).then(j => {
-          if (j.success) {
-            const timestamp = new Date().toLocaleTimeString();
-            if (statusElement) {
-              statusElement.innerHTML = `<span class="saved">Last saved: ${timestamp}</span>`;
-            }
-          } else {
-            console.error(`Auto-save failed for ${fieldName}:`, j.error);
-            if (statusElement) {
-              statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
-            }
-          }
-        }).catch(err => {
-          console.error(`Auto-save error for ${fieldName}:`, err);
-          if (statusElement) {
-            statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
-          }
-        });
-      }
-    }, interval);
+        payload[fieldName] = content;
+        return payload;
+      },
+      statusElementId: statusElementId,
+      fieldName: `${fieldName} (modal)`
+    });
   }
 
   // Helper to populate form from settings
@@ -695,7 +658,7 @@
           });
 
           // Setup auto-save
-          heroAutoSave = setupAutoSave(heroEditor, 'hero_html', 'modal_hero-autosave-status', 10000);
+          heroAutoSave = setupModalAutoSave(heroEditor, 'hero_html', 'modal_hero-autosave-status');
 
           // Update preview when editor content changes
           heroEditor.on('text-change', function() {
@@ -892,7 +855,7 @@
           });
 
           // Setup auto-save
-          aboutAutoSave = setupAutoSave(aboutEditor, 'site_bio_html', 'modal_about-autosave-status', 10000);
+          aboutAutoSave = setupModalAutoSave(aboutEditor, 'site_bio_html', 'modal_about-autosave-status');
         } catch (error) {
           console.error('About editor initialization error:', error);
         }
@@ -1011,7 +974,7 @@
           });
 
           // Setup auto-save
-          donationAutoSave = setupAutoSave(donationEditor, 'donate_text_html', 'modal_donation-autosave-status', 10000);
+          donationAutoSave = setupModalAutoSave(donationEditor, 'donate_text_html', 'modal_donation-autosave-status');
         } catch (error) {
           console.error('Donation editor initialization error:', error);
         }
@@ -1035,7 +998,7 @@
           if (donationInstructionsEditor) {
             console.log('Donation instructions editor initialized successfully');
             // Setup auto-save
-            donationInstructionsAutoSave = setupAutoSave(donationInstructionsEditor, 'donation_instructions_html', 'modal_donation-instructions-autosave-status', 10000);
+            donationInstructionsAutoSave = setupModalAutoSave(donationInstructionsEditor, 'donation_instructions_html', 'modal_donation-instructions-autosave-status');
 
             // Update preview when instructions change
             donationInstructionsEditor.on('text-change', () => {
@@ -1244,7 +1207,7 @@
           });
 
           // Setup auto-save and text preview updates
-          footerCol1AutoSave = setupAutoSave(footerCol1Editor, 'footer_column1_html', 'modal_footer-col1-autosave-status', 10000);
+          footerCol1AutoSave = setupModalAutoSave(footerCol1Editor, 'footer_column1_html', 'modal_footer-col1-autosave-status');
 
           // Update text preview when editor content changes
           footerCol1Editor.on('text-change', () => {
@@ -1270,7 +1233,7 @@
           });
 
           // Setup auto-save and text preview updates
-          footerCol2AutoSave = setupAutoSave(footerCol2Editor, 'footer_column2_html', 'modal_footer-col2-autosave-status', 10000);
+          footerCol2AutoSave = setupModalAutoSave(footerCol2Editor, 'footer_column2_html', 'modal_footer-col2-autosave-status');
 
           // Update text preview when editor content changes
           footerCol2Editor.on('text-change', () => {

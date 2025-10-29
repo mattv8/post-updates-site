@@ -14,6 +14,7 @@
 {* Quill ImageResize Module *}
 <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
 <script src="/js/quill-upload-adapter.js"></script>
+<script src="/js/auto-save.js"></script>
 
 {* AI Title Generator - included globally *}
 <script src="/js/ai-title-generator.js"></script>

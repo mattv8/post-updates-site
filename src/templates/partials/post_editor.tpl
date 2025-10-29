@@ -35,7 +35,7 @@
   <div class="mb-3">
     <label class="form-label d-flex justify-content-between align-items-center">
       <span>Content</span>
-      <small class="editor-autosave-indicator" id="post-autosave-status">
+      <small class="editor-autosave-indicator" id="post-autosave-status{if isset($editorId)}-{$editorId}{/if}">
         <span class="text-muted">Auto-save enabled</span>
       </small>
     </label>
