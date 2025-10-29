@@ -504,26 +504,150 @@
       }
     }, true); // capture phase to run before card click handler
 
-    // Donate button
+    // Donate button - custom modal (no Bootstrap)
     const donateBtn = qs('#donate-btn');
     if (donateBtn) {
-      donateBtn.addEventListener('click', async () => {
-        const amount = Number(donateBtn.getAttribute('data-amount') || '25');
-        try {
-          const res = await fetch('/api/donate.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount })
-          });
-          const data = await res.json();
-          if (!data.success) throw new Error(data.error || 'Failed to start checkout');
-          window.location.href = data.url;
-        } catch (err) {
-          console.error(err);
-          alert('Unable to start checkout right now. Please try again later.');
+      donateBtn.addEventListener('click', () => {
+        const donationModal = document.getElementById('donationModal');
+        if (donationModal) {
+          donationModal.style.display = 'flex';
+
+          // Initialize platform detection and copy functionality
+          initDonationModal();
         }
       });
     }
+
+    // Setup donation modal close handlers
+    const donationModal = document.getElementById('donationModal');
+    if (donationModal) {
+      const closeBtn = donationModal.querySelector('.donation-modal-close');
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          donationModal.style.display = 'none';
+        });
+      }
+
+      // Close on overlay click
+      donationModal.addEventListener('click', (e) => {
+        if (e.target === donationModal) {
+          donationModal.style.display = 'none';
+        }
+      });
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && donationModal.style.display === 'flex') {
+          donationModal.style.display = 'none';
+        }
+      });
+    }
+  }
+
+  // Initialize donation modal platform detection and copy functionality
+  function initDonationModal() {
+    const linkText = document.getElementById('donation-link-text');
+    const icon = document.querySelector('.donation-platform-icon');
+    const name = document.querySelector('.donation-platform-name');
+
+    if (!linkText) return;
+
+    const fullUrl = linkText.getAttribute('data-full-url') || linkText.textContent;
+
+    // Extract username from URL
+    let username = fullUrl;
+    let platform = 'generic';
+
+    if (fullUrl.includes('venmo.com/u/')) {
+      username = fullUrl.split('venmo.com/u/')[1].split(/[/?#]/)[0];
+      platform = 'venmo';
+      if (icon) icon.className = 'donation-platform-icon bi bi-currency-dollar text-primary';
+      if (name) name.textContent = 'Send via Venmo:';
+    } else if (fullUrl.includes('venmo.com/code')) {
+      // Venmo QR code link format
+      username = fullUrl.split('venmo.com/code?')[1]?.split('&')[0] || fullUrl;
+      platform = 'venmo';
+      if (icon) icon.className = 'donation-platform-icon bi bi-currency-dollar text-primary';
+      if (name) name.textContent = 'Send via Venmo:';
+    } else if (fullUrl.includes('paypal.me/')) {
+      username = fullUrl.split('paypal.me/')[1].split(/[/?#]/)[0];
+      platform = 'paypal';
+      if (icon) icon.className = 'donation-platform-icon bi bi-paypal text-primary';
+      if (name) name.textContent = 'Send via PayPal:';
+    } else if (fullUrl.includes('paypal.com')) {
+      // Generic PayPal link
+      username = fullUrl;
+      platform = 'paypal';
+      if (icon) icon.className = 'donation-platform-icon bi bi-paypal text-primary';
+      if (name) name.textContent = 'Send via PayPal:';
+    } else if (fullUrl.includes('ko-fi.com/')) {
+      username = fullUrl.split('ko-fi.com/')[1].split(/[/?#]/)[0];
+      platform = 'kofi';
+      if (icon) icon.className = 'donation-platform-icon bi bi-cup-hot-fill text-danger';
+      if (name) name.textContent = 'Send via Ko-fi:';
+    } else if (fullUrl.includes('buymeacoffee.com/')) {
+      username = fullUrl.split('buymeacoffee.com/')[1].split(/[/?#]/)[0];
+      platform = 'buymeacoffee';
+      if (icon) icon.className = 'donation-platform-icon bi bi-cup-hot text-warning';
+      if (name) name.textContent = 'Buy Me a Coffee:';
+    } else if (fullUrl.includes('cash.app/$')) {
+      username = fullUrl.split('cash.app/$')[1].split(/[/?#]/)[0];
+      platform = 'cashapp';
+      if (icon) icon.className = 'donation-platform-icon bi bi-cash-stack text-success';
+      if (name) name.textContent = 'Send via Cash App:';
+    } else if (fullUrl.includes('cash.me/$')) {
+      username = fullUrl.split('cash.me/$')[1].split(/[/?#]/)[0];
+      platform = 'cashapp';
+      if (icon) icon.className = 'donation-platform-icon bi bi-cash-stack text-success';
+      if (name) name.textContent = 'Send via Cash App:';
+    } else if (fullUrl.includes('zelle.com')) {
+      username = fullUrl;
+      platform = 'zelle';
+      if (icon) icon.className = 'donation-platform-icon bi bi-bank text-purple';
+      if (name) name.textContent = 'Send via Zelle:';
+    } else if (fullUrl.includes('patreon.com/')) {
+      username = fullUrl.split('patreon.com/')[1].split(/[/?#]/)[0];
+      platform = 'patreon';
+      if (icon) icon.className = 'donation-platform-icon bi bi-heart-fill text-danger';
+      if (name) name.textContent = 'Support on Patreon:';
+    } else if (fullUrl.includes('github.com/sponsors/')) {
+      username = fullUrl.split('github.com/sponsors/')[1].split(/[/?#]/)[0];
+      platform = 'github';
+      if (icon) icon.className = 'donation-platform-icon bi bi-github text-dark';
+      if (name) name.textContent = 'Sponsor on GitHub:';
+    } else if (fullUrl.includes('buy.stripe.com/') || fullUrl.includes('donate.stripe.com/')) {
+      username = fullUrl;
+      platform = 'stripe';
+      if (icon) icon.className = 'donation-platform-icon bi bi-credit-card-2-front text-primary';
+      if (name) name.textContent = 'Donate via Stripe:';
+    } else if (fullUrl.includes('gofundme.com/')) {
+      username = fullUrl.split('gofundme.com/')[1]?.split(/[/?#]/)[0] || 'campaign';
+      platform = 'gofundme';
+      if (icon) icon.className = 'donation-platform-icon bi bi-heart text-success';
+      if (name) name.textContent = 'Support on GoFundMe:';
+    } else {
+      if (icon) icon.className = 'donation-platform-icon bi bi-credit-card text-secondary';
+      if (name) name.textContent = 'Send payment:';
+    }
+
+    // Display only the username
+    linkText.textContent = username;
+
+    // Make the code element clickable to copy
+    linkText.style.cursor = 'pointer';
+    linkText.addEventListener('click', () => {
+      navigator.clipboard.writeText(username).then(() => {
+        const originalText = linkText.textContent;
+        const originalBg = linkText.style.backgroundColor;
+        linkText.textContent = 'Copied!';
+        linkText.style.backgroundColor = '#d1e7dd';
+        setTimeout(() => {
+          linkText.textContent = originalText;
+          linkText.style.backgroundColor = originalBg;
+        }, 1500);
+      });
+    });
   }
 
   document.addEventListener('DOMContentLoaded', bindEvents);

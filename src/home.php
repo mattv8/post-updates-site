@@ -71,12 +71,25 @@ if (!empty($settings['footer_media_id'])) {
     }
 }
 
+// Precompute donation image/QR code srcset if configured
+$donation_qr_jpg = '';
+$donation_qr_webp = '';
+if (!empty($settings['donation_qr_media_id'])) {
+    $media = getMedia($db_conn, (int)$settings['donation_qr_media_id']);
+    if ($media && !empty($media['variants_json'])) {
+        $donation_qr_jpg = MediaProcessor::generateSrcset($media['variants_json'], 'jpg');
+        $donation_qr_webp = MediaProcessor::generateSrcset($media['variants_json'], 'webp');
+    }
+}
+
 $smarty->assign('settings', $settings);
 $smarty->assign('posts', $posts);
 $smarty->assign('hero_jpg', $hero_jpg);
 $smarty->assign('hero_webp', $hero_webp);
 $smarty->assign('footer_jpg', $footer_jpg);
 $smarty->assign('footer_webp', $footer_webp);
+$smarty->assign('donation_qr_jpg', $donation_qr_jpg);
+$smarty->assign('donation_qr_webp', $donation_qr_webp);
 $smarty->assign('page_title', $settings['site_title'] ?? '');
 $smarty->assign('is_authenticated', !empty($_SESSION['authenticated']));
 

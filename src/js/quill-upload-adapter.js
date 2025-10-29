@@ -167,12 +167,25 @@
    * @param {Quill} quill - Quill editor instance
    * @returns {string} HTML content
    */
+  /**
+   * Get HTML content from Quill editor with trailing empty paragraphs removed
+   * @param {Quill} quill - Quill editor instance
+   * @returns {string} HTML content
+   */
   window.getQuillHTML = function(quill) {
     if (!quill || !quill.root) {
       console.warn('getQuillHTML: Invalid Quill instance');
       return '';
     }
-    return quill.root.innerHTML;
+    let html = quill.root.innerHTML;
+
+    // Remove trailing empty Quill paragraphs (<p><br></p> or <p> </p> or <p></p>)
+    html = html.replace(/(<p>(<br>|\s|&nbsp;)*<\/p>\s*)+$/gi, '');
+
+    // Trim whitespace
+    html = html.trim();
+
+    return html;
   };
 
   /**

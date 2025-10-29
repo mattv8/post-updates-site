@@ -14,6 +14,7 @@
   let heroEditor = null;
   let aboutEditor = null;
   let donationEditor = null;
+  let donationInstructionsEditor = null;
   let footerCol1Editor = null;
   let footerCol2Editor = null;
 
@@ -21,6 +22,7 @@
   let heroAutoSave = null;
   let aboutAutoSave = null;
   let donationAutoSave = null;
+  let donationInstructionsAutoSave = null;
   let footerCol1AutoSave = null;
   let footerCol2AutoSave = null;
 
@@ -83,6 +85,37 @@
   }
 
   // Helper to populate form from settings
+  // Helper to detect payment platform from link and return icon/name
+  function detectPaymentPlatform(link) {
+    if (!link) return { icon: 'bi-credit-card', color: 'text-secondary', name: 'Send payment:' };
+
+    const lowerLink = link.toLowerCase();
+
+    if (lowerLink.includes('venmo.com')) {
+      return { icon: 'bi-currency-dollar', color: 'text-primary', name: 'Send via Venmo:' };
+    } else if (lowerLink.includes('paypal.com') || lowerLink.includes('paypal.me')) {
+      return { icon: 'bi-paypal', color: 'text-primary', name: 'Send via PayPal:' };
+    } else if (lowerLink.includes('ko-fi.com')) {
+      return { icon: 'bi-cup-hot-fill', color: 'text-danger', name: 'Send via Ko-fi:' };
+    } else if (lowerLink.includes('buymeacoffee.com')) {
+      return { icon: 'bi-cup-hot', color: 'text-warning', name: 'Buy Me a Coffee:' };
+    } else if (lowerLink.includes('cash.app') || lowerLink.includes('cash.me')) {
+      return { icon: 'bi-cash-stack', color: 'text-success', name: 'Send via Cash App:' };
+    } else if (lowerLink.includes('zelle.com')) {
+      return { icon: 'bi-bank', color: 'text-purple', name: 'Send via Zelle:' };
+    } else if (lowerLink.includes('patreon.com')) {
+      return { icon: 'bi-heart-fill', color: 'text-danger', name: 'Support on Patreon:' };
+    } else if (lowerLink.includes('github.com/sponsors')) {
+      return { icon: 'bi-github', color: 'text-dark', name: 'Sponsor on GitHub:' };
+    } else if (lowerLink.includes('buy.stripe.com') || lowerLink.includes('donate.stripe.com')) {
+      return { icon: 'bi-credit-card-2-front', color: 'text-primary', name: 'Donate via Stripe:' };
+    } else if (lowerLink.includes('gofundme.com')) {
+      return { icon: 'bi-heart', color: 'text-success', name: 'Support on GoFundMe:' };
+    } else {
+      return { icon: 'bi-credit-card', color: 'text-secondary', name: 'Send payment:' };
+    }
+  }
+
   function populateHeroForm(settings) {
     const modal = document.getElementById('editHeroModal');
     if (!modal || !settings) return;
@@ -195,9 +228,54 @@
     modal.querySelector('#modal_show_donation').checked = settings.show_donation == 1;
     modal.querySelector('#modal_show_donate_button').checked = settings.show_donate_button == 1;
 
+    // Set donation method radio buttons
+    const donationMethod = settings.donation_method || 'link';
+    const methodRadio = modal.querySelector(`#modal_donation_method_${donationMethod}`);
+    if (methodRadio) {
+      methodRadio.checked = true;
+    }
+
+    // Set donation link
+    const donationLinkInput = modal.querySelector('#modal_donation_link');
+    if (donationLinkInput) {
+      donationLinkInput.value = settings.donation_link || '';
+    }
+
+    // Set donation QR media
+    const qrMediaSelect = modal.querySelector('#modal_donation_qr_media_id');
+    if (qrMediaSelect) {
+      qrMediaSelect.value = settings.donation_qr_media_id || '';
+
+      // Show QR preview if media is selected
+      if (settings.donation_qr_media_id) {
+        const qrPreviewContainer = modal.querySelector('.qr-preview-container');
+        const qrPreviewImg = modal.querySelector('.qr-preview-img');
+        if (qrPreviewImg && qrPreviewContainer) {
+          qrPreviewImg.src = `/api/admin/media.php?id=${settings.donation_qr_media_id}`;
+          qrPreviewContainer.style.display = 'block';
+        }
+      }
+    }
+
     if (donationEditor) {
       window.setQuillHTML(donationEditor, settings.donate_text_html || '');
     }
+
+    if (donationInstructionsEditor) {
+      window.setQuillHTML(donationInstructionsEditor, settings.donation_instructions_html || '');
+    }
+
+    // Trigger visibility update based on donation method
+    // Use a small delay to ensure listeners are attached
+    setTimeout(() => {
+      const event = new Event('change');
+      if (methodRadio) {
+        methodRadio.dispatchEvent(event);
+      }
+    }, 50);
+
+    // Update preview after populating
+    setTimeout(updateDonationPreview, 100);
   }
 
   function populateFooterForm(settings) {
@@ -265,6 +343,313 @@
   async function loadFooterPreview(mediaId, previewContainer) {
     // This is now handled by BackgroundPreviewManager
     // Keeping function for compatibility
+  }
+
+  // Helper function to update donation modal preview
+  function updateDonationPreview() {
+    const modal = document.getElementById('editDonationModal');
+    if (!modal) return;
+
+    // Get current values
+    let method = 'link';
+    const methodRadios = modal.querySelectorAll('input[name="modal_donation_method"]');
+    methodRadios.forEach(radio => {
+      if (radio.checked) method = radio.value;
+    });
+
+    const link = modal.querySelector('#modal_donation_link')?.value || '';
+    const qrSelect = modal.querySelector('#modal_donation_qr_media_id');
+    const qrMediaId = qrSelect?.value || '';
+
+    // Get instructions HTML
+    const instructionsHTML = donationInstructionsEditor
+      ? window.getQuillHTML(donationInstructionsEditor)
+      : '<p>Thank you for your support!</p>';
+
+    // Update preview instructions
+    const previewInstructions = modal.querySelector('#modal_preview-instructions');
+    if (previewInstructions) {
+      previewInstructions.innerHTML = instructionsHTML;
+    }
+
+    // Update preview image/QR code - match actual modal structure
+    const previewQr = modal.querySelector('#modal_preview-qr');
+    const previewQrImg = previewQr?.querySelector('img');
+    if (previewQr && previewQrImg) {
+      const showQr = (method === 'qr' || method === 'both') && qrMediaId;
+      if (showQr) {
+        // Fetch media info to get proper image URL
+        fetch(`/api/admin/media.php?id=${qrMediaId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.data) {
+              const variants = JSON.parse(data.data.variants_json || '{}');
+              const variant400 = variants['400'];
+              let previewUrl;
+              if (variant400 && variant400.jpg) {
+                previewUrl = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
+              } else {
+                previewUrl = '/storage/uploads/originals/' + data.data.filename;
+              }
+              previewQrImg.src = previewUrl;
+              previewQrImg.alt = data.data.alt_text || 'Donation Image';
+            }
+          })
+          .catch(err => console.error('Error loading image preview:', err));
+        previewQr.style.display = 'block';
+      } else {
+        previewQr.style.display = 'none';
+      }
+    }
+
+    // Update preview link - match actual modal structure
+    const previewLink = modal.querySelector('#modal_preview-link');
+    const previewLinkAnchor = previewLink?.querySelector('a');
+    const previewLinkText = previewLink?.querySelector('.preview-link-text');
+    const previewLinkIcon = previewLink?.querySelector('.preview-platform-icon');
+    const previewLinkName = previewLink?.querySelector('.preview-platform-name');
+
+    if (previewLink) {
+      const showLink = (method === 'link' || method === 'both') && link;
+      if (showLink) {
+        if (previewLinkAnchor) previewLinkAnchor.href = link;
+
+        // Update icon and name based on platform
+        if (previewLinkIcon && previewLinkName) {
+          const platform = detectPaymentPlatform(link);
+          previewLinkIcon.className = `preview-platform-icon bi ${platform.icon} ${platform.color}`;
+          previewLinkName.textContent = platform.name;
+        }
+
+        // Extract username from URL
+        if (previewLinkText) {
+          let username = link;
+          if (link.includes('venmo.com/u/')) {
+            username = link.split('venmo.com/u/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('venmo.com/code')) {
+            username = link.split('venmo.com/code?')[1]?.split('&')[0] || link;
+          } else if (link.includes('paypal.me/')) {
+            username = link.split('paypal.me/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('ko-fi.com/')) {
+            username = link.split('ko-fi.com/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('buymeacoffee.com/')) {
+            username = link.split('buymeacoffee.com/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('cash.app/$')) {
+            username = link.split('cash.app/$')[1].split(/[/?#]/)[0];
+          } else if (link.includes('cash.me/$')) {
+            username = link.split('cash.me/$')[1].split(/[/?#]/)[0];
+          } else if (link.includes('patreon.com/')) {
+            username = link.split('patreon.com/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('github.com/sponsors/')) {
+            username = link.split('github.com/sponsors/')[1].split(/[/?#]/)[0];
+          } else if (link.includes('gofundme.com/')) {
+            username = link.split('gofundme.com/')[1]?.split(/[/?#]/)[0] || 'campaign';
+          }
+          previewLinkText.textContent = username;
+        }
+
+        previewLink.style.display = 'block';
+      } else {
+        previewLink.style.display = 'none';
+      }
+    }
+
+    // Show/hide empty state - only show if no content is configured
+    const previewEmpty = modal.querySelector('#modal_preview-empty');
+    if (previewEmpty) {
+      const hasQr = (method === 'qr' || method === 'both') && qrMediaId;
+      const hasLink = (method === 'link' || method === 'both') && link;
+      const hasContent = hasQr || hasLink;
+      previewEmpty.style.display = hasContent ? 'none' : 'block';
+    }
+  }
+
+  // Setup donation preview listeners
+  function setupDonationPreviewListeners() {
+    const modal = document.getElementById('editDonationModal');
+    if (!modal) return;
+
+    // Helper to toggle field visibility based on method
+    function updateDonationMethodVisibility() {
+      const methodRadios = modal.querySelectorAll('input[name="modal_donation_method"]');
+      let selectedMethod = '';
+
+      methodRadios.forEach(radio => {
+        if (radio.checked) {
+          selectedMethod = radio.value;
+        }
+      });
+
+      // Get the containers
+      const linkContainer = modal.querySelector('#modal_donation_link')?.closest('.mb-3');
+      const qrContainer = modal.querySelector('#modal_donation_qr_media_id')?.closest('.mb-3');
+
+      if (!linkContainer || !qrContainer) return;
+
+      // Show/hide based on selected method
+      switch(selectedMethod) {
+        case 'link':
+          linkContainer.style.display = 'block';
+          qrContainer.style.display = 'none';
+          break;
+        case 'qr':
+          linkContainer.style.display = 'none';
+          qrContainer.style.display = 'block';
+          break;
+        case 'both':
+          linkContainer.style.display = 'block';
+          qrContainer.style.display = 'block';
+          break;
+        default:
+          linkContainer.style.display = 'none';
+          qrContainer.style.display = 'none';
+      }
+    }
+
+    // Listen to donation method changes
+    modal.querySelectorAll('input[name="modal_donation_method"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        updateDonationMethodVisibility();
+        updateDonationPreview();
+      });
+    });
+
+    // Listen to link changes
+    const linkInput = modal.querySelector('#modal_donation_link');
+    if (linkInput) {
+      linkInput.addEventListener('input', updateDonationPreview);
+    }
+
+    // Listen to QR select changes
+    const qrSelect = modal.querySelector('#modal_donation_qr_media_id');
+    if (qrSelect) {
+      qrSelect.addEventListener('change', updateDonationPreview);
+    }
+
+    // Initialize visibility based on current selection
+    updateDonationMethodVisibility();
+  }
+
+  // Setup image/QR code upload functionality
+  function setupDonationQrUpload() {
+    const modal = document.getElementById('editDonationModal');
+    if (!modal) return;
+
+    const qrUploadInput = modal.querySelector('.qr-upload-input');
+    const qrUploadBtn = modal.querySelector('.btn-upload-qr');
+    const qrSelect = modal.querySelector('.modal_donation-qr-select');
+    const qrPreviewContainer = modal.querySelector('.qr-preview-container');
+    const qrPreviewImg = modal.querySelector('.qr-preview-img');
+    const qrRemoveBtn = modal.querySelector('.btn-remove-qr');
+
+    // Show upload button when file is selected
+    if (qrUploadInput && qrUploadBtn) {
+      qrUploadInput.addEventListener('change', function() {
+        qrUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
+      });
+    }
+
+    // Handle QR upload
+    if (qrUploadBtn && qrUploadInput) {
+      qrUploadBtn.addEventListener('click', async function() {
+        const file = qrUploadInput.files[0];
+        if (!file) return;
+
+        // Validate file size (20MB)
+        if (file.size > 20 * 1024 * 1024) {
+          alert('File size must be less than 20MB');
+          return;
+        }
+
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+          alert('Invalid file type. Please use JPG, PNG, or WebP');
+          return;
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('alt_text', 'Donation Image');
+
+        try {
+          qrUploadBtn.disabled = true;
+          const originalText = qrUploadBtn.textContent;
+          qrUploadBtn.textContent = 'Uploading...';
+
+          const response = await fetch('/api/admin/media.php', {
+            method: 'POST',
+            headers: {
+              'X-CSRF-Token': csrfToken
+            },
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Add to select dropdown
+            const qrMediaSelect = modal.querySelector('#modal_donation_qr_media_id');
+            if (qrMediaSelect) {
+              const option = document.createElement('option');
+              option.value = data.id;
+              option.textContent = file.name;
+              option.selected = true;
+              qrMediaSelect.appendChild(option);
+            }
+
+            // Show preview
+            if (qrPreviewImg && qrPreviewContainer) {
+              qrPreviewImg.src = `/api/admin/media.php?id=${data.id}`;
+              qrPreviewContainer.style.display = 'block';
+            }
+
+            // Update donation modal preview
+            updateDonationPreview();
+
+            // Clear file input
+            qrUploadInput.value = '';
+            qrUploadBtn.style.display = 'none';
+          } else {
+            alert('Upload failed: ' + (data.error || 'Unknown error'));
+          }
+
+          qrUploadBtn.disabled = false;
+          qrUploadBtn.textContent = originalText;
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          alert('An error occurred during upload');
+          qrUploadBtn.disabled = false;
+        }
+      });
+    }
+
+    // Handle QR removal
+    if (qrRemoveBtn) {
+      qrRemoveBtn.addEventListener('click', function() {
+        const qrMediaSelect = modal.querySelector('#modal_donation_qr_media_id');
+        if (qrMediaSelect) {
+          qrMediaSelect.value = '';
+        }
+        if (qrPreviewContainer) {
+          qrPreviewContainer.style.display = 'none';
+        }
+        updateDonationPreview();
+      });
+    }
+
+    // Show/hide QR preview based on selection
+    if (qrSelect) {
+      qrSelect.addEventListener('change', function() {
+        if (this.value && qrPreviewContainer && qrPreviewImg) {
+          qrPreviewImg.src = `/api/admin/media.php?id=${this.value}`;
+          qrPreviewContainer.style.display = 'block';
+        } else if (qrPreviewContainer) {
+          qrPreviewContainer.style.display = 'none';
+        }
+      });
+    }
   }
 
   // Helper function to show/hide column 2 based on layout selection
@@ -600,10 +985,17 @@
   // Initialize Donation Modal
   const donationModal = document.getElementById('editDonationModal');
   if (donationModal) {
+    // Load media options on page load
+    const donationQrMediaSelect = donationModal.querySelector('#modal_donation_qr_media_id');
+    if (donationQrMediaSelect) {
+      SettingsManager.loadMediaOptions(donationQrMediaSelect);
+    }
+
     donationModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer = donationModal.querySelector('#modal_donate_text_html');
+      const instructionsContainer = donationModal.querySelector('#modal_donation_instructions_html');
 
-      // Initialize editor only once
+      // Initialize donation content editor only once
       if (editorContainer && !donationEditor) {
         try {
           donationEditor = window.initQuillEditor(editorContainer, {
@@ -625,6 +1017,51 @@
         }
       }
 
+      // Initialize donation instructions editor only once
+      if (instructionsContainer && !donationInstructionsEditor) {
+        try {
+          console.log('Initializing donation instructions editor on element:', instructionsContainer);
+          donationInstructionsEditor = window.initQuillEditor(instructionsContainer, {
+            placeholder: 'Enter instructions for the donation modal...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['clean']
+            ]
+          });
+
+          if (donationInstructionsEditor) {
+            console.log('Donation instructions editor initialized successfully');
+            // Setup auto-save
+            donationInstructionsAutoSave = setupAutoSave(donationInstructionsEditor, 'donation_instructions_html', 'modal_donation-instructions-autosave-status', 10000);
+
+            // Update preview when instructions change
+            donationInstructionsEditor.on('text-change', () => {
+              updateDonationPreview();
+            });
+          } else {
+            console.error('Donation instructions editor initialization returned null/undefined');
+          }
+        } catch (error) {
+          console.error('Donation instructions editor initialization error:', error);
+        }
+      } else {
+        if (!instructionsContainer) {
+          console.error('Donation instructions container not found with selector: #modal_donation_instructions_html');
+        }
+        if (donationInstructionsEditor) {
+          console.log('Donation instructions editor already initialized');
+        }
+      }
+
+      // Setup image/QR code upload handlers
+      setupDonationQrUpload();
+
+      // Setup preview update listeners
+      setupDonationPreviewListeners();
+
       // Populate form with data from window (set by Smarty)
       if (window.donationModalSettings) {
         populateDonationForm(window.donationModalSettings);
@@ -645,6 +1082,11 @@
       if (donationAutoSave) {
         clearInterval(donationAutoSave);
         donationAutoSave = null;
+      }
+
+      if (donationInstructionsAutoSave) {
+        clearInterval(donationInstructionsAutoSave);
+        donationInstructionsAutoSave = null;
       }
 
       // Reset loading state for next open
@@ -685,17 +1127,34 @@
     document.getElementById('saveDonationModal')?.addEventListener('click', async function() {
       const btn = this;
       const statusElement = document.getElementById('modal_donation-autosave-status');
+      const instructionsStatusElement = document.getElementById('modal_donation-instructions-autosave-status');
       btn.disabled = true;
       btn.textContent = 'Saving...';
 
       if (statusElement) {
         statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
       }
+      if (instructionsStatusElement) {
+        instructionsStatusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
 
       try {
+        // Get donation method (link, qr, or both)
+        let donationMethod = 'link';
+        const methodRadios = donationModal.querySelectorAll('input[name="modal_donation_method"]');
+        methodRadios.forEach(radio => {
+          if (radio.checked) {
+            donationMethod = radio.value;
+          }
+        });
+
         const payload = {
           show_donation: donationModal.querySelector('#modal_show_donation').checked ? 1 : 0,
           show_donate_button: donationModal.querySelector('#modal_show_donate_button').checked ? 1 : 0,
+          donation_method: donationMethod,
+          donation_link: donationModal.querySelector('#modal_donation_link').value || null,
+          donation_qr_media_id: donationModal.querySelector('#modal_donation_qr_media_id').value || null,
+          donation_instructions_html: donationInstructionsEditor ? window.getQuillHTML(donationInstructionsEditor) : donationModal.querySelector('#modal_donation_instructions_html').value,
           donate_text_html: donationEditor ? window.getQuillHTML(donationEditor) : donationModal.querySelector('#modal_donate_text_html').value,
         };
 
@@ -705,6 +1164,9 @@
           const timestamp = new Date().toLocaleTimeString();
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
+          if (instructionsStatusElement) {
+            instructionsStatusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
           }
 
           // Close the modal

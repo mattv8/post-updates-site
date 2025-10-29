@@ -80,6 +80,9 @@
   {* Footer Section *}
   {include file='templates/partials/footer_section.tpl'}
 
+  {* Donation Modal - shown to all users when donate button is clicked *}
+  {include file='templates/modals/donation_modal.tpl'}
+
   {* Create Post Modal - only shown when authenticated *}
   {if $is_authenticated|default:false}
     {include file='templates/modals/create_post.tpl'}

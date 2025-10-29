@@ -1,0 +1,272 @@
+/**
+ * Donation Modal Styles
+ * Custom modal without Bootstrap constraints
+ */
+
+/* Modal Overlay & Structure */
+.donation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.donation-modal-wrapper {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.donation-modal-content {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.donation-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #6c757d;
+  line-height: 1;
+  z-index: 1;
+}
+
+.donation-modal-close:hover {
+  color: #000;
+}
+
+.donation-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  text-align: center;
+}
+
+/* Override global .ql-editor styles for donation modal */
+.donation-modal-body #donation-instructions.ql-editor,
+.donation-modal-preview-body .ql-editor {
+  padding: 0 !important;
+  min-height: auto !important;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Only add bottom margin if followed by QR or link */
+.donation-modal-body #donation-instructions.ql-editor:not(:last-child) {
+  margin-bottom: -2.5rem;
+  margin-top: -3rem;
+}
+
+.donation-modal-preview-body .ql-editor:not(:last-child) {
+  margin-bottom: 1.5rem;
+}
+
+/* Remove margins from first and last elements in editor */
+.donation-modal-body #donation-instructions.ql-editor > *:first-child,
+.donation-modal-preview-body .ql-editor > *:first-child {
+  margin-top: 0 !important;
+}
+
+.donation-modal-body #donation-instructions.ql-editor > *:last-child,
+.donation-modal-preview-body .ql-editor > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Quill content spacing */
+.donation-modal-body .ql-editor p,
+.donation-modal-preview-body .ql-editor p {
+  margin: 0 0 0.5rem 0;
+}
+
+.donation-modal-body .ql-editor p:last-child,
+.donation-modal-preview-body .ql-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.donation-modal-body .ql-editor ul,
+.donation-modal-body .ql-editor ol,
+.donation-modal-preview-body .ql-editor ul,
+.donation-modal-preview-body .ql-editor ol {
+  margin: 0.5rem 0;
+  padding-left: 2rem;
+  text-align: left;
+  display: inline-block;
+}
+
+.donation-modal-body .ql-editor li,
+.donation-modal-preview-body .ql-editor li {
+  margin: 0.25rem 0;
+}
+
+.donation-modal-body .ql-editor blockquote,
+.donation-modal-preview-body .ql-editor blockquote {
+  margin: 0.5rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 4px solid #dee2e6;
+  background-color: #f8f9fa;
+  font-style: italic;
+}
+
+.donation-modal-body .ql-editor h1,
+.donation-modal-body .ql-editor h2,
+.donation-modal-body .ql-editor h3,
+.donation-modal-preview-body .ql-editor h1,
+.donation-modal-preview-body .ql-editor h2,
+.donation-modal-preview-body .ql-editor h3 {
+  margin: 0.75rem 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.donation-modal-body .ql-editor h1:first-child,
+.donation-modal-body .ql-editor h2:first-child,
+.donation-modal-body .ql-editor h3:first-child,
+.donation-modal-preview-body .ql-editor h1:first-child,
+.donation-modal-preview-body .ql-editor h2:first-child,
+.donation-modal-preview-body .ql-editor h3:first-child {
+  margin-top: 0;
+}
+
+/* Donation QR Code */
+.donation-modal-body .donation-qr {
+  margin: 0;
+}
+
+.donation-modal-body .donation-qr:not(:last-child) {
+  margin-bottom: 1.5rem;
+}
+
+.donation-modal-body .donation-qr img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+}
+
+/* Donation Link Section */
+.donation-modal-body .donation-link {
+  margin: 0;
+}
+
+.donation-link-label {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.donation-link-code {
+  display: block;
+  font-size: 1.5rem;
+  padding: 0.75rem;
+  margin: 0 auto 0.5rem auto;
+  max-width: 90%;
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 0.375rem;
+  user-select: all;
+  word-break: break-all;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.donation-link-code:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.donation-link-code:active {
+  transform: scale(0.98);
+}
+
+.donation-link-hint {
+  display: block;
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+/* Preview Specific Styles */
+.donation-modal-preview-wrapper {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.donation-modal-preview-content {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.donation-modal-preview-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.donation-modal-preview-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.donation-modal-preview-body {
+  padding: 1.25rem;
+  text-align: center;
+}
+
+/* Preview donation elements should match modal */
+.donation-modal-preview-body .donation-qr {
+  margin: 0;
+}
+
+.donation-modal-preview-body .donation-qr:not(:last-child) {
+  margin-bottom: 1.5rem;
+}
+
+.donation-modal-preview-body .donation-qr img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+}
+
+.donation-modal-preview-body .donation-link {
+  margin: 0;
+}
+
+.donation-modal-preview-body .donation-link-label {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.donation-modal-preview-body .donation-link-code {
+  display: block;
+  font-size: 1.5rem;
+  padding: 0.75rem;
+  margin: 0 auto 0.5rem auto;
+  max-width: 90%;
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 0.375rem;
+  user-select: all;
+  word-break: break-all;
+}
+
+.donation-modal-preview-body .donation-link-hint {
+  display: block;
+  color: #6c757d;
+  font-size: 0.875rem;
+}

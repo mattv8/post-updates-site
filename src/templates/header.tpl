@@ -3,6 +3,7 @@
 <link rel="stylesheet" type="text/css" href="css/custom.css" />
 <link rel="stylesheet" type="text/css" href="css/home.css" />
 <link rel="stylesheet" type="text/css" href="css/post_overlay.css" />
+<link rel="stylesheet" type="text/css" href="css/donation-modal.css" />
 
 {* Bootstrap Icons *}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">

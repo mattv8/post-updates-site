@@ -1060,7 +1060,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1069,13 +1069,13 @@ function updateSettings($db_conn, $data)
         if (array_key_exists($key, $data)) {
             $sets[] = "$key = ?";
             // Sanitize HTML fields
-            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html') {
+            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'donation_instructions_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html') {
                 $params[] = sanitizeHtml($data[$key]);
             } else {
                 $params[] = $data[$key];
             }
             // Set parameter types
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_donate_button' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height') { $types .= 'i'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height') { $types .= 'i'; }
             elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity') { $types .= 'd'; }
             else { $types .= 's'; }
         }

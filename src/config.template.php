@@ -69,16 +69,16 @@ $page_bg_color_class = 'bg-blurred rounded-3';
 # Get your API key from: https://platform.openai.com/api-keys
 $openai_api_key = ''; // Insert your OpenAI API key (sk-...)
 
-# Stripe Configuration
-# Get your API keys from: https://dashboard.stripe.com/apikeys
-# Use test keys for development, live keys for production
+# DEPRECATED: Stripe Configuration (No longer used - donations now use direct links)
+# The donation system now supports Venmo, PayPal, Ko-fi, and other direct methods
+# configured through the admin panel. These variables are kept for backward compatibility.
 $stripe_mode = 'test'; // 'test' or 'live'
 $stripe_test_public_key = ''; // Insert your Stripe test publishable key (pk_test_...)
 $stripe_test_secret_key = ''; // Insert your Stripe test secret key (sk_test_...)
 $stripe_live_public_key = ''; // Insert your Stripe live publishable key (pk_live_...)
 $stripe_live_secret_key = ''; // Insert your Stripe live secret key (sk_live_...)
 
-# Get active Stripe keys based on mode
+# Get active Stripe keys based on mode (deprecated, kept for compatibility)
 $stripe_public_key = ($stripe_mode === 'live') ? $stripe_live_public_key : $stripe_test_public_key;
 $stripe_secret_key = ($stripe_mode === 'live') ? $stripe_live_secret_key : $stripe_test_secret_key;
 
@@ -95,7 +95,7 @@ $responsive_widths = [1600, 800, 400]; // Responsive breakpoint widths
 $js_config['recaptcha_secret'] = $recaptcha_secret;
 $js_config['recaptcha_key'] = $recaptcha_key;
 
-# Stripe trans PHP variables (do not edit)
+# DEPRECATED: Stripe trans PHP variables (no longer used)
 $js_config['stripe_mode'] = $stripe_mode;
 $js_config['stripe_public_key'] = $stripe_public_key;
 
