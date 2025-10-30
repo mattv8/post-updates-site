@@ -6,7 +6,7 @@ require(__DIR__ . '/../config.local.php');
 header('Content-Type: application/json');
 
 // DB connection
-$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
 if (!$db_conn) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'DB connection failed']);

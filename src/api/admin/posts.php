@@ -19,7 +19,7 @@ if (isset($_SESSION['isadmin']) && !$_SESSION['isadmin']) {
 
 // DB connect
 require(__DIR__ . '/../../config.local.php');
-$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
 if (!$db_conn) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'DB connection failed']);
@@ -75,8 +75,26 @@ switch ($method) {
         if (isset($_GET['action']) && $_GET['action'] === 'publish' && isset($_GET['id'])) {
             requireCsrf();
             $id = (int)$_GET['id'];
+
+            // Check if this is a first-time publish by looking at the current state
+            $currentPost = getPost($db_conn, $id);
+            $isFirstPublish = ($currentPost && is_null($currentPost['published_at']));
+
+            // Publish the draft (copies draft fields to published fields)
             $res = publishDraft($db_conn, $id);
+
             if ($res['success']) {
+                // Send email notification if this is the first time publishing
+                if ($isFirstPublish) {
+                    $emailResult = sendNewPostNotification($db_conn, $id);
+                    // Log email result but don't fail the publish operation
+                    if ($emailResult['success']) {
+                        error_log("Post notification sent: " . ($emailResult['message'] ?? 'Success'));
+                    } else {
+                        error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                    }
+                }
+
                 echo json_encode(['success' => true]);
             } else {
                 http_response_code(400);

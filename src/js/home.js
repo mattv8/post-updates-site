@@ -1542,21 +1542,12 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // Publish the draft (copies draft fields to published fields)
+        // Publish the draft (copies draft fields to published fields and sets status to 'published')
         const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, {
           method: 'GET'
         });
 
         if (publishResult.success) {
-          // Also update the status if changed
-          if (payload.status) {
-            await api('/api/admin/posts.php?id=' + editingPostId, {
-              method: 'PUT',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ status: payload.status })
-            });
-          }
-
           const bsModal = bootstrap.Modal.getInstance(modal);
           if (bsModal) bsModal.hide();
           // Refresh posts list without full page reload

@@ -1028,20 +1028,12 @@
           return;
         }
 
-        // Publish the draft (copies draft fields to published fields)
+        // Publish the draft (copies draft fields to published fields and sets status to 'published')
         const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, {
           method:'GET'
         });
 
         if(publishResult.success){
-          // Also update the status if changed
-          if (payload.status) {
-            await api('/api/admin/posts.php?id='+editingId, {
-              method:'PUT',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ status: payload.status })
-            });
-          }
           loadPosts();
           const modalEl = bootstrap.Modal.getInstance(postEditorModal);
           if (modalEl) modalEl.hide();

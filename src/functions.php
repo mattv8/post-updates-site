@@ -707,8 +707,9 @@ function sanitizeHtml($html)
 
     $prevUseInternalErrors = libxml_use_internal_errors(true);
     $dom = new DOMDocument('1.0', 'UTF-8');
-    // Wrap in a div to properly handle HTML fragments
-    $wrappedHtml = '<div>' . mb_convert_encoding($clean, 'HTML-ENTITIES', 'UTF-8') . '</div>';
+    // Properly load UTF-8 HTML without converting to HTML entities
+    // Prepend UTF-8 XML declaration to ensure proper encoding handling
+    $wrappedHtml = '<?xml encoding="UTF-8"><div>' . $clean . '</div>';
     $dom->loadHTML($wrappedHtml, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
     // Allowed alignment classes from Quill
@@ -829,11 +830,11 @@ function sanitizeHtml($html)
  */
 function generateExcerpt($html, $maxLength = 250)
 {
-    $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES)));
-    if (mb_strlen($text) <= $maxLength) {
+    $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8')));
+    if (mb_strlen($text, 'UTF-8') <= $maxLength) {
         return $text;
     }
-    $cut = mb_substr($text, 0, $maxLength);
+    $cut = mb_substr($text, 0, $maxLength, 'UTF-8');
     // Avoid cutting a word in half
     $spacePos = mb_strrpos($cut, ' ');
     if ($spacePos !== false) {
@@ -977,6 +978,8 @@ function publishDraft($db_conn, $id)
         hero_title_overlay = COALESCE(hero_title_overlay_draft, hero_title_overlay),
         hero_overlay_opacity = COALESCE(hero_overlay_opacity_draft, hero_overlay_opacity),
         gallery_media_ids = COALESCE(gallery_media_ids_draft, gallery_media_ids),
+        status = 'published',
+        published_at = COALESCE(published_at, CURRENT_TIMESTAMP),
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND deleted_at IS NULL";
 
@@ -1009,6 +1012,31 @@ function publishSettingsDraft($db_conn)
     return ['success' => true];
 }
 
+/**
+ * Decode HTML entities in post data for proper UTF-8 display
+ * This ensures that content stored with HTML entities is properly decoded
+ * before being displayed to prevent character encoding issues
+ *
+ * @param array|null $post Post data array
+ * @return array|null Post data with decoded HTML entities
+ */
+function decodePostHtmlEntities($post) {
+    if (!$post) {
+        return null;
+    }
+
+    // Fields that may contain HTML entities that need decoding
+    $fieldsToDecodec = ['title', 'body_html', 'excerpt'];
+
+    foreach ($fieldsToDecodec as $field) {
+        if (isset($post[$field]) && $post[$field] !== null) {
+            $post[$field] = html_entity_decode($post[$field], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+    }
+
+    return $post;
+}
+
 function getPost($db_conn, $id)
 {
     $id = (int)$id;
@@ -1018,7 +1046,8 @@ function getPost($db_conn, $id)
             LEFT JOIN users u ON p.created_by_user_id = u.username
             WHERE p.id = {$id} AND p.deleted_at IS NULL LIMIT 1";
     $result = mysqli_query($db_conn, $sql);
-    return $result ? mysqli_fetch_assoc($result) : null;
+    $post = $result ? mysqli_fetch_assoc($result) : null;
+    return decodePostHtmlEntities($post);
 }
 
 function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
@@ -1034,7 +1063,11 @@ function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
             LIMIT {$limit} OFFSET {$offset}";
     $res = mysqli_query($db_conn, $sql);
     $rows = [];
-    if ($res) { while ($r = mysqli_fetch_assoc($res)) { $rows[] = $r; } }
+    if ($res) {
+        while ($r = mysqli_fetch_assoc($res)) {
+            $rows[] = decodePostHtmlEntities($r);
+        }
+    }
     return $rows;
 }
 
@@ -1236,7 +1269,9 @@ function validateUnsubscribeToken($token)
         error_log('Unsubscribe token validation error: ' . $e->getMessage());
         return false;
     }
-}/**
+}
+
+/**
  * Send email notification to all active subscribers about a new post
  *
  * @param mysqli $db_conn Database connection
@@ -1275,7 +1310,7 @@ function sendNewPostNotification($db_conn, $postId)
         return ['success' => true, 'sent' => 0, 'message' => 'No active subscribers'];
     }
 
-    // Build email content
+    // Build email content - post data already decoded by getPost()
     $siteTitle = $settings['site_title'] ?: 'Care Bridge';
     $postTitle = $post['title'] ?: 'New Health Update';
     $subject = $postTitle;
@@ -1319,8 +1354,10 @@ function sendNewPostNotification($db_conn, $postId)
 
     // Prepare template variables based on email type
     if ($includePostBody) {
-        // Convert relative URLs in body_html to absolute URLs
+        // Get body HTML - already decoded by getPost()
         $bodyHtml = $post['body_html'];
+
+        // Convert relative URLs to absolute URLs
         $bodyHtml = preg_replace('/(src|href)=["\']\//', '$1="' . $baseUrl . '/', $bodyHtml);
 
         // Get hero image data if available
@@ -1395,6 +1432,8 @@ function sendNewPostNotification($db_conn, $postId)
 
         // Content settings
         $mail->isHTML(true);
+        $mail->CharSet = 'UTF-8';
+        $mail->Encoding = 'base64';
         $mail->Subject = $subject;
 
         // Send to each subscriber individually with personalized unsubscribe link

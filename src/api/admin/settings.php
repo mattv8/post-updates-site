@@ -7,7 +7,7 @@ if (empty($_SESSION['authenticated']) || empty($_SESSION['username'])) { http_re
 if (isset($_SESSION['isadmin']) && !$_SESSION['isadmin']) { http_response_code(403); echo json_encode(['success'=>false,'error'=>'Forbidden']); exit; }
 
 require(__DIR__ . '/../../config.local.php');
-$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
 if (!$db_conn) { http_response_code(500); echo json_encode(['success'=>false,'error'=>'DB connection failed']); exit; }
 
 $method = $_SERVER['REQUEST_METHOD'];

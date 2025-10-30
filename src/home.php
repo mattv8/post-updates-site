@@ -4,7 +4,7 @@ require_once(__DIR__ . '/functions.php');
 require_once(__DIR__ . '/lib/MediaProcessor.php');
 
 require(__DIR__ . '/config.local.php');
-$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
 
 // Get settings and ensure hero_height is available
 $settings = getSettings($db_conn);
