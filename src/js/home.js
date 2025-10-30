@@ -543,6 +543,36 @@
         }
       });
     }
+
+    // Auto-open post overlay if post_id is in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('post_id');
+    if (postId) {
+      // Wait a bit for the page to fully render, then open the overlay
+      setTimeout(async () => {
+        try {
+          const post = await fetchPost(postId);
+          showOverlay(post);
+
+          // Clean the URL without reloading the page
+          const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]post_id=\d+/, '').replace(/^\?&/, '?').replace(/^&/, '?').replace(/\?$/, '');
+          window.history.replaceState({}, '', cleanUrl || window.location.pathname);
+        } catch (err) {
+          console.error('Failed to open post from URL:', err);
+
+          // Show error modal
+          const errorModal = document.getElementById('postNotFoundModal');
+          if (errorModal && typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(errorModal);
+            modal.show();
+          }
+
+          // Clean the URL even on error
+          const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]post_id=\d+/, '').replace(/^\?&/, '?').replace(/^&/, '?').replace(/\?$/, '');
+          window.history.replaceState({}, '', cleanUrl || window.location.pathname);
+        }
+      }, 100);
+    }
   }
 
   // Initialize donation modal platform detection and copy functionality

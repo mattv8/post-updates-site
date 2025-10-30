@@ -114,7 +114,21 @@ switch ($method) {
         $payload['created_by_user_id'] = $_SESSION['username'];
         $res = createPost($db_conn, $payload);
         if ($res['success']) {
-            echo json_encode(['success' => true, 'id' => $res['id']]);
+            $postId = $res['id'];
+
+            // Check if this new post is being published immediately
+            if (isset($payload['status']) && $payload['status'] === 'published') {
+                // Send email notification for new published post
+                $emailResult = sendNewPostNotification($db_conn, $postId);
+                // Log email result but don't fail the create operation
+                if ($emailResult['success']) {
+                    error_log("Post notification sent: " . $emailResult['message']);
+                } else {
+                    error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                }
+            }
+
+            echo json_encode(['success' => true, 'id' => $postId]);
         } else {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => $res['error']]);
@@ -126,10 +140,37 @@ switch ($method) {
         parse_str($_SERVER['QUERY_STRING'] ?? '', $query);
         $id = isset($query['id']) ? (int)$query['id'] : 0;
         if (!$id) { http_response_code(400); echo json_encode(['success' => false, 'error' => 'Missing id']); break; }
+
+        // Check if this is a first-time publish (status changing to 'published' and no published_at exists)
         $payload = json_decode(file_get_contents('php://input'), true) ?: [];
+        $sendNotification = false;
+
+        if (isset($payload['status']) && $payload['status'] === 'published') {
+            // Get current post state
+            $currentPost = getPost($db_conn, $id);
+            if ($currentPost && is_null($currentPost['published_at'])) {
+                $sendNotification = true; // First time publishing
+            }
+        }
+
         $res = updatePost($db_conn, $id, $payload);
-        if ($res['success']) echo json_encode(['success' => true]);
-        else { http_response_code(400); echo json_encode(['success' => false, 'error' => $res['error']]); }
+
+        if ($res['success']) {
+            // Send email notification if this is first-time publish
+            if ($sendNotification) {
+                $emailResult = sendNewPostNotification($db_conn, $id);
+                // Log email result but don't fail the update
+                if ($emailResult['success']) {
+                    error_log("Post notification sent: " . $emailResult['message']);
+                } else {
+                    error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                }
+            }
+            echo json_encode(['success' => true]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $res['error']]);
+        }
         break;
 
     case 'DELETE':

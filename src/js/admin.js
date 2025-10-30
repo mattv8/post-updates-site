@@ -674,6 +674,22 @@
     document.body.appendChild(deletePostModal);
   }
 
+  // Move newsletter modals to body as well
+  const addSubscriberModal = document.getElementById('addSubscriberModal');
+  if (addSubscriberModal && addSubscriberModal.parentElement !== document.body) {
+    document.body.appendChild(addSubscriberModal);
+  }
+
+  const deleteSubscriberModal = document.getElementById('deleteSubscriberModal');
+  if (deleteSubscriberModal && deleteSubscriberModal.parentElement !== document.body) {
+    document.body.appendChild(deleteSubscriberModal);
+  }
+
+  const reactivateSubscriberModal = document.getElementById('reactivateSubscriberModal');
+  if (reactivateSubscriberModal && reactivateSubscriberModal.parentElement !== document.body) {
+    document.body.appendChild(reactivateSubscriberModal);
+  }
+
   // Posts - minimal list/create
   const postsList = document.getElementById('postsList');
   const postEditorContainer = postEditorModal.querySelector('.modal-body');

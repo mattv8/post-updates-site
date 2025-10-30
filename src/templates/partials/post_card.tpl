@@ -2,7 +2,7 @@
 {assign var=jpg_srcset value=$post.hero_srcset_jpg}
 {assign var=webp_srcset value=$post.hero_srcset_webp}
 
-<div class="timeline-item" data-post-id="{$post.id}">
+<div class="timeline-item" id="post-{$post.id}" data-post-id="{$post.id}">
   <div class="timeline-date">
     <div class="timeline-date-content">
       {if $post.published_at}

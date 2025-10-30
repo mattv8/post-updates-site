@@ -15,12 +15,14 @@
   let aboutEditor = null;
   let donationEditor = null;
   let donationInstructionsEditor = null;
+  let mailingListEditor = null;
   let footerCol1Editor = null;
   let footerCol2Editor = null;
 
   // Auto-save intervals
   let heroAutoSave = null;
   let aboutAutoSave = null;
+  let mailingListAutoSave = null;
   let donationAutoSave = null;
   let donationInstructionsAutoSave = null;
   let footerCol1AutoSave = null;
@@ -182,6 +184,17 @@
 
     if (aboutEditor) {
       window.setQuillHTML(aboutEditor, settings.site_bio_html_editing || '');
+    }
+  }
+
+  function populateMailingListForm(settings) {
+    const modal = document.getElementById('editMailingListModal');
+    if (!modal || !settings) return;
+
+    modal.querySelector('#modal_show_mailing_list').checked = settings.show_mailing_list == 1;
+
+    if (mailingListEditor) {
+      window.setQuillHTML(mailingListEditor, settings.mailing_list_html_editing || '');
     }
   }
 
@@ -1041,6 +1054,170 @@
         }
       } catch (error) {
         console.error('Error saving about section:', error);
+        if (statusElement) {
+          statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
+        }
+        alert('An error occurred while saving');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      }
+    });
+  }
+
+  // Initialize Mailing List Modal
+  const mailingListModal = document.getElementById('editMailingListModal');
+  if (mailingListModal) {
+    mailingListModal.addEventListener('shown.bs.modal', async function() {
+      const editorContainer = mailingListModal.querySelector('#modal_mailing_list_html');
+      const loadingDiv = mailingListModal.querySelector('.modal-loading');
+      const form = mailingListModal.querySelector('#mailingListFormModal');
+      const saveBtn = document.getElementById('saveMailingListModal');
+
+      // Show loading state
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
+
+      // Initialize editor only once
+      if (editorContainer && !mailingListEditor) {
+        try {
+          mailingListEditor = window.initQuillEditor(editorContainer, {
+            placeholder: 'Enter mailing list section content...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
+          });
+
+          // Setup auto-save
+          mailingListAutoSave = setupModalAutoSave(mailingListEditor, 'mailing_list_html', 'modal_mailing-list-autosave-status');
+        } catch (error) {
+          console.error('Mailing list editor initialization error:', error);
+        }
+      }
+
+      // Fetch fresh settings data from API to get latest draft content
+      try {
+        const response = await fetch('/api/admin/settings.php');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          populateMailingListForm(result.data);
+        } else {
+          console.error('Failed to load settings:', result.error);
+          // Fallback to cached data
+          if (window.mailingListModalSettings) {
+            populateMailingListForm(window.mailingListModalSettings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        // Fallback to cached data
+        if (window.mailingListModalSettings) {
+          populateMailingListForm(window.mailingListModalSettings);
+        }
+      }
+
+      // Hide loading, show form, enable save button
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (form) form.style.display = 'block';
+      if (saveBtn) saveBtn.disabled = false;
+    });
+
+    // Clean up when hidden
+    mailingListModal.addEventListener('hidden.bs.modal', function() {
+      if (mailingListAutoSave) {
+        clearInterval(mailingListAutoSave);
+        mailingListAutoSave = null;
+      }
+
+      // Reset loading state for next open
+      const loadingDiv = mailingListModal.querySelector('.modal-loading');
+      const form = mailingListModal.querySelector('#mailingListFormModal');
+      const saveBtn = document.getElementById('saveMailingListModal');
+
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
+    });
+
+    // Save mailing list settings
+    document.getElementById('saveMailingListModal')?.addEventListener('click', async function() {
+      const btn = this;
+      const statusElement = document.getElementById('modal_mailing-list-autosave-status');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="saving">💾 Saving...</span>';
+      }
+
+      try {
+        const payload = {
+          show_mailing_list: mailingListModal.querySelector('#modal_show_mailing_list').checked ? 1 : 0,
+          mailing_list_html: mailingListEditor ? window.getQuillHTML(mailingListEditor) : mailingListModal.querySelector('#modal_mailing_list_html').value,
+        };
+
+        // Save to draft first
+        const draftResult = await SettingsManager.api('/api/admin/settings-draft.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!draftResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          alert('Error saving draft: ' + draftResult.error);
+          return;
+        }
+
+        // Publish the draft
+        const publishResult = await SettingsManager.api('/api/admin/settings.php?action=publish', {
+          method: 'GET'
+        });
+
+        if (!publishResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          alert('Error publishing: ' + publishResult.error);
+          return;
+        }
+
+        // Save non-draft fields
+        const settingsResult = await SettingsManager.saveSettings({
+          show_mailing_list: payload.show_mailing_list
+        });
+
+        if (settingsResult.success) {
+          const timestamp = new Date().toLocaleTimeString();
+          if (statusElement) {
+            statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
+          }
+
+          // Close the modal
+          const modalInstance = bootstrap.Modal.getInstance(mailingListModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh the page to show updated mailing list section
+          window.location.reload();
+        } else {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
+          }
+          alert('Error: ' + (settingsResult.error || 'Failed to save'));
+        }
+      } catch (error) {
+        console.error('Error saving mailing list section:', error);
         if (statusElement) {
           statusElement.innerHTML = '<span class="text-danger">⚠️ Save error</span>';
         }

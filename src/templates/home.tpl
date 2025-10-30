@@ -61,6 +61,9 @@
             </div>
           </div>
         {/if}
+        {if $settings.show_mailing_list}
+          {include file='templates/partials/mailing_list_section.tpl'}
+        {/if}
         {if $settings.show_donation}
           <div class="position-relative">
             {if $is_authenticated|default:false}
@@ -124,9 +127,29 @@
       </div>
     </div>
 
+    {* Post Not Found Error Modal *}
+    <div class="modal fade" id="postNotFoundModal" tabindex="-1" aria-labelledby="postNotFoundModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="postNotFoundModalLabel">Post Not Found</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Sorry, the post you're looking for could not be found.</p>
+            <p class="text-muted small mb-0">It may have been removed or is no longer available.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {* Edit Section Modals *}
     {include file='templates/modals/edit_hero.tpl'}
     {include file='templates/modals/edit_about.tpl'}
+    {include file='templates/modals/edit_mailing_list.tpl'}
     {include file='templates/modals/edit_donation.tpl'}
     {include file='templates/modals/edit_footer.tpl'}
 
@@ -137,6 +160,7 @@
   {/if}
 
   {* Page-specific JS - loaded for all users *}
+  <script src="js/newsletter-signup.js"></script>
   <script src="js/home.js"></script>
 
 </div>

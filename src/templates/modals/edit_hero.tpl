@@ -20,7 +20,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveHeroModal" disabled>Save Changes</button>
+        <button type="button" class="btn btn-primary" id="saveHeroModal" disabled>Save And Publish</button>
       </div>
     </div>
   </div>

@@ -43,6 +43,7 @@ switch ($method) {
             $settings['donation_instructions_html_editing'] = $settings['donation_instructions_html_draft'] ?? $settings['donation_instructions_html'];
             $settings['footer_column1_html_editing'] = $settings['footer_column1_html_draft'] ?? $settings['footer_column1_html'];
             $settings['footer_column2_html_editing'] = $settings['footer_column2_html_draft'] ?? $settings['footer_column2_html'];
+            $settings['mailing_list_html_editing'] = $settings['mailing_list_html_draft'] ?? $settings['mailing_list_html'];
         }
 
         echo json_encode(['success'=>true,'data'=>$settings]);

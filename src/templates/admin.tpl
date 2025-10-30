@@ -15,6 +15,9 @@
       <button class="nav-link" id="tab-donation" data-bs-toggle="tab" data-bs-target="#pane-donation" type="button" role="tab">Donation</button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-newsletter" data-bs-toggle="tab" data-bs-target="#pane-newsletter" type="button" role="tab">Newsletter</button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-media" data-bs-toggle="tab" data-bs-target="#pane-media" type="button" role="tab">Media</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -50,6 +53,96 @@
         {include file='templates/partials/donation_form.tpl'}
         <button type="submit" class="btn btn-primary">Save Donation</button>
       </form>
+    </div>
+
+    <div class="tab-pane fade" id="pane-newsletter" role="tabpanel">
+      <div class="mt-3">
+        <div class="mb-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="show_mailing_list" />
+            <label class="form-check-label" for="show_mailing_list">
+              <strong>Show mailing list section on home page</strong>
+            </label>
+          </div>
+          <small class="text-muted">Toggle visibility of the newsletter signup section in the sidebar</small>
+        </div>
+
+        <h6 class="mb-3">Email Notification Settings</h6>
+        <div class="mb-3">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="notify_subscribers_on_post" />
+            <label class="form-check-label" for="notify_subscribers_on_post">
+              <strong>Send email notifications to subscribers</strong>
+            </label>
+          </div>
+          <small class="text-muted">When enabled, subscribers receive an email when you publish a new post for the first time</small>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="email_include_post_body" />
+            <label class="form-check-label" for="email_include_post_body">
+              <strong>Include full post content in email</strong>
+            </label>
+          </div>
+          <small class="text-muted">When enabled, the formatted post body is included in the email. When disabled, only a summary and link to the post is sent</small>
+        </div>
+
+        <hr class="mb-4" />
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">Newsletter Subscribers</h5>
+          <div>
+            <button class="btn btn-sm btn-outline-secondary me-2" id="btnRefreshSubscribers">
+              <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <button class="btn btn-sm btn-success" id="btnAddSubscriber">
+              <i class="bi bi-plus-circle"></i> Add Subscriber
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="showArchivedSubscribers" />
+            <label class="form-check-label" for="showArchivedSubscribers">
+              Show archived subscribers
+            </label>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle" id="subscribersTable">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Subscribed At</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="subscribersList">
+              {if $active_subscriber_count > 0}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                  <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  Loading subscribers...
+                </td>
+              </tr>
+              {else}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                  <i class="bi bi-info-circle me-2"></i>
+                  No active subscribers. Users can sign up via the mailing list section on the home page.
+                </td>
+              </tr>
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div class="tab-pane fade" id="pane-media" role="tabpanel">
@@ -91,6 +184,82 @@
         </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
       </form>
+    </div>
+  </div>
+</div>
+
+{* Add Subscriber Modal *}
+<div class="modal fade" id="addSubscriberModal" tabindex="-1" aria-labelledby="addSubscriberModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addSubscriberModalLabel">Add Subscriber</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addSubscriberForm" class="needs-validation" novalidate>
+          <div class="mb-3">
+            <label for="newSubscriberEmail" class="form-label">Email Address</label>
+            <input
+              type="email"
+              class="form-control"
+              id="newSubscriberEmail"
+              required
+              pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{ldelim}2,{rdelim}$"
+              maxlength="255"
+            />
+            <div class="invalid-feedback">
+              Please enter a valid email address.
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmAddSubscriber">Add Subscriber</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{* Delete Subscriber Confirmation Modal *}
+<div class="modal fade" id="deleteSubscriberModal" tabindex="-1" aria-labelledby="deleteSubscriberModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteSubscriberModalLabel">Confirm Archive</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to archive this subscriber?</p>
+        <p class="fw-bold mb-2" id="deleteSubscriberEmail"></p>
+        <p class="text-muted small mb-0">This will mark the subscription as inactive. The subscriber can re-subscribe if needed.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteSubscriber">Archive Subscriber</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{* Reactivate Subscriber Confirmation Modal *}
+<div class="modal fade" id="reactivateSubscriberModal" tabindex="-1" aria-labelledby="reactivateSubscriberModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reactivateSubscriberModalLabel">Confirm Reactivation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to reactivate this subscriber?</p>
+        <p class="fw-bold mb-2" id="reactivateSubscriberEmail"></p>
+        <p class="text-muted small mb-0">This will restore the subscription to active status.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirmReactivateSubscriber">Reactivate Subscriber</button>
+      </div>
     </div>
   </div>
 </div>
@@ -159,3 +328,4 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="/js/admin.js"></script>
+<script src="/js/newsletter-admin.js"></script>

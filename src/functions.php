@@ -891,7 +891,7 @@ function createPost($db_conn, $data)
     }
 
     $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, hero_image_height, hero_crop_overlay, hero_title_overlay, hero_overlay_opacity, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, 'sssiiiiidssss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $hero_crop_overlay, $hero_title_overlay, $hero_overlay_opacity, $gallery_media_ids, $status, $published_at, $created_by);
+    mysqli_stmt_bind_param($stmt, 'sssiiiidssss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $hero_crop_overlay, $hero_title_overlay, $hero_overlay_opacity, $gallery_media_ids, $status, $published_at, $created_by);
     if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
@@ -998,6 +998,7 @@ function publishSettingsDraft($db_conn)
         donation_instructions_html = COALESCE(donation_instructions_html_draft, donation_instructions_html),
         footer_column1_html = COALESCE(footer_column1_html_draft, footer_column1_html),
         footer_column2_html = COALESCE(footer_column2_html_draft, footer_column2_html),
+        mailing_list_html = COALESCE(mailing_list_html_draft, mailing_list_html),
         updated_at = CURRENT_TIMESTAMP
     WHERE id = 1";
 
@@ -1104,7 +1105,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1113,13 +1114,13 @@ function updateSettings($db_conn, $data)
         if (array_key_exists($key, $data)) {
             $sets[] = "$key = ?";
             // Sanitize HTML fields
-            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'donation_instructions_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html') {
+            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'donation_instructions_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html' || $key === 'mailing_list_html') {
                 $params[] = sanitizeHtml($data[$key]);
             } else {
                 $params[] = $data[$key];
             }
             // Set parameter types
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height') { $types .= 'i'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height') { $types .= 'i'; }
             elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity') { $types .= 'd'; }
             else { $types .= 's'; }
         }
@@ -1134,6 +1135,326 @@ function updateSettings($db_conn, $data)
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
     return ['success' => true];
+}
+
+/**
+ * Newsletter helpers
+ */
+function getActiveSubscriberCount($db_conn)
+{
+    $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = 1');
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        return (int)$row['count'];
+    }
+    return 0;
+}
+
+function getTotalSubscriberCount($db_conn)
+{
+    $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers');
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        return (int)$row['count'];
+    }
+    return 0;
+}
+
+/**
+ * Generate a secure unsubscribe token for an email address
+ * Uses HMAC to prevent tampering
+ *
+ * @param string $email The email address to generate a token for
+ * @return string URL-safe base64 encoded token
+ */
+function generateUnsubscribeToken($email)
+{
+    require(__DIR__ . '/config.local.php');
+
+    // Use a secret key from config or generate one
+    // For production, this should be in your config.local.php
+    $secret = defined('UNSUBSCRIBE_SECRET') ? UNSUBSCRIBE_SECRET : $db_password;
+
+    // Create payload with email (no timestamp/expiration)
+    $payload = json_encode(['email' => $email]);
+
+    // Generate HMAC signature
+    $signature = hash_hmac('sha256', $payload, $secret);
+
+    // Combine payload and signature
+    $token = base64_encode($payload . '|' . $signature);
+
+    // Make URL-safe
+    return strtr($token, '+/', '-_');
+}
+
+/**
+ * Validate and decode an unsubscribe token
+ *
+ * @param string $token The token to validate
+ * @return string|false Email address if valid, false otherwise
+ */
+function validateUnsubscribeToken($token)
+{
+    require(__DIR__ . '/config.local.php');
+
+    try {
+        // Make URL-safe base64 back to normal
+        $token = strtr($token, '-_', '+/');
+
+        // Decode
+        $decoded = base64_decode($token, true);
+        if ($decoded === false) {
+            return false;
+        }
+
+        // Split payload and signature
+        $parts = explode('|', $decoded);
+        if (count($parts) !== 2) {
+            return false;
+        }
+
+        list($payload, $signature) = $parts;
+
+        // Verify signature
+        $secret = defined('UNSUBSCRIBE_SECRET') ? UNSUBSCRIBE_SECRET : $db_password;
+        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+
+        if (!hash_equals($expectedSignature, $signature)) {
+            return false;
+        }
+
+        // Decode payload
+        $data = json_decode($payload, true);
+        if (!$data || !isset($data['email'])) {
+            return false;
+        }
+
+        return $data['email'];
+
+    } catch (Exception $e) {
+        error_log('Unsubscribe token validation error: ' . $e->getMessage());
+        return false;
+    }
+}/**
+ * Send email notification to all active subscribers about a new post
+ *
+ * @param mysqli $db_conn Database connection
+ * @param int $postId ID of the newly published post
+ * @return array Result with success status and details
+ */
+function sendNewPostNotification($db_conn, $postId)
+{
+    // Get SMTP configuration from config
+    require(__DIR__ . '/config.local.php');
+
+    // Get settings to check if notifications are enabled
+    $settings = getSettings($db_conn);
+    if (!$settings || !$settings['notify_subscribers_on_post']) {
+        return ['success' => false, 'error' => 'Notifications disabled in settings'];
+    }
+
+    // Get post details
+    $post = getPost($db_conn, $postId);
+    if (!$post) {
+        return ['success' => false, 'error' => 'Post not found'];
+    }
+
+    // Get all active subscribers
+    $result = mysqli_query($db_conn, 'SELECT email FROM newsletter_subscribers WHERE is_active = 1');
+    if (!$result) {
+        return ['success' => false, 'error' => 'Failed to fetch subscribers'];
+    }
+
+    $subscribers = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $subscribers[] = $row['email'];
+    }
+
+    if (empty($subscribers)) {
+        return ['success' => true, 'sent' => 0, 'message' => 'No active subscribers'];
+    }
+
+    // Build email content
+    $siteTitle = $settings['site_title'] ?: 'Care Bridge';
+    $postTitle = $post['title'] ?: 'New Health Update';
+    $subject = $postTitle;
+
+    // Get author name
+    $authorName = '';
+    if (!empty($post['author_first']) || !empty($post['author_last'])) {
+        $authorName = trim(($post['author_first'] ?? '') . ' ' . ($post['author_last'] ?? ''));
+    }
+    if (empty($authorName)) {
+        $authorName = 'Someone';
+    }
+
+    // Get the base URL for the site (for linking to post)
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $baseUrl = "{$protocol}://{$host}";
+
+    // Link directly to post detail overlay: /?page=home&post_id=X
+    $postUrl = "{$baseUrl}/?page=home&post_id={$postId}";
+
+    // Build HTML email body using Smarty templates
+    // Initialize Smarty if not already available
+    global $smarty;
+    if (!isset($smarty) || !$smarty) {
+        require_once(__DIR__ . '/framework/vendor/smarty4/libs/Smarty.class.php');
+        $smarty = new Smarty();
+        $smarty->setTemplateDir(__DIR__ . '/templates');
+        $smarty->setCompileDir(__DIR__ . '/cache');
+        $smarty->setCacheDir(__DIR__ . '/cache');
+        // Disable auto-escaping since we're handling HTML content
+        $smarty->escape_html = false;
+    }
+
+    $includePostBody = (bool)$settings['email_include_post_body'];
+
+    // Prepare common template variables (non-personalized)
+    $smarty->assign('site_title', $siteTitle);
+    $smarty->assign('post_url', $postUrl);
+    $smarty->assign('base_url', $baseUrl);
+
+    // Prepare template variables based on email type
+    if ($includePostBody) {
+        // Convert relative URLs in body_html to absolute URLs
+        $bodyHtml = $post['body_html'];
+        $bodyHtml = preg_replace('/(src|href)=["\']\//', '$1="' . $baseUrl . '/', $bodyHtml);
+
+        // Get hero image data if available
+        $heroImageUrl = '';
+        if (!empty($post['hero_media_id'])) {
+            $heroMedia = getMedia($db_conn, (int)$post['hero_media_id']);
+            if ($heroMedia && !empty($heroMedia['storage_path'])) {
+                // Clean up storage path - handle both absolute and relative paths
+                $storagePath = $heroMedia['storage_path'];
+
+                // Remove any ../ or ./ references and normalize the path
+                $storagePath = preg_replace('#/\.\./#', '/', $storagePath);
+                $storagePath = preg_replace('#/\./#', '/', $storagePath);
+
+                // Extract just the storage/uploads part
+                if (preg_match('#(storage/uploads/.+)$#', $storagePath, $matches)) {
+                    $storagePath = $matches[1];
+                } else {
+                    // Fallback: remove everything before 'storage/'
+                    $storagePath = preg_replace('#^.*(storage/.+)$#', '$1', $storagePath);
+                }
+
+                $heroImageUrl = $baseUrl . '/' . $storagePath;
+            }
+        }
+
+        // Assign variables for full email template
+        $smarty->assign('post_title', $postTitle);
+        $smarty->assign('hero_image_url', $heroImageUrl);
+        $smarty->assign('hero_image_height', $post['hero_image_height'] ?? 100);
+        $smarty->assign('hero_title_overlay', $post['hero_title_overlay'] ?? 1);
+        $smarty->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
+        $smarty->assign('body_html', $bodyHtml);
+    } else {
+        // Generic notification with link only
+        $excerpt = $post['excerpt'] ?: generateExcerpt($post['body_html'], 150);
+
+        // Assign variables for excerpt email template
+        $smarty->assign('author_name', $authorName);
+        $smarty->assign('excerpt', $excerpt);
+    }
+
+    // Send emails individually to each subscriber with personalized unsubscribe link
+    $sentCount = 0;
+    $errors = [];
+
+    try {
+        require_once(__DIR__ . '/vendor/autoload.php');
+
+        // Create PHPMailer instance once and reuse
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = $smtp_host;
+        $mail->Port = $smtp_port;
+
+        if ($smtp_auth) {
+            $mail->SMTPAuth = true;
+            $mail->Username = $smtp_username;
+            $mail->Password = $smtp_password;
+        } else {
+            $mail->SMTPAuth = false;
+        }
+
+        if ($smtp_secure) {
+            $mail->SMTPSecure = $smtp_secure;
+        }
+
+        // Sender - use author name from the post
+        $mail->setFrom($smtp_from_email, $authorName);
+
+        // Content settings
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+
+        // Send to each subscriber individually with personalized unsubscribe link
+        foreach ($subscribers as $email) {
+            try {
+                // Generate personalized unsubscribe token for this email
+                $unsubscribeToken = generateUnsubscribeToken($email);
+                $unsubscribeUrl = "{$baseUrl}/api/unsubscribe.php?token={$unsubscribeToken}";
+
+                // Assign the personalized unsubscribe URL to template
+                $smarty->assign('unsubscribe_url', $unsubscribeUrl);
+
+                // Render the email body with personalized unsubscribe link
+                if ($includePostBody) {
+                    $emailBody = $smarty->fetch('email_notification_full.tpl');
+                } else {
+                    $emailBody = $smarty->fetch('email_notification_excerpt.tpl');
+                }
+
+                // Clear previous recipients
+                $mail->clearAddresses();
+
+                // Add this subscriber
+                $mail->addAddress($email);
+
+                // Set body
+                $mail->Body = $emailBody;
+                $mail->AltBody = strip_tags($emailBody); // Plain text fallback
+
+                // Send the email
+                $mail->send();
+                $sentCount++;
+
+            } catch (Exception $e) {
+                error_log("Failed to send notification to {$email}: " . $e->getMessage());
+                $errors[] = $email;
+            }
+        }
+
+        if ($sentCount > 0) {
+            return [
+                'success' => true,
+                'sent' => $sentCount,
+                'failed' => count($errors),
+                'message' => "Notifications sent to {$sentCount} subscriber(s)" . (count($errors) > 0 ? " ({count($errors)} failed)" : '')
+            ];
+        } else {
+            return [
+                'success' => false,
+                'error' => 'Failed to send emails to any subscribers'
+            ];
+        }
+
+    } catch (Exception $e) {
+        error_log('Failed to send post notification: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => 'Failed to send email: ' . $e->getMessage()
+        ];
+    }
 }
 
 ?>

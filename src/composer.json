@@ -6,7 +6,8 @@
         "intervention/image": "^2.7",
         "stripe/stripe-php": "^13.0",
         "openai-php/client": "^0.10.3",
-        "symfony/http-client": "^6.4"
+        "symfony/http-client": "^6.4",
+        "phpmailer/phpmailer": "^6.9"
     },
     "autoload": {
         "psr-4": {

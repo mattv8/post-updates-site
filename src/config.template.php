@@ -69,6 +69,19 @@ $page_bg_color_class = 'bg-blurred rounded-3';
 # Get your API key from: https://platform.openai.com/api-keys
 $openai_api_key = ''; // Insert your OpenAI API key (sk-...)
 
+# SMTP Email Configuration
+# For local development with Mailpit, use these defaults:
+# Server: mailpit, Port: 1025, No auth required
+# For production, configure your SMTP server details
+$smtp_host = 'mailpit'; // SMTP server hostname (e.g., 'smtp.gmail.com', 'mailpit' for local)
+$smtp_port = 1025; // SMTP port (25, 587, 465, or 1025 for mailpit)
+$smtp_secure = ''; // Encryption: '', 'tls', or 'ssl' (leave empty for mailpit)
+$smtp_auth = false; // Enable SMTP authentication (true/false)
+$smtp_username = ''; // SMTP username (if auth enabled)
+$smtp_password = ''; // SMTP password (if auth enabled)
+$smtp_from_email = 'noreply@janssen-care-bridge.local'; // From email address
+$smtp_from_name = 'Janssen Care Bridge'; // From name
+
 # DEPRECATED: Stripe Configuration (No longer used - donations now use direct links)
 # The donation system now supports Venmo, PayPal, Ko-fi, and other direct methods
 # configured through the admin panel. These variables are kept for backward compatibility.

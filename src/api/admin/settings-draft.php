@@ -90,6 +90,12 @@ switch ($method) {
             $types .= 's';
         }
 
+        if (isset($payload['mailing_list_html'])) {
+            $fields[] = 'mailing_list_html_draft = ?';
+            $params[] = sanitizeHtml($payload['mailing_list_html']);
+            $types .= 's';
+        }
+
         if (empty($fields)) {
             echo json_encode(['success' => true, 'message' => 'No fields to update']);
             break;
