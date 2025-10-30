@@ -964,6 +964,50 @@ function deletePost($db_conn, $id)
     return mysqli_stmt_execute($stmt);
 }
 
+function publishDraft($db_conn, $id)
+{
+    // Copy all draft fields to published fields for posts
+    $id = (int)$id;
+    $sql = "UPDATE posts SET
+        title = COALESCE(title_draft, title),
+        body_html = COALESCE(body_html_draft, body_html),
+        hero_media_id = COALESCE(hero_media_id_draft, hero_media_id),
+        hero_image_height = COALESCE(hero_image_height_draft, hero_image_height),
+        hero_crop_overlay = COALESCE(hero_crop_overlay_draft, hero_crop_overlay),
+        hero_title_overlay = COALESCE(hero_title_overlay_draft, hero_title_overlay),
+        hero_overlay_opacity = COALESCE(hero_overlay_opacity_draft, hero_overlay_opacity),
+        gallery_media_ids = COALESCE(gallery_media_ids_draft, gallery_media_ids),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND deleted_at IS NULL";
+
+    $stmt = mysqli_prepare($db_conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    if (!mysqli_stmt_execute($stmt)) {
+        return ['success' => false, 'error' => mysqli_error($db_conn)];
+    }
+    return ['success' => true];
+}
+
+function publishSettingsDraft($db_conn)
+{
+    // Copy all draft fields to published fields for settings
+    $sql = "UPDATE settings SET
+        hero_html = COALESCE(hero_html_draft, hero_html),
+        site_bio_html = COALESCE(site_bio_html_draft, site_bio_html),
+        donate_text_html = COALESCE(donate_text_html_draft, donate_text_html),
+        donation_instructions_html = COALESCE(donation_instructions_html_draft, donation_instructions_html),
+        footer_column1_html = COALESCE(footer_column1_html_draft, footer_column1_html),
+        footer_column2_html = COALESCE(footer_column2_html_draft, footer_column2_html),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1";
+
+    $stmt = mysqli_prepare($db_conn, $sql);
+    if (!mysqli_stmt_execute($stmt)) {
+        return ['success' => false, 'error' => mysqli_error($db_conn)];
+    }
+    return ['success' => true];
+}
+
 function getPost($db_conn, $id)
 {
     $id = (int)$id;

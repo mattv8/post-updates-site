@@ -36,14 +36,15 @@
     }
 
     return window.setupAutoSave(editor, {
-      saveUrl: '/api/admin/settings.php',
+      saveUrl: '/api/admin/settings-draft.php',
+      method: 'PUT',
       buildPayload: (content) => {
         const payload = {};
         payload[fieldName] = content;
         return payload;
       },
       statusElementId: statusElementId,
-      fieldName: `${fieldName} (modal)`
+      fieldName: `${fieldName} draft (modal)`
     });
   }
 
@@ -120,7 +121,7 @@
     }
 
     if (heroEditor) {
-      window.setQuillHTML(heroEditor, settings.hero_html || '');
+      window.setQuillHTML(heroEditor, settings.hero_html_editing || '');
     }
 
     // Show hero preview if media selected
@@ -180,7 +181,7 @@
     modal.querySelector('#modal_show_about').checked = settings.show_about == 1;
 
     if (aboutEditor) {
-      window.setQuillHTML(aboutEditor, settings.site_bio_html || '');
+      window.setQuillHTML(aboutEditor, settings.site_bio_html_editing || '');
     }
   }
 
@@ -221,11 +222,11 @@
     }
 
     if (donationEditor) {
-      window.setQuillHTML(donationEditor, settings.donate_text_html || '');
+      window.setQuillHTML(donationEditor, settings.donate_text_html_editing || '');
     }
 
     if (donationInstructionsEditor) {
-      window.setQuillHTML(donationInstructionsEditor, settings.donation_instructions_html || '');
+      window.setQuillHTML(donationInstructionsEditor, settings.donation_instructions_html_editing || '');
     }
 
     // Trigger visibility update based on donation method
@@ -259,13 +260,13 @@
     // Update column 2 visibility based on layout
     updateFooterColumn2Visibility();
 
-    // Populate editors
+    // Populate editors (use draft content)
     if (footerCol1Editor) {
-      window.setQuillHTML(footerCol1Editor, settings.footer_column1_html || '');
+      window.setQuillHTML(footerCol1Editor, settings.footer_column1_html_editing || '');
     }
 
     if (footerCol2Editor) {
-      window.setQuillHTML(footerCol2Editor, settings.footer_column2_html || '');
+      window.setQuillHTML(footerCol2Editor, settings.footer_column2_html_editing || '');
     }
 
     // Use BackgroundPreviewManager to populate preview
@@ -641,6 +642,14 @@
     // Initialize Quill editor when modal is first shown
     heroModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer = heroModal.querySelector('#modal_hero_html');
+      const loadingDiv = heroModal.querySelector('.modal-loading');
+      const form = heroModal.querySelector('#modalHeroForm');
+      const saveBtn = document.getElementById('saveHeroModal');
+
+      // Show loading state
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
 
       // Initialize editor only once
       if (editorContainer && !heroEditor) {
@@ -669,18 +678,29 @@
         }
       }
 
-      // Populate form with data from window (set by Smarty)
-      if (window.heroModalSettings) {
-        populateHeroForm(window.heroModalSettings);
-      } else {
-        console.error('window.heroModalSettings not found!');
+      // Fetch fresh settings data from API to get latest draft content
+      try {
+        const response = await fetch('/api/admin/settings.php');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          populateHeroForm(result.data);
+        } else {
+          console.error('Failed to load settings:', result.error);
+          // Fallback to cached data
+          if (window.heroModalSettings) {
+            populateHeroForm(window.heroModalSettings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        // Fallback to cached data
+        if (window.heroModalSettings) {
+          populateHeroForm(window.heroModalSettings);
+        }
       }
 
       // Hide loading, show form, enable save button
-      const loadingDiv = heroModal.querySelector('.modal-loading');
-      const form = heroModal.querySelector('#modalHeroForm');
-      const saveBtn = document.getElementById('saveHeroModal');
-
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
@@ -798,9 +818,44 @@
           hero_height: heroModal.querySelector('#modal_hero_height').value || 100,
         };
 
-        const result = await SettingsManager.saveSettings(payload);
+        // Save to draft first
+        const draftResult = await SettingsManager.api('/api/admin/settings-draft.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-        if (result.success) {
+        if (!draftResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          alert('Error saving draft: ' + draftResult.error);
+          return;
+        }
+
+        // Publish the draft
+        const publishResult = await SettingsManager.api('/api/admin/settings.php?action=publish', {
+          method: 'GET'
+        });
+
+        if (!publishResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          alert('Error publishing: ' + publishResult.error);
+          return;
+        }
+
+        // Save non-draft fields
+        const settingsResult = await SettingsManager.saveSettings({
+          show_hero: payload.show_hero,
+          hero_media_id: payload.hero_media_id,
+          hero_overlay_opacity: payload.hero_overlay_opacity,
+          hero_overlay_color: payload.hero_overlay_color,
+          hero_height: payload.hero_height
+        });
+
+        if (settingsResult.success) {
           const timestamp = new Date().toLocaleTimeString();
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
@@ -818,7 +873,7 @@
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
           }
-          alert('Error: ' + (result.error || 'Failed to save'));
+          alert('Error: ' + (settingsResult.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving hero settings:', error);
@@ -838,6 +893,14 @@
   if (aboutModal) {
     aboutModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer = aboutModal.querySelector('#modal_site_bio_html');
+      const loadingDiv = aboutModal.querySelector('.modal-loading');
+      const form = aboutModal.querySelector('#aboutFormModal');
+      const saveBtn = document.getElementById('saveAboutModal');
+
+      // Show loading state
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
 
       // Initialize editor only once
       if (editorContainer && !aboutEditor) {
@@ -861,16 +924,29 @@
         }
       }
 
-      // Populate form with data from window (set by Smarty)
-      if (window.aboutModalSettings) {
-        populateAboutForm(window.aboutModalSettings);
+      // Fetch fresh settings data from API to get latest draft content
+      try {
+        const response = await fetch('/api/admin/settings.php');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          populateAboutForm(result.data);
+        } else {
+          console.error('Failed to load settings:', result.error);
+          // Fallback to cached data
+          if (window.aboutModalSettings) {
+            populateAboutForm(window.aboutModalSettings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        // Fallback to cached data
+        if (window.aboutModalSettings) {
+          populateAboutForm(window.aboutModalSettings);
+        }
       }
 
       // Hide loading, show form, enable save button
-      const loadingDiv = aboutModal.querySelector('.modal-loading');
-      const form = aboutModal.querySelector('#aboutFormModal');
-      const saveBtn = document.getElementById('saveAboutModal');
-
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
@@ -910,9 +986,40 @@
           site_bio_html: aboutEditor ? window.getQuillHTML(aboutEditor) : aboutModal.querySelector('#modal_site_bio_html').value,
         };
 
-        const result = await SettingsManager.saveSettings(payload);
+        // Save to draft first
+        const draftResult = await SettingsManager.api('/api/admin/settings-draft.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-        if (result.success) {
+        if (!draftResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          alert('Error saving draft: ' + draftResult.error);
+          return;
+        }
+
+        // Publish the draft
+        const publishResult = await SettingsManager.api('/api/admin/settings.php?action=publish', {
+          method: 'GET'
+        });
+
+        if (!publishResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          alert('Error publishing: ' + publishResult.error);
+          return;
+        }
+
+        // Save non-draft fields
+        const settingsResult = await SettingsManager.saveSettings({
+          show_about: payload.show_about
+        });
+
+        if (settingsResult.success) {
           const timestamp = new Date().toLocaleTimeString();
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
@@ -930,7 +1037,7 @@
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
           }
-          alert('Error: ' + (result.error || 'Failed to save'));
+          alert('Error: ' + (settingsResult.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving about section:', error);
@@ -957,6 +1064,14 @@
     donationModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer = donationModal.querySelector('#modal_donate_text_html');
       const instructionsContainer = donationModal.querySelector('#modal_donation_instructions_html');
+      const loadingDiv = donationModal.querySelector('.modal-loading');
+      const form = donationModal.querySelector('#donationFormModal');
+      const saveBtn = document.getElementById('saveDonationModal');
+
+      // Show loading state
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
 
       // Initialize donation content editor only once
       if (editorContainer && !donationEditor) {
@@ -1025,16 +1140,29 @@
       // Setup preview update listeners
       setupDonationPreviewListeners();
 
-      // Populate form with data from window (set by Smarty)
-      if (window.donationModalSettings) {
-        populateDonationForm(window.donationModalSettings);
+      // Fetch fresh settings data from API to get latest draft content
+      try {
+        const response = await fetch('/api/admin/settings.php');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          populateDonationForm(result.data);
+        } else {
+          console.error('Failed to load settings:', result.error);
+          // Fallback to cached data
+          if (window.donationModalSettings) {
+            populateDonationForm(window.donationModalSettings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        // Fallback to cached data
+        if (window.donationModalSettings) {
+          populateDonationForm(window.donationModalSettings);
+        }
       }
 
       // Hide loading, show form, enable save button
-      const loadingDiv = donationModal.querySelector('.modal-loading');
-      const form = donationModal.querySelector('#donationFormModal');
-      const saveBtn = document.getElementById('saveDonationModal');
-
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
@@ -1121,9 +1249,44 @@
           donate_text_html: donationEditor ? window.getQuillHTML(donationEditor) : donationModal.querySelector('#modal_donate_text_html').value,
         };
 
-        const result = await SettingsManager.saveSettings(payload);
+        // Save to draft first
+        const draftResult = await SettingsManager.api('/api/admin/settings-draft.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-        if (result.success) {
+        if (!draftResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          alert('Error saving draft: ' + draftResult.error);
+          return;
+        }
+
+        // Publish the draft
+        const publishResult = await SettingsManager.api('/api/admin/settings.php?action=publish', {
+          method: 'GET'
+        });
+
+        if (!publishResult.success) {
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          alert('Error publishing: ' + publishResult.error);
+          return;
+        }
+
+        // Save non-draft fields
+        const settingsResult = await SettingsManager.saveSettings({
+          show_donation: payload.show_donation,
+          show_donate_button: payload.show_donate_button,
+          donation_method: payload.donation_method,
+          donation_link: payload.donation_link,
+          donation_qr_media_id: payload.donation_qr_media_id
+        });
+
+        if (settingsResult.success) {
           const timestamp = new Date().toLocaleTimeString();
           if (statusElement) {
             statusElement.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
@@ -1144,7 +1307,7 @@
           if (statusElement) {
             statusElement.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
           }
-          alert('Error: ' + (result.error || 'Failed to save'));
+          alert('Error: ' + (settingsResult.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving donation section:', error);
@@ -1184,6 +1347,14 @@
     footerModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer1 = footerModal.querySelector('#modal_footer_column1_html');
       const editorContainer2 = footerModal.querySelector('#modal_footer_column2_html');
+      const loadingDiv = footerModal.querySelector('.modal-loading');
+      const form = footerModal.querySelector('#footerFormModal');
+      const saveBtn = document.getElementById('saveFooterModal');
+
+      // Show loading state
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (form) form.style.display = 'none';
+      if (saveBtn) saveBtn.disabled = true;
 
       // Initialize BackgroundPreviewManager for footer
       if (!window.footerPreviewManager && window.BackgroundPreviewManager) {
@@ -1244,16 +1415,29 @@
         }
       }
 
-      // Populate form with data from window (set by Smarty)
-      if (window.footerModalSettings) {
-        populateFooterForm(window.footerModalSettings);
+      // Fetch fresh settings data from API to get latest draft content
+      try {
+        const response = await fetch('/api/admin/settings.php');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          populateFooterForm(result.data);
+        } else {
+          console.error('Failed to load settings:', result.error);
+          // Fallback to cached data
+          if (window.footerModalSettings) {
+            populateFooterForm(window.footerModalSettings);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        // Fallback to cached data
+        if (window.footerModalSettings) {
+          populateFooterForm(window.footerModalSettings);
+        }
       }
 
       // Hide loading, show form, enable save button
-      const loadingDiv = footerModal.querySelector('.modal-loading');
-      const form = footerModal.querySelector('#footerFormModal');
-      const saveBtn = document.getElementById('saveFooterModal');
-
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
@@ -1309,9 +1493,51 @@
           footer_column2_html: footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : footerModal.querySelector('#modal_footer_column2_html').value,
         };
 
-        const result = await SettingsManager.saveSettings(payload);
+        // Save to draft first
+        const draftResult = await SettingsManager.api('/api/admin/settings-draft.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-        if (result.success) {
+        if (!draftResult.success) {
+          if (statusElement1) {
+            statusElement1.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          if (statusElement2) {
+            statusElement2.innerHTML = '<span class="text-danger">⚠️ Draft save failed</span>';
+          }
+          alert('Error saving draft: ' + draftResult.error);
+          return;
+        }
+
+        // Publish the draft
+        const publishResult = await SettingsManager.api('/api/admin/settings.php?action=publish', {
+          method: 'GET'
+        });
+
+        if (!publishResult.success) {
+          if (statusElement1) {
+            statusElement1.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          if (statusElement2) {
+            statusElement2.innerHTML = '<span class="text-danger">⚠️ Publish failed</span>';
+          }
+          alert('Error publishing: ' + publishResult.error);
+          return;
+        }
+
+        // Save non-draft fields
+        const settingsResult = await SettingsManager.saveSettings({
+          show_footer: payload.show_footer,
+          footer_layout: payload.footer_layout,
+          footer_media_id: payload.footer_media_id,
+          footer_height: payload.footer_height,
+          footer_overlay_opacity: payload.footer_overlay_opacity,
+          footer_overlay_color: payload.footer_overlay_color
+        });
+
+        if (settingsResult.success) {
           const timestamp = new Date().toLocaleTimeString();
           if (statusElement1) {
             statusElement1.innerHTML = `<span class="saved text-success">✓ Saved at ${timestamp}</span>`;
@@ -1335,7 +1561,7 @@
           if (statusElement2) {
             statusElement2.innerHTML = '<span class="text-danger">⚠️ Save failed</span>';
           }
-          alert('Error: ' + (result.error || 'Failed to save'));
+          alert('Error: ' + (settingsResult.error || 'Failed to save'));
         }
       } catch (error) {
         console.error('Error saving footer settings:', error);

@@ -158,7 +158,7 @@
 
   <div class="mt-3 d-flex gap-2 justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
-    <button type="button" class="btn btn-primary btn-save-post">Save Post</button>
+    <button type="button" class="btn btn-primary btn-save-post">Save and Publish</button>
   </div>
   {if isset($mode) && $mode == 'edit'}
   </div>

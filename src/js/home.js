@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
       let galleryMediaIds = [];
       let postAutoSave = null;
 
-      // Helper function to setup auto-save for posts
+      // Helper function to setup auto-save for posts (saves to draft)
       function setupPostAutoSave(editor, postId) {
 
         if (!window.setupAutoSave) {
@@ -689,11 +689,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return window.setupAutoSave(editor, {
-          saveUrl: `/api/admin/posts.php?id=${postId}`,
+          saveUrl: `/api/admin/posts-draft.php?id=${postId}`,
           method: 'PUT',
           buildPayload: (content) => ({ body_html: content }),
           statusElementId: 'post-autosave-status-home-edit',
-          fieldName: `post ${postId}`
+          fieldName: `post ${postId} draft`
         });
       }
 
@@ -896,7 +896,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (j.success && j.data) {
             const post = j.data;
 
-            postEditorContainer.querySelector('.post-title').value = post.title || '';
+            // Use draft content for editing (falls back to published if no draft)
+            postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
             const tgl = postEditorContainer.querySelector('.post-status-toggle');
             if (tgl) {
               tgl.checked = (post.status === 'published');
@@ -907,31 +908,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (postBodyEditor) {
-              window.setQuillHTML(postBodyEditor, post.body_html || '');
+              // Load draft content into editor
+              window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
 
-              // Set up auto-save for this post (only when editing existing post)
+              // Set up auto-save for this post (saves to draft)
               if (postAutoSave) {
                 clearInterval(postAutoSave);
               }
               postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
             } else {
-              postEditorContainer.querySelector('.post-body').value = post.body_html || '';
+              postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
             }
 
-            // Set hero image
-            if (post.hero_media_id) {
+            // Set hero image (use draft)
+            const heroMediaId = post.hero_media_id_editing;
+            if (heroMediaId) {
               const heroSelect = postEditorContainer.querySelector('.post-hero-media');
               const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
               if (heroSelect) {
-                heroSelect.value = post.hero_media_id;
+                heroSelect.value = heroMediaId;
                 heroSelect.dispatchEvent(new Event('change'));
               }
-              // Set hero height and show control
+              // Set hero height and show control (use draft)
               const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
               const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
               const heroCropToggle = postEditorContainer.querySelector('.post-hero-crop-overlay');
               const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-              const heightToSet = post.hero_image_height || 100;
+              const heightToSet = post.hero_image_height_editing || 100;
               if (heroHeightSlider) {
                 heroHeightSlider.value = heightToSet;
                 if (heroHeightValue) {
@@ -942,20 +945,21 @@ document.addEventListener('DOMContentLoaded', function() {
                   heroPreviewDiv.style.paddingBottom = heightToSet + '%';
                 }
               }
-              // Set crop overlay toggle
+              // Set crop overlay toggle (use draft)
               if (heroCropToggle) {
-                heroCropToggle.checked = post.hero_crop_overlay == 1;
+                heroCropToggle.checked = (post.hero_crop_overlay_editing == 1);
               }
-              // Set title overlay toggle
+              // Set title overlay toggle (use draft)
               const heroTitleToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
               if (heroTitleToggle) {
-                heroTitleToggle.checked = post.hero_title_overlay == 1 || post.hero_title_overlay === undefined;
+                const draftValue = post.hero_title_overlay_editing;
+                heroTitleToggle.checked = draftValue == 1 || draftValue === null || draftValue === undefined;
               }
-              // Set overlay opacity slider
+              // Set overlay opacity slider (use draft)
               const heroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
               const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
               if (heroOverlayOpacity) {
-                const opacityToSet = parseFloat(post.hero_overlay_opacity) || 0.70;
+                const opacityToSet = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
                 heroOverlayOpacity.value = opacityToSet;
                 if (overlayOpacityValue) {
                   overlayOpacityValue.textContent = opacityToSet.toFixed(2);
@@ -1473,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (galleryUploadInput) galleryUploadInput.value = '';
         }
 
-        saveBtn.textContent = 'Saving post...';
+        saveBtn.textContent = 'Publishing changes...';
 
         const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
         const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
@@ -1494,23 +1498,45 @@ document.addEventListener('DOMContentLoaded', function() {
           gallery_media_ids: galleryMediaIds
         };
 
-        const j = await api('/api/admin/posts.php?id=' + editingPostId, {
+        // Save to draft fields first
+        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingPostId, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload)
         });
 
-          if (j.success) {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) bsModal.hide();
-            // Refresh posts list without full page reload
-            if (typeof window.refreshPostsList === 'function') {
-              await window.refreshPostsList();
-            } else {
-              window.location.reload();
-            }
+        if (!draftSave.success) {
+          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        // Publish the draft (copies draft fields to published fields)
+        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, {
+          method: 'GET'
+        });
+
+        if (publishResult.success) {
+          // Also update the status if changed
+          if (payload.status) {
+            await api('/api/admin/posts.php?id=' + editingPostId, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ status: payload.status })
+            });
+          }
+
+          const bsModal = bootstrap.Modal.getInstance(modal);
+          if (bsModal) bsModal.hide();
+          // Refresh posts list without full page reload
+          if (typeof window.refreshPostsList === 'function') {
+            await window.refreshPostsList();
           } else {
-          alert('Error: ' + (j.error || 'Unknown error'));
+            window.location.reload();
+          }
+        } else {
+          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
         }
       } catch (error) {
         console.error('Error saving post:', error);

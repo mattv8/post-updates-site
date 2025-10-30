@@ -208,18 +208,19 @@
     }
 
     return window.setupAutoSave(editor, {
-      saveUrl: '/api/admin/settings.php',
+      saveUrl: '/api/admin/settings-draft.php',
+      method: 'PUT',
       buildPayload: (content) => {
         const payload = {};
         payload[fieldName] = content;
         return payload;
       },
       statusElementId: statusMap[fieldName],
-      fieldName: fieldName
+      fieldName: `${fieldName} draft`
     });
   }
 
-  // Helper function to setup auto-save for posts
+  // Helper function to setup auto-save for posts (saves to draft)
   function setupPostAutoSave(editor, postId) {
     if (!window.setupAutoSave) {
       console.error('window.setupAutoSave is not defined!');
@@ -227,11 +228,11 @@
     }
 
     return window.setupAutoSave(editor, {
-      saveUrl: `/api/admin/posts.php?id=${postId}`,
+      saveUrl: `/api/admin/posts-draft.php?id=${postId}`,
       method: 'PUT',
       buildPayload: (content) => ({ body_html: content }),
       statusElementId: 'post-autosave-status',
-      fieldName: `post ${postId}`
+      fieldName: `post ${postId} draft`
     });
   }
 
@@ -302,8 +303,8 @@
         }
       }
 
-      // Load hero HTML into editor
-      const heroHtml = j.data.hero_html||'';
+      // Load hero HTML into editor (use draft content)
+      const heroHtml = j.data.hero_html_editing || '';
       if (heroEditor) {
         window.setQuillHTML(heroEditor, heroHtml);
       } else {
@@ -323,8 +324,8 @@
       if (heroOpacityElement) heroOpacityElement.value = j.data.hero_overlay_opacity||0.5;
       if (heroColorElement) heroColorElement.value = j.data.hero_overlay_color||'#000000';
 
-      // Load bio HTML into editor
-      const bioHtml = j.data.site_bio_html||'';
+      // Load bio HTML into editor (use draft content)
+      const bioHtml = j.data.site_bio_html_editing || '';
       if (bioEditor) {
         window.setQuillHTML(bioEditor, bioHtml);
       } else {
@@ -334,8 +335,8 @@
         }
       }
 
-      // Load donate HTML into editor
-      const donateHtml = j.data.donate_text_html||'';
+      // Load donate HTML into editor (use draft content)
+      const donateHtml = j.data.donate_text_html_editing || '';
       if (donateEditor) {
         window.setQuillHTML(donateEditor, donateHtml);
       } else {
@@ -345,8 +346,8 @@
         }
       }
 
-      // Load donation instructions HTML into editor (admin page)
-      const donationInstructionsHtml = j.data.donation_instructions_html || '';
+      // Load donation instructions HTML into editor (use draft content)
+      const donationInstructionsHtml = j.data.donation_instructions_html_editing || '';
       if (donationInstructionsEditor) {
         window.setQuillHTML(donationInstructionsEditor, donationInstructionsHtml);
       }
@@ -399,7 +400,7 @@
   }
 
   // Save hero/settings
-  document.getElementById('heroForm').addEventListener('submit', function(e){
+  document.getElementById('heroForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const payload = {
       show_hero: document.getElementById('show_hero').checked ? 1 : 0,
@@ -410,27 +411,80 @@
       hero_overlay_opacity: document.getElementById('hero_overlay_opacity').value,
       hero_overlay_color: document.getElementById('hero_overlay_color').value,
     };
-    api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
-      if (!j.success) {
-        alert('Error: ' + j.error);
-      }
+
+    // Save to draft first
+    const draftResult = await api('/api/admin/settings-draft.php', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (!draftResult.success) {
+      alert('Error saving draft: ' + draftResult.error);
+      return;
+    }
+
+    // Publish the draft
+    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+
+    if (!publishResult.success) {
+      alert('Error publishing: ' + publishResult.error);
+      return;
+    }
+
+    // Save non-draft fields
+    await api('/api/admin/settings.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        show_hero: payload.show_hero,
+        hero_media_id: payload.hero_media_id,
+        cta_text: payload.cta_text,
+        cta_url: payload.cta_url,
+        hero_overlay_opacity: payload.hero_overlay_opacity,
+        hero_overlay_color: payload.hero_overlay_color
+      })
     });
   });
 
-  document.getElementById('aboutForm').addEventListener('submit', function(e){
+  document.getElementById('aboutForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const payload = {
       show_about: document.getElementById('show_about').checked ? 1 : 0,
       site_bio_html: bioEditor ? window.getQuillHTML(bioEditor) : document.getElementById('site_bio_html').value,
     };
-    api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
-      if (!j.success) {
-        alert('Error: ' + j.error);
-      }
+
+    // Save to draft first
+    const draftResult = await api('/api/admin/settings-draft.php', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (!draftResult.success) {
+      alert('Error saving draft: ' + draftResult.error);
+      return;
+    }
+
+    // Publish the draft
+    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+
+    if (!publishResult.success) {
+      alert('Error publishing: ' + publishResult.error);
+      return;
+    }
+
+    // Save non-draft fields
+    await api('/api/admin/settings.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        show_about: payload.show_about
+      })
     });
   });
 
-  document.getElementById('donationForm').addEventListener('submit', function(e){
+  document.getElementById('donationForm').addEventListener('submit', async function(e){
     e.preventDefault();
 
     // Get selected donation method
@@ -449,10 +503,38 @@
       donation_link: document.getElementById('donation_link')?.value || '',
       donation_qr_media_id: document.getElementById('donation_qr_media_id')?.value || null
     };
-    api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
-      if (!j.success) {
-        alert('Error: ' + j.error);
-      }
+
+    // Save to draft first
+    const draftResult = await api('/api/admin/settings-draft.php', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (!draftResult.success) {
+      alert('Error saving draft: ' + draftResult.error);
+      return;
+    }
+
+    // Publish the draft
+    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+
+    if (!publishResult.success) {
+      alert('Error publishing: ' + publishResult.error);
+      return;
+    }
+
+    // Save non-draft fields
+    await api('/api/admin/settings.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        show_donation: payload.show_donation,
+        show_donate_button: payload.show_donate_button,
+        donation_method: payload.donation_method,
+        donation_link: payload.donation_link,
+        donation_qr_media_id: payload.donation_qr_media_id
+      })
     });
   });
 
@@ -913,15 +995,45 @@
       };
 
       if (editingId) {
-        const j = await api('/api/admin/posts.php?id='+editingId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        if(j.success){
+        // For existing posts: save to draft fields first, then publish
+        saveBtn.textContent = 'Publishing changes...';
+
+        // Save current form values to draft fields
+        const draftSave = await api('/api/admin/posts-draft.php?id='+editingId, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (!draftSave.success) {
+          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        // Publish the draft (copies draft fields to published fields)
+        const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, {
+          method:'GET'
+        });
+
+        if(publishResult.success){
+          // Also update the status if changed
+          if (payload.status) {
+            await api('/api/admin/posts.php?id='+editingId, {
+              method:'PUT',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ status: payload.status })
+            });
+          }
           loadPosts();
           const modalEl = bootstrap.Modal.getInstance(postEditorModal);
           if (modalEl) modalEl.hide();
         } else {
-          alert('Error: ' + (j.error || 'Unknown error'));
+          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
         }
       } else {
+        // New posts: create directly (no draft needed yet)
         const j = await api('/api/admin/posts.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
         if(j.success){
           loadPosts();
@@ -1330,27 +1442,29 @@
 
             console.log('Using post data:', post);
 
-            postEditorContainer.querySelector('.post-title').value = post.title || '';
+            // Use draft content for editing (falls back to published if no draft)
+            postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
             postEditorContainer.querySelector('.post-status').value = post.status || 'draft';
 
-            // Set post body in editor
+            // Set post body in editor (use draft content)
             if (postBodyEditor) {
-              window.setQuillHTML(postBodyEditor, post.body_html || '');
+              window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
 
-              // Set up auto-save for this post (only when editing existing post)
+              // Set up auto-save for this post (saves to draft)
               if (postAutoSave) {
                 clearInterval(postAutoSave);
               }
               postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
             } else {
-              postEditorContainer.querySelector('.post-body').value = post.body_html || '';
+              postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
             }
 
-            // Set hero image if exists
-            if (post.hero_media_id) {
+            // Set hero image if exists (use draft)
+            const heroMediaId = post.hero_media_id_editing;
+            if (heroMediaId) {
               const heroSelect = postEditorContainer.querySelector('.post-hero-media');
               if (heroSelect) {
-                heroSelect.value = post.hero_media_id;
+                heroSelect.value = heroMediaId;
                 // Trigger change to show preview
                 heroSelect.dispatchEvent(new Event('change'));
               }
@@ -1362,10 +1476,11 @@
               if (heroPreview) heroPreview.style.display = 'none';
             }
 
-            // Load gallery images if exists
-            if (post.gallery_media_ids) {
+            // Load gallery images if exists (use draft)
+            const galleryData = post.gallery_media_ids_editing;
+            if (galleryData) {
               try {
-                const galleryIds = JSON.parse(post.gallery_media_ids);
+                const galleryIds = JSON.parse(galleryData);
                 if (Array.isArray(galleryIds) && galleryIds.length > 0) {
                   galleryMediaIds = [...galleryIds];
                   // Load each gallery image (use addGalleryItemPreview to avoid duplicates)

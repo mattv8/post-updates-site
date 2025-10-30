@@ -132,7 +132,7 @@
             const statusElement = getStatusElement();
 
             if (statusElement) {
-              statusElement.innerHTML = `<span class="saved">Last saved: ${timestamp}</span>`;
+              statusElement.innerHTML = `<span class="saved">Draft saved: ${timestamp}</span>`;
               statusElement.className = 'editor-autosave-indicator';
               // Force browser repaint
               void statusElement.offsetHeight;

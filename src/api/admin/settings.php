@@ -14,7 +14,37 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
+        // Check if publish action requested
+        if (isset($_GET['action']) && $_GET['action'] === 'publish') {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+            if (!validateCsrfToken($token)) {
+                http_response_code(419);
+                echo json_encode(['success'=>false,'error'=>'CSRF validation failed']);
+                exit;
+            }
+            $res = publishSettingsDraft($db_conn);
+            if ($res['success']) {
+                echo json_encode(['success'=>true]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success'=>false,'error'=>$res['error']]);
+            }
+            break;
+        }
+
+        // Regular GET - return settings with draft content for editing
         $settings = getSettings($db_conn);
+
+        // Add editing fields that prioritize draft content
+        if ($settings) {
+            $settings['hero_html_editing'] = $settings['hero_html_draft'] ?? $settings['hero_html'];
+            $settings['site_bio_html_editing'] = $settings['site_bio_html_draft'] ?? $settings['site_bio_html'];
+            $settings['donate_text_html_editing'] = $settings['donate_text_html_draft'] ?? $settings['donate_text_html'];
+            $settings['donation_instructions_html_editing'] = $settings['donation_instructions_html_draft'] ?? $settings['donation_instructions_html'];
+            $settings['footer_column1_html_editing'] = $settings['footer_column1_html_draft'] ?? $settings['footer_column1_html'];
+            $settings['footer_column2_html_editing'] = $settings['footer_column2_html_draft'] ?? $settings['footer_column2_html'];
+        }
+
         echo json_encode(['success'=>true,'data'=>$settings]);
         break;
 
