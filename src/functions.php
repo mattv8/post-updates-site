@@ -1138,7 +1138,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1153,8 +1153,8 @@ function updateSettings($db_conn, $data)
                 $params[] = $data[$key];
             }
             // Set parameter types
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height') { $types .= 'i'; }
-            elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity') { $types .= 'd'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height' || $key === 'smtp_rate_limit' || $key === 'smtp_rate_period') { $types .= 'i'; }
+            elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity' || $key === 'smtp_batch_delay') { $types .= 'd'; }
             else { $types .= 's'; }
         }
     }
@@ -1436,9 +1436,34 @@ function sendNewPostNotification($db_conn, $postId)
         $mail->Encoding = 'base64';
         $mail->Subject = $subject;
 
+        // Rate limiting variables - use database settings if available, otherwise config defaults
+        $smtp_rate_limit = isset($settings['smtp_rate_limit']) ? (int)$settings['smtp_rate_limit'] : (isset($smtp_rate_limit) ? $smtp_rate_limit : 20);
+        $smtp_rate_period = isset($settings['smtp_rate_period']) ? (int)$settings['smtp_rate_period'] : (isset($smtp_rate_period) ? $smtp_rate_period : 60);
+        $smtp_batch_delay = isset($settings['smtp_batch_delay']) ? (float)$settings['smtp_batch_delay'] : (isset($smtp_batch_delay) ? $smtp_batch_delay : 0.5);
+
+        $rateLimitEnabled = $smtp_rate_limit > 0;
+        $batchDelay = $smtp_batch_delay;
+        $emailsSentInCurrentPeriod = 0;
+        $periodStartTime = microtime(true);
+
         // Send to each subscriber individually with personalized unsubscribe link
         foreach ($subscribers as $email) {
             try {
+                // Check rate limit - if we've hit the limit for this period, wait
+                if ($rateLimitEnabled && $emailsSentInCurrentPeriod >= $smtp_rate_limit) {
+                    $elapsedTime = microtime(true) - $periodStartTime;
+                    $remainingTime = $smtp_rate_period - $elapsedTime;
+
+                    if ($remainingTime > 0) {
+                        error_log("Rate limit reached ({$smtp_rate_limit} emails per {$smtp_rate_period}s). Pausing for {$remainingTime}s...");
+                        sleep(ceil($remainingTime));
+                    }
+
+                    // Reset counter and timer for new period
+                    $emailsSentInCurrentPeriod = 0;
+                    $periodStartTime = microtime(true);
+                }
+
                 // Generate personalized unsubscribe token for this email
                 $unsubscribeToken = generateUnsubscribeToken($email);
                 $unsubscribeUrl = "{$baseUrl}/api/unsubscribe.php?token={$unsubscribeToken}";
@@ -1466,6 +1491,12 @@ function sendNewPostNotification($db_conn, $postId)
                 // Send the email
                 $mail->send();
                 $sentCount++;
+                $emailsSentInCurrentPeriod++;
+
+                // Add delay between emails if configured
+                if ($batchDelay > 0 && $sentCount < count($subscribers)) {
+                    usleep((int)($batchDelay * 1000000)); // Convert to microseconds
+                }
 
             } catch (Exception $e) {
                 error_log("Failed to send notification to {$email}: " . $e->getMessage());

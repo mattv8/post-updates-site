@@ -47,6 +47,13 @@ A minimal post-updates website. Built on PHP with Smarty templates, featuring re
    $db_username = "admin";
    $db_password = "admin";
 
+   # SMTP Configuration (for newsletter emails)
+   $smtp_host = 'mailpit'; // For local dev
+   $smtp_port = 1025;
+   $smtp_secure = '';
+   $smtp_auth = false;
+   ```
+
 5. **Build and start Docker services:**
    ```bash
    sudo docker compose up --build

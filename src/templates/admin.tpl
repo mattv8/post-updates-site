@@ -67,80 +67,137 @@
           <small class="text-muted">Toggle visibility of the newsletter signup section in the sidebar</small>
         </div>
 
-        <h6 class="mb-3">Email Notification Settings</h6>
-        <div class="mb-3">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="notify_subscribers_on_post" />
-            <label class="form-check-label" for="notify_subscribers_on_post">
-              <strong>Send email notifications to subscribers</strong>
-            </label>
+        <ul class="nav nav-pills mb-3" id="newsletterSubTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="subtab-subscribers" data-bs-toggle="pill" data-bs-target="#subpane-subscribers" type="button" role="tab">Subscribers</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="subtab-email-settings" data-bs-toggle="pill" data-bs-target="#subpane-email-settings" type="button" role="tab">Email Settings</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="newsletterSubTabContent">
+          <div class="tab-pane fade show active" id="subpane-subscribers" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Newsletter Subscribers</h5>
+              <div>
+                <button class="btn btn-sm btn-outline-secondary me-2" id="btnRefreshSubscribers">
+                  <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="btn btn-sm btn-success" id="btnAddSubscriber">
+                  <i class="bi bi-plus-circle"></i> Add Subscriber
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showArchivedSubscribers" />
+                <label class="form-check-label" for="showArchivedSubscribers">
+                  Show archived subscribers
+                </label>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle" id="subscribersTable">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Subscribed At</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="subscribersList">
+                  {if $active_subscriber_count > 0}
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                        Loading subscribers...
+                      </td>
+                    </tr>
+                  {else}
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No active subscribers. Users can sign up via the mailing list section on the home page.
+                      </td>
+                    </tr>
+                  {/if}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <small class="text-muted">When enabled, subscribers receive an email when you publish a new post for the first time</small>
-        </div>
 
-        <div class="mb-4">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="email_include_post_body" />
-            <label class="form-check-label" for="email_include_post_body">
-              <strong>Include full post content in email</strong>
-            </label>
-          </div>
-          <small class="text-muted">When enabled, the formatted post body is included in the email. When disabled, only a summary and link to the post is sent</small>
-        </div>
+          <div class="tab-pane fade" id="subpane-email-settings" role="tabpanel">
+            <h6 class="mb-3">Email Notification Settings</h6>
 
-        <hr class="mb-4" />
+            <div class="d-flex flex-column flex-md-row gap-4 align-items-start">
+              <div class="flex-fill">
+                <h6 class="mb-3">SMTP Rate Limiting</h6>
+                <small class="text-muted d-block mb-3">Configure rate limits to prevent overloading your mail relay. Changes are saved automatically when you leave a field.</small>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">Newsletter Subscribers</h5>
-          <div>
-            <button class="btn btn-sm btn-outline-secondary me-2" id="btnRefreshSubscribers">
-              <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
-            <button class="btn btn-sm btn-success" id="btnAddSubscriber">
-              <i class="bi bi-plus-circle"></i> Add Subscriber
-            </button>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="showArchivedSubscribers" />
-            <label class="form-check-label" for="showArchivedSubscribers">
-              Show archived subscribers
-            </label>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="table table-hover align-middle" id="subscribersTable">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Subscribed At</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="subscribersList">
-              {if $active_subscriber_count > 0}
-              <tr>
-                <td colspan="4" class="text-center text-muted py-4">
-                  <div class="spinner-border spinner-border-sm me-2" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                <div class="mb-3">
+                  <label for="smtp_rate_limit" class="form-label"><strong>Email Rate Limit</strong></label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="smtp_rate_limit" min="0" max="1000" />
+                    <span class="input-group-text" id="smtp_rate_limit_status" style="display: none;">
+                      <i class="bi bi-check-circle text-success"></i>
+                    </span>
                   </div>
-                  Loading subscribers...
-                </td>
-              </tr>
-              {else}
-              <tr>
-                <td colspan="4" class="text-center text-muted py-4">
-                  <i class="bi bi-info-circle me-2"></i>
-                  No active subscribers. Users can sign up via the mailing list section on the home page.
-                </td>
-              </tr>
-              {/if}
-            </tbody>
-          </table>
+                  <small class="text-muted">Maximum emails to send per period (0 = unlimited)</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_rate_period" class="form-label"><strong>Rate Period (seconds)</strong></label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="smtp_rate_period" min="1" max="86400" />
+                    <span class="input-group-text" id="smtp_rate_period_status" style="display: none;">
+                      <i class="bi bi-check-circle text-success"></i>
+                    </span>
+                  </div>
+                  <small class="text-muted">Time period in seconds for rate limit (e.g., 60 for per minute)</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_batch_delay" class="form-label"><strong>Batch Delay (seconds)</strong></label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="smtp_batch_delay" min="0" max="60" step="0.1" />
+                    <span class="input-group-text" id="smtp_batch_delay_status" style="display: none;">
+                      <i class="bi bi-check-circle text-success"></i>
+                    </span>
+                  </div>
+                  <small class="text-muted">Delay between individual emails (0 = no delay)</small>
+                </div>
+              </div>
+              <div class="flex-fill">
+                <h6 class="mb-3">Notification Options</h6>
+
+                <div class="mb-3">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="notify_subscribers_on_post" />
+                    <label class="form-check-label" for="notify_subscribers_on_post">
+                      <strong>Send email notifications to subscribers</strong>
+                    </label>
+                  </div>
+                  <small class="text-muted">When enabled, subscribers receive an email when you publish a new post for the first time</small>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="email_include_post_body" />
+                    <label class="form-check-label" for="email_include_post_body">
+                      <strong>Include full post content in email</strong>
+                    </label>
+                  </div>
+                  <small class="text-muted">When enabled, the formatted post body is included in the email. When disabled, only a summary and link to the post is sent</small>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -200,14 +257,7 @@
         <form id="addSubscriberForm" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="newSubscriberEmail" class="form-label">Email Address</label>
-            <input
-              type="email"
-              class="form-control"
-              id="newSubscriberEmail"
-              required
-              pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{ldelim}2,{rdelim}$"
-              maxlength="255"
-            />
+            <input type="email" class="form-control" id="newSubscriberEmail" required pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{ldelim}2,{rdelim}$" maxlength="255" />
             <div class="invalid-feedback">
               Please enter a valid email address.
             </div>
