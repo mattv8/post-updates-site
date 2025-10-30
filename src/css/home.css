@@ -181,7 +181,7 @@
 
   /* Footer content wrapper mobile optimization */
   .footer-content-wrapper .container {
-    padding: 1.5rem 1rem !important; /* add horizontal padding on tablet */
+    padding: 1.5rem 2rem !important; /* add horizontal padding on tablet */
   }
 
   /* Let footer grow vertically with its text on mobile/tablet */
