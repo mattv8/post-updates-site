@@ -112,12 +112,13 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
-          # Get the digest from build-and-push step
-          DIGEST="${{ needs.build-and-push.outputs.digest }}"
-          echo "Signing image: ${DIGEST}"
+          # Construct the full image reference from build outputs
+          IMAGE_DIGEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-push.outputs.digest }}"
 
-          # Sign using env:// to keep key in memory only (more secure)
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${DIGEST}"
+          echo "Signing image: ${IMAGE_DIGEST}"
+
+          # Sign using the full digest reference (registry/repo@sha256:...)
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${IMAGE_DIGEST}"
 
   sbom:
     name: Generate SBOM
