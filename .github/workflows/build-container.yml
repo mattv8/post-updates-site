@@ -160,33 +160,14 @@ jobs:
     steps:
       - name: Generate Summary
         run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ needs.build-and-push.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
-          for tag in $(echo "${{ needs.build-and-push.outputs.tags }}" | tr ',' '\n'); do
-            echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Digest:** \`${{ needs.build-and-push.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
           # Check job statuses
           BUILD_PUSH_STATUS="${{ needs.build-and-push.result }}"
           SIGN_STATUS="${{ needs.sign.result }}"
           SBOM_STATUS="${{ needs.sbom.result }}"
 
-          echo "**Job Status:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Build & Push: $BUILD_PUSH_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- Sign: $SIGN_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- SBOM: $SBOM_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$SIGN_STATUS" = "success" ]; then
-            echo "**Signed:** ✅ Yes (Cosign)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Signed:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "**Branch:** ${{ needs.build-and-push.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "$BUILD_PUSH_STATUS" = "success" ]; then
@@ -194,4 +175,14 @@ jobs:
             echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
             echo "docker pull ${{ needs.build-and-push.outputs.image-name }}" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "**Digest:** \`${{ needs.build-and-push.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$SIGN_STATUS" = "success" ]; then
+            echo "**Signed:** ✅ Yes (Cosign)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Signed:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
           fi
