@@ -1,19 +1,95 @@
-# Post Updates Platform
+# Post Portal
 
-A minimal post-updates website. Built on PHP with Smarty templates, featuring responsive image galleries, and WYSIWYG content editing.
+A flexible post and update platform built on PHP with Smarty templates, featuring responsive image galleries, WYSIWYG content editing, and containerized deployment.
 
-## Quick Start for Development
+## Quick Start (Production)
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Stripe account (for donation features)
+- Docker and Docker Compose
+- A `.env` file with your configuration
 
-### Development Setup
+### Production Deployment
 
-1. **Clone this repository:**
+1. **Create your environment file:**
    ```bash
-   git clone git@github.com:mattv8/post-updates-site.git post-updates-site
+   cp .env.example .env
+   ```
+
+2. **Configure your environment:**
+   Edit `.env` and set your values:
+   ```properties
+   # Database credentials
+   MYSQL_DATABASE=postportal
+   MYSQL_USER=postportal
+   MYSQL_PASSWORD=your_secure_password
+   MYSQL_ROOT_PASSWORD=your_secure_root_password
+
+   # OpenAI API (optional, for AI features)
+   OPENAI_API_KEY=sk-your-api-key
+
+   # SMTP Email Configuration
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_SECURE=tls
+   SMTP_AUTH=true
+   SMTP_USERNAME=your-email@gmail.com
+   SMTP_PASSWORD=your-app-password
+   SMTP_FROM_EMAIL=noreply@yourdomain.com
+
+   # reCAPTCHA (optional)
+   RECAPTCHA_SITE_KEY=your-site-key
+   RECAPTCHA_SECRET_KEY=your-secret-key
+   ```
+
+3. **Start the application:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Access the application:**
+   - Public site: http://localhost
+   - Admin panel: http://localhost/?page=admin
+
+   **Default credentials:** `admin` / (set via `DEFAULT_ADMIN_PASSWORD` in `.env`)
+
+The container includes:
+- ✅ Nginx web server
+- ✅ PHP 8.1 with all required extensions
+- ✅ MariaDB database
+- ✅ Image optimization tools (WebP, JPG, PNG)
+- ✅ Smarty Portal Framework (bundled)
+- ✅ Auto-applied database migrations
+
+### Data Persistence
+
+The following data is persisted via Docker volumes:
+- **Database:** All posts, media, settings stored in MariaDB
+- **Uploads:** User-uploaded images (optional volume mount)
+- **Logs:** Application and web server logs
+
+To backup your data:
+```bash
+# Backup database
+docker exec post-portal mysqldump -u postportal -p postportal > backup.sql
+
+# Backup uploads
+tar -czf uploads-backup.tar.gz ./storage/
+```
+
+## 🔧 Development Setup
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Git
+
+### Development Environment
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/mattv8/post-portal.git
+   cd post-portal
    ```
 
 2. **Clone the Smarty Portal Framework:**
@@ -22,133 +98,207 @@ A minimal post-updates website. Built on PHP with Smarty templates, featuring re
    git clone https://github.com/mattv8/smarty-portal-framework.git
    ```
 
-   The [Smarty Portal Framework](https://github.com/mattv8/smarty-portal-framework) is a separate repository that provides routing, authentication, and base templates. It's not tracked in this repository but is required for the application to run.
+   The [Smarty Portal Framework](https://github.com/mattv8/smarty-portal-framework) provides routing, authentication, and base templates.
 
-3. **Configure environment:**
+3. **Configure development environment:**
    ```bash
-   cp .env.template .env
-   # Edit .env if needed (default ports: nginx=81, phpmyadmin=82)
+   cp .env.example .env
    ```
 
-   Ensure `FRAMEWORK_PATH` in `.env` points to where you cloned the framework:
+   Edit `.env` and set `FRAMEWORK_PATH`:
    ```properties
-   FRAMEWORK_PATH=/home/yourusername/smarty-portal-framework
+   FRAMEWORK_PATH=/path/to/smarty-portal-framework
+
+   # Development defaults
+   PORT=81
+   MYSQL_DATABASE=devdb
+   MYSQL_USER=admin
+   MYSQL_PASSWORD=admin
+   SMTP_HOST=mailpit
+   SMTP_PORT=1025
+   SMTP_AUTH=false
    ```
 
-4. **Configure application settings:**
+4. **Start development stack:**
    ```bash
-   cp src/config.template.php src/config.local.php
+   cd docker
+   sudo docker compose -f docker-compose.dev.yml up --build
    ```
 
-   Edit `src/config.local.php` with your configuration:
-   ```php
-   # Database credentials (match .env)
-   $db_name = "devdb";
-   $db_username = "admin";
-   $db_password = "admin";
+   Or use the VS Code task: `Tasks: Run Task` → `Start Development Docker Stack`
 
-   # SMTP Configuration (for newsletter emails)
-   $smtp_host = 'mailpit'; // For local dev
-   $smtp_port = 1025;
-   $smtp_secure = '';
-   $smtp_auth = false;
-   ```
-
-5. **Build and start Docker services:**
-   ```bash
-   sudo docker compose up --build
-   ```
-
-   This will:
-   - Build containers with image optimization tools (cwebp, jpegoptim, pngquant)
-   - Initialize MySQL database with framework and Care Bridge schemas
-   - Create media storage directories with proper permissions
-   - Mount the framework from your local clone (via `FRAMEWORK_PATH` in `.env`)
-   - Start nginx, php-fpm, MySQL, and phpMyAdmin
-
-6. **Install Composer dependencies:**
-   ```bash
-   sudo docker exec -it php-fpm bash
-   cd /var/www/html
-   composer install
-   exit
-   ```
-
-7. **Access the application:**
+5. **Access development services:**
    - Public site: http://localhost:81
-   - Admin panel: http://localhost:81/?page=admin (login: admin/tacos)
+   - Admin panel: http://localhost:81/?page=admin (auto-filled in debug mode)
    - PHPMyAdmin: http://localhost:82
+   - Mailpit (email testing): http://localhost:83
 
-## Database Management
+### Development Features
 
-### Schema Overview
+The development setup includes:
+- 🔄 **Live code reloading:** Source files mounted as volumes
+- 📧 **Mailpit:** Local SMTP server for email testing
+- 🗄️ **PHPMyAdmin:** Database management interface
+- 🔍 **Debug logging:** PHP errors logged to `logs/php_errors.log`
 
-The system uses three main tables:
+### Making Changes
 
-- **`media`**: Uploaded images with responsive variants and metadata
-- **`posts`**: Health update posts with hero images and gallery references
-- **`settings`**: Single-row site configuration (hero, bio, donation settings)
+All source code is in the `src/` directory:
+- `src/*.php` - Page controllers
+- `src/templates/*.tpl` - Smarty templates
+- `src/css/` - Stylesheets
+- `src/js/` - JavaScript files
+- `src/api/` - API endpoints
+- `src/functions.php` - Shared business logic
 
-Framework tables (`users`, `sites`, `audit`) are reused from the Smarty Portal Framework.
+Changes are immediately reflected (no rebuild required).
 
-### Manual Database Operations
+## 📦 Container Architecture
 
-**Apply a new migration:**
-```bash
-sudo docker exec -i mysql bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE' < database/03-your-migration.sql
+This project uses a monolithic container approach for simplicity:
+
+```
+┌─────────────────────────────────────────┐
+│   Post Portal Container                  │
+│                                          │
+│  ┌────────────┐  ┌──────────────┐      │
+│  │   Nginx    │  │   PHP-FPM    │      │
+│  │   :80      │  │   :9000      │      │
+│  └────────────┘  └──────────────┘      │
+│                                          │
+│  ┌──────────────────────────────────┐  │
+│  │       MariaDB :3306              │  │
+│  └──────────────────────────────────┘  │
+│                                          │
+│  Supervised by: supervisord              │
+└─────────────────────────────────────────┘
 ```
 
-**Reset database (WARNING: deletes all data):**
+**Production:** Pre-built image from `hub.docker.visnovsky.us`
+**Development:** Same Dockerfile with source code mounted as volumes
+
+## 🗄️ Database
+
+### Schema
+
+- **`media`** - Uploaded images with responsive variants and metadata
+- **`posts`** - User posts with hero images and gallery references
+- **`settings`** - Site configuration (hero, bio, donation settings)
+- **`users`**, **`sites`**, **`audit`** - Framework tables (reused from Smarty Portal Framework)
+
+### Migrations
+
+Migrations are automatically applied on container startup from the `migrations/` folder.
+
+To manually run migrations in production:
 ```bash
-sudo docker compose down
-sudo docker volume rm $(basename $(pwd))_db_data
-sudo docker compose up --build
+docker exec -it post-portal bash
+/docker-scripts/run-migrations.sh
 ```
 
-**Backup database:**
-```bash
-sudo docker exec mysql bash -c 'mysqldump -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE' > backup_$(date +%Y%m%d_%H%M%S).sql
-```
+## 🖼️ Media Processing
 
-**Restore from backup:**
-```bash
-sudo docker exec -i mysql bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE' < backup_file.sql
-```
-
-## Media Processing
-
-### Upload Flow
-
+Upload flow:
 1. Client validates file size (20MB) and format
-2. Server performs strict MIME/extension validation
+2. Server validates MIME type and extension
 3. EXIF metadata stripped (orientation preserved)
 4. Original saved to `storage/uploads/originals/`
-5. Responsive variants generated at 1600px, 800px, 400px
+5. Responsive variants generated: 1600px, 800px, 400px, thumbnail
 6. WebP versions created for each variant
-7. Variants saved to `storage/uploads/variants/{width}/`
-8. Database updated with paths and metadata
+7. Database updated with paths and metadata
 
-### Maintenance
+## 🔐 Security Notes
 
-**Update Dependencies:**
+**Production Checklist:**
+- ✅ Set `DEFAULT_ADMIN_PASSWORD` to a strong password in `.env`
+- ✅ Set `DEBUG=false` and `SMARTY_DEBUG=false` in production
+- ✅ Use strong database passwords
+- ✅ Configure proper SMTP credentials
+- ✅ Set up reCAPTCHA for login protection
+- ✅ Enable HTTPS via reverse proxy (Traefik, nginx, etc.)
+- ✅ Regularly backup database and uploads
+- ✅ Keep container image updated
+
+## 🏗️ CI/CD
+
+The project uses GitHub Actions to:
+1. Build container on every branch push
+2. Tag images with branch name (`:main`, `:stage`, `:feature-xyz`)
+3. Sign images with Cosign
+4. Push to Harbor registry at `hub.docker.visnovsky.us`
+5. Generate and attach SBOM (Software Bill of Materials)
+
+**Main branch** is tagged as `:latest` for production.
+
+## 📝 Configuration
+
+### Environment Variables
+
+All sensitive configuration moved to environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `MYSQL_DATABASE` | Database name | `postportal` |
+| `MYSQL_USER` | Database user | `postportal` |
+| `MYSQL_PASSWORD` | Database password | `secure_password` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password | `secure_root` |
+| `DEFAULT_ADMIN_PASSWORD` | Initial admin password | `changeme_admin` |
+| `DEBUG` | Enable debug mode | `false` |
+| `SMARTY_DEBUG` | Enable Smarty debug | `false` |
+| `OPENAI_API_KEY` | OpenAI API key (optional) | `sk-...` |
+| `SMTP_HOST` | SMTP server hostname | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_SECURE` | Encryption type | `tls` or `ssl` |
+| `SMTP_AUTH` | Enable SMTP auth | `true` or `false` |
+| `SMTP_USERNAME` | SMTP username | `user@gmail.com` |
+| `SMTP_PASSWORD` | SMTP password | `app_password` |
+| `SMTP_FROM_EMAIL` | From email address | `noreply@domain.com` |
+| `RECAPTCHA_SITE_KEY` | reCAPTCHA site key | `6Le...` |
+| `RECAPTCHA_SECRET_KEY` | reCAPTCHA secret | `6Le...` |
+
+### Application Settings
+
+Default settings in `src/config.template.php`:
+- Image quality: 85% (JPEG and WebP)
+- Max upload size: 20MB
+- Responsive breakpoints: 1600px, 800px, 400px
+- Allowed formats: JPEG, PNG, HEIC, WebP
+
+## 🛠️ Troubleshooting
+
+**Container won't start:**
 ```bash
-sudo docker exec -it php-fpm bash -c "composer update"
+# Check logs
+docker logs post-portal
+
+# Verify environment variables
+docker exec post-portal env | grep MYSQL
 ```
 
-## Manual Deployment
+**Database connection issues:**
+```bash
+# Connect to container
+docker exec -it post-portal bash
 
-Key points for manual deployment:
-1. Run migrations from local: Set `CONFIG_FILE=$WEBROOT/config.local.php` and run `./scripts/run-migrations.sh`
-2. Clone framework: `git clone https://github.com/mattv8/smarty-portal-framework.git $WEBROOT/framework`
-3. Copy framework's index.php: `cp $WEBROOT/framework/index.php $WEBROOT/index.php`
-4. Sync application code: `rsync -avzr ./src/ $WEBROOT/ --exclude-from='./src/sync.exclusions' --delete`
-5. Create `config.local.php` with production settings (if first deployment)
-6. Install Composer dependencies: `composer install --no-dev`
+# Test MySQL connection
+mysql -u postportal -p
+```
 
-**Important:** Database and script files are NOT synced to `public_html` to avoid `open_basedir` issues. Migration script reads config directly from server using `CONFIG_FILE` env var.
+**Reset development database:**
+```bash
+cd docker
+sudo docker compose -f docker-compose.dev.yml down -v
+sudo docker compose -f docker-compose.dev.yml up --build
+```
 
-See `DEPLOYMENT.md` for complete details, security considerations, and troubleshooting.
-
-## License
+## 📄 License
 
 TBD
+
+## 🤝 Contributing
+
+Contributions welcome! Please submit pull requests to the appropriate branch.
+
+---
+
+**Built with** ❤️ **using PHP, Smarty, Docker, and lots of coffee**

@@ -1,4 +1,4 @@
-{* Custom header includes for Janssen Care Bridge *}
+{* Custom header includes for Post Portal *}
 <link rel="stylesheet" type="text/css" href="css/global.css" />
 <link rel="stylesheet" type="text/css" href="css/custom.css" />
 <link rel="stylesheet" type="text/css" href="css/home.css" />

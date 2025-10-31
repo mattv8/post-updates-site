@@ -6,6 +6,9 @@ require_once(__DIR__ . '/framework/conf/config.php');
 require_once(__DIR__ . '/framework/lib/functions.php');
 require_once(__DIR__ . '/vendor/autoload.php'); // Composer autoload
 
+// Default AI system prompt for title generation
+define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.');
+
 /**
  * Debug logging function that only logs when debug mode is enabled
  * @param string $message The message to log
@@ -680,7 +683,7 @@ function decodeHtmlEntities($data)
 }
 
 // ==============================
-// Care Bridge Helper Functions
+// Post Portal Helper Functions
 // ==============================
 
 /**
@@ -1311,8 +1314,8 @@ function sendNewPostNotification($db_conn, $postId)
     }
 
     // Build email content - post data already decoded by getPost()
-    $siteTitle = $settings['site_title'] ?: 'Care Bridge';
-    $postTitle = $post['title'] ?: 'New Health Update';
+    $siteTitle = $settings['site_title'] ?: 'Post Portal';
+    $postTitle = $post['title'] ?: 'New Post';
     $subject = $postTitle;
 
     // Get author name

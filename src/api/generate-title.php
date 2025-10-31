@@ -8,6 +8,7 @@ session_start();
 header('Content-Type: application/json');
 
 require_once($_SERVER['DOCUMENT_ROOT'] . '/config.local.php');
+require_once($_SERVER['DOCUMENT_ROOT'] . '/functions.php');
 require_once($_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
 
 use OpenAI;
@@ -52,7 +53,7 @@ try {
 
     // Get custom AI system prompt from settings, or use default
     $db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
-    $systemPrompt = 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.';
+    $systemPrompt = DEFAULT_AI_SYSTEM_PROMPT;
 
     if ($db_conn) {
         $result = mysqli_query($db_conn, 'SELECT ai_system_prompt FROM settings WHERE id = 1');
@@ -75,7 +76,7 @@ try {
             ],
             [
                 'role' => 'user',
-                'content' => "Create a title for this health update:\n\n" . $plainContent
+                'content' => "Create a title for this post:\n\n" . $plainContent
             ]
         ],
         'max_tokens' => 100,

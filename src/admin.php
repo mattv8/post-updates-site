@@ -25,5 +25,6 @@ $smarty->assign('csrf_token', $csrf);
 $smarty->assign('current_user', $_SESSION['username'] ?? 'admin');
 $smarty->assign('active_subscriber_count', $active_subscriber_count);
 $smarty->assign('total_subscriber_count', $total_subscriber_count);
+$smarty->assign('default_ai_prompt', DEFAULT_AI_SYSTEM_PROMPT);
 
 // Don't call $smarty->display() - let the framework's index.tpl handle rendering

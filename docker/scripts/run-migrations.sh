@@ -7,8 +7,8 @@
 set -e  # Exit on any error
 
 # Configuration
-MIGRATION_DIR="${MIGRATION_DIR:-./database}"
-CONFIG_FILE="${CONFIG_FILE:-./config.local.php}"
+MIGRATION_DIR="${MIGRATION_DIR:-/docker-migrations}"
+CONFIG_FILE="${CONFIG_FILE:-/var/www/html/config.local.php}"
 FORCE_RESET="${FORCE_RESET:-false}"
 ACCEPT_DATA_LOSS="${ACCEPT_DATA_LOSS:-false}"
 DRY_RUN="${DRY_RUN:-false}"
@@ -79,40 +79,28 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Extract database credentials from config.local.php
+# Get database credentials from environment variables
 get_db_config() {
-    if [ ! -f "$CONFIG_FILE" ]; then
-        error "Config file not found: $CONFIG_FILE"
-        exit 1
-    fi
-
-    # Parse config file directly using grep and sed
-    DB_HOST=$(grep -E '^\$db_servername\s*=' "$CONFIG_FILE" | sed -E 's/.*["\x27]([^"\x27]+)["\x27].*/\1/' | head -1)
-    DB_USER=$(grep -E '^\$db_username\s*=' "$CONFIG_FILE" | sed -E 's/.*["\x27]([^"\x27]+)["\x27].*/\1/' | head -1)
-    DB_PASSWORD=$(grep -E '^\$db_password\s*=' "$CONFIG_FILE" | sed -E 's/.*["\x27]([^"\x27]+)["\x27].*/\1/' | head -1)
-    DB_NAME=$(grep -E '^\$db_name\s*=' "$CONFIG_FILE" | sed -E 's/.*["\x27]([^"\x27]+)["\x27].*/\1/' | head -1)
+    DB_HOST="${MYSQL_HOST:-localhost}"
+    DB_USER="${MYSQL_USER}"
+    DB_PASSWORD="${MYSQL_PASSWORD}"
+    DB_NAME="${MYSQL_DATABASE}"
 
     # Validate required fields
-    if [ -z "$DB_HOST" ]; then
-        error "Database host (\$db_servername) not found in config file: $CONFIG_FILE"
-        exit 1
-    fi
-
     if [ -z "$DB_USER" ]; then
-        error "Database user (\$db_username) not found in config file: $CONFIG_FILE"
+        error "MYSQL_USER environment variable not set"
         exit 1
     fi
 
     if [ -z "$DB_PASSWORD" ]; then
-        error "Database password (\$db_password) not found in config file: $CONFIG_FILE"
+        error "MYSQL_PASSWORD environment variable not set"
         exit 1
     fi
 
     if [ -z "$DB_NAME" ]; then
-        error "Database name (\$db_name) not found in config file: $CONFIG_FILE"
+        error "MYSQL_DATABASE environment variable not set"
         exit 1
     fi
-
 }
 
 # Load database configuration

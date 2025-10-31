@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postportal-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: postportal-dev
+    restart: unless-stopped
+    ports:
+      - "${PORT:-81}:80"
+      - "${MYSQL_PORT:-3306}:3306"
+    env_file:
+      - ../.env
+    environment:
+      MYSQL_HOST: localhost
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SECURE: ${SMTP_SECURE}
+      SMTP_AUTH: ${SMTP_AUTH}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
+    volumes:
+      # Mount source code for live development
+      - ../src:/var/www/html
+      # Mount framework from external location (overrides symlink)
+      - ${FRAMEWORK_PATH}/framework:/var/www/html/framework:ro
+      - ${FRAMEWORK_PATH}/index.php:/var/www/html/index.php:ro
+      # Database persistence
+      - dev_db_data:/var/lib/mysql
+      # Application logs
+      - ../logs:/var/www/log
+    networks:
+      - dev-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMA_PORT:-82}:80"
+    environment:
+      PMA_HOST: postportal-dev
+      PMA_PORT: 3306
+      PMA_USER: ${MYSQL_USER}
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      - postportal-dev
+    networks:
+      - dev-network
+
+  mailpit:
+    container_name: mailpit
+    image: axllent/mailpit
+    restart: unless-stopped
+    environment:
+      - MP_MAX_MESSAGES=5000
+      - MP_DATABASE=/data/mailpit.db
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
+    volumes:
+      - mailpit-data:/data
+    ports:
+      - "${MAILPIT_PORT:-83}:8025"
+      - "1025:1025"
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge
+
+volumes:
+  dev_db_data:
+  mailpit-data:

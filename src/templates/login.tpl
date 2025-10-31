@@ -30,7 +30,7 @@
                         </div>
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="fa fa-fw fa-lock"></i></span>
-                            <input type="password" name="password" id="password" class="form-control" placeholder="{$msg_password}"{if $debug} value="tacos"{/if}/>
+                            <input type="password" name="password" id="password" class="form-control" placeholder="{$msg_password}"{if $debug && $default_admin_password} value="{$default_admin_password}"{/if}/>
                         </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="submit" class="btn btn-primary col-md-auto" onclick="reCaptcha(this, login)"><i class="fa me-2 fa-check-circle"></i>{$msg_submit}</button>

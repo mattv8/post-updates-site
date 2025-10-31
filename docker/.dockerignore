@@ -1,0 +1,54 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Development files
+.vscode
+.env
+.env.example
+docker-compose.yml.old
+docker/docker-compose.dev.yml
+
+# Framework files (bundled separately)
+src/index.php
+
+# Documentation
+README.md
+docs/
+DEPLOYMENT.md
+
+# Logs and temporary files
+logs/
+*.log
+
+# Database files (will be created at runtime)
+*.sql
+migrations/
+
+# Development scripts
+scripts/
+
+# Cache and generated files
+src/cache/*
+!src/cache/.gitkeep
+
+# User uploads (will be mounted as volume)
+src/storage/uploads/*
+!src/storage/uploads/.gitkeep
+
+# Composer vendor (installed during build)
+# src/vendor/ - KEEP THIS, we need it in the image
+
+# Development-only files
+docker-compose.yml.old
+dockerfile/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~

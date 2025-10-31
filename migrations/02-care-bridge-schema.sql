@@ -3,7 +3,7 @@ START TRANSACTION;
 SET time_zone = "+00:00";
 
 --
--- Care Bridge Health Updates Database Schema
+-- Post Portal Database Schema
 -- Creates tables for posts, media, and site settings
 --
 

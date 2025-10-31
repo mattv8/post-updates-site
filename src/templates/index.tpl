@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <title>{if $settings.site_title}{$settings.site_title|escape}{else}Janssen Care Bridge{/if}</title>
+  <title>{if $settings.site_title}{$settings.site_title|escape}{else}Post Portal{/if}</title>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -56,7 +56,7 @@
           {if $settings.site_title}
             {$settings.site_title|escape}
           {else}
-            Janssen Care Bridge
+            Post Portal
           {/if}
         </a>
         <div>
@@ -95,7 +95,7 @@
           {if $settings.site_title}
             {$settings.site_title|escape}
           {else}
-            Janssen Care Bridge
+            Post Portal
           {/if}
         </a>
 

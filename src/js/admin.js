@@ -566,13 +566,16 @@
   });
 
   // Reset AI prompt to default
-  const defaultAIPrompt = 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.';
-  document.getElementById('btnResetAIPrompt').addEventListener('click', function(e){
-    e.preventDefault();
-    if (confirm('Reset AI system prompt to default?')) {
-      document.getElementById('ai_system_prompt').value = defaultAIPrompt;
-    }
-  });
+  const resetAIPromptBtn = document.getElementById('btnResetAIPrompt');
+  if (resetAIPromptBtn) {
+    resetAIPromptBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      const defaultAIPrompt = this.getAttribute('data-default-prompt') || '';
+      if (confirm('Reset AI system prompt to default?')) {
+        document.getElementById('ai_system_prompt').value = defaultAIPrompt;
+      }
+    });
+  }
 
   // Auto-save visibility toggles when changed
   const showHeroCheckbox = document.getElementById('show_hero');

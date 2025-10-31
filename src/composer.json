@@ -1,6 +1,6 @@
 {
-    "name": "elfy/janssen-care-bridge",
-    "description": "Health updates site (Caring Bridge style) built on Smarty Portal Framework",
+    "name": "elfy/post-portal",
+    "description": "A flexible post and update platform built on Smarty Portal Framework",
     "require": {
         "php": "^8.1",
         "intervention/image": "^2.7",
@@ -11,7 +11,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Elfy\\JanssenCareBridge\\": "src/"
+            "Elfy\\PostPortal\\": "src/"
         }
     },
     "authors": [

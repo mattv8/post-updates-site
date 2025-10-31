@@ -232,7 +232,7 @@
         <div class="mb-3">
           <label class="form-label d-flex justify-content-between align-items-center">
             <span>AI Title Generation System Prompt</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetAIPrompt">Reset to Default</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetAIPrompt" data-default-prompt="{$default_ai_prompt|escape:'html'}">Reset to Default</button>
           </label>
           <textarea id="ai_system_prompt" class="form-control" rows="4" placeholder="Enter custom AI system prompt for title generation..."></textarea>
           <small class="form-text text-muted">

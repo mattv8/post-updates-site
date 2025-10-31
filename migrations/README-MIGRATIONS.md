@@ -12,7 +12,7 @@ If your Docker environment is already running:
 
 ```bash
 # Run the migration
-sudo docker exec -i janssen-care-bridge-mysql-1 bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE' < database/05-add-soft-delete-to-posts.sql
+sudo docker exec -i post-portal-mysql-1 bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE' < migrations/05-add-soft-delete-to-posts.sql
 ```
 
 ### For Production
@@ -24,7 +24,7 @@ sudo docker exec -i janssen-care-bridge-mysql-1 bash -c 'mysql -u $MYSQL_USER -p
 mysqldump -u username -p database_name > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # 2. Run the migration
-mysql -u username -p database_name < database/05-add-soft-delete-to-posts.sql
+mysql -u username -p database_name < migrations/05-add-soft-delete-to-posts.sql
 ```
 
 ## What This Migration Does

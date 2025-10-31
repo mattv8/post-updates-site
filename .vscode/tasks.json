@@ -3,12 +3,83 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"label": "Start Docker Stack",
-			"command": "if [ ! -f ${workspaceFolder}/.env ]; then echo 'Warning: .env file not found at project root'; fi && sudo docker compose up --build",
+			"label": "Start Development Docker Stack",
+			"command": "if [ ! -f ${workspaceFolder}/.env ]; then echo 'Error: .env file not found. Copy .env.example to .env and configure it.'; exit 1; fi && if [ ! -L ${workspaceFolder}/docker/.env ]; then ln -sf ${workspaceFolder}/.env ${workspaceFolder}/docker/.env; echo 'Created .env symlink in docker directory'; fi && cd ${workspaceFolder}/docker && sudo docker compose -f docker-compose.dev.yml up --build",
 			"group": "build",
-			"problemMatcher": [],
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "docker-compose",
+				"pattern": {
+					"regexp": "^(Error|ERROR|error):\\s+(.*)$",
+					"severity": 1,
+					"message": 2
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\[\\+\\] (Building|Running)",
+					"endsPattern": "(success: nginx entered RUNNING state|Container .* Started|Container .* Running|service .* is up to date)"
+				}
+			},
 			"options": {
 				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Stop Development Docker Stack",
+			"command": "cd ${workspaceFolder}/docker && sudo docker compose -f docker-compose.dev.yml down",
+			"isBackground": false,
+			"problemMatcher": {
+				"owner": "docker-compose",
+				"pattern": {
+					"regexp": "^(Error|ERROR|error):\\s+(.*)$",
+					"severity": 1,
+					"message": 2
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\[\\+\\] Running",
+					"endsPattern": "(Network .* Removed|removed)"
+				}
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Rebuild Development Docker Stack",
+			"command": "cd ${workspaceFolder}/docker && sudo docker compose -f docker-compose.dev.yml down && sudo docker compose -f docker-compose.dev.yml build --no-cache && sudo docker compose -f docker-compose.dev.yml up",
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "docker-compose",
+				"pattern": {
+					"regexp": "^(Error|ERROR|error):\\s+(.*)$",
+					"severity": 1,
+					"message": 2
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\[\\+\\] (Building|Running)",
+					"endsPattern": "success: nginx entered RUNNING state"
+				}
+			},
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": true
 			}
 		}
 	]
