@@ -72,8 +72,6 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    <summary>Click to expand docker-compose.yml</summary>
 
    ```yaml
-   version: '3.8'
-
    services:
      postportal:
        image: hub.docker.visnovsky.us/library/post-portal:latest
@@ -84,40 +82,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
        env_file:
          - .env
        environment:
-         # Database Configuration
          MYSQL_HOST: localhost
-         MYSQL_DATABASE: ${MYSQL_DATABASE}
-         MYSQL_USER: ${MYSQL_USER}
-         MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
-         # Admin Configuration
-         DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-changeme}
-
-         # Debug Settings
-         DEBUG: ${DEBUG:-false}
-         SMARTY_DEBUG: ${SMARTY_DEBUG:-false}
-
-         # OpenAI API
-         OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-
-         # SMTP Email
-         SMTP_HOST: ${SMTP_HOST}
-         SMTP_PORT: ${SMTP_PORT}
-         SMTP_SECURE: ${SMTP_SECURE}
-         SMTP_AUTH: ${SMTP_AUTH}
-         SMTP_USERNAME: ${SMTP_USERNAME}
-         SMTP_PASSWORD: ${SMTP_PASSWORD}
-         SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
-
-         # reCAPTCHA
-         RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
-         RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
-
-         # PHP Configuration
-         PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-20M}
-         PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-25M}
-         PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}
-         PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
        volumes:
          - db_data:/var/lib/mysql
          - ./logs:/var/www/log
@@ -132,6 +97,8 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    volumes:
      db_data:
    ```
+
+   **Note:** All configuration variables are loaded from the `.env` file via `env_file`. The `environment` section only needs to override `MYSQL_HOST` to `localhost` since the database runs in the same container.
 
    </details>
 
