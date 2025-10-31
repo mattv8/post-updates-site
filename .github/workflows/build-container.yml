@@ -11,15 +11,16 @@ env:
   IMAGE_NAME: library/post-portal
 
 jobs:
-  build:
-    name: Build Container Image
+  build-and-push:
+    name: Build and Push Container Image
     runs-on: self-hosted
     permissions:
       contents: read
+      packages: write
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
       tags: ${{ steps.meta.outputs.tags }}
-      digest: ${{ steps.build.outputs.digest }}
+      digest: ${{ steps.build-and-push.outputs.digest }}
       image-name: ${{ steps.meta.outputs.image-name }}
 
     steps:
@@ -55,52 +56,6 @@ jobs:
           echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}" >> $GITHUB_OUTPUT
           echo "Tags to be pushed: ${TAGS}"
 
-      - name: Build Docker image
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          outputs: type=docker,dest=/tmp/image.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            FRAMEWORK_BRANCH=main
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp/image.tar
-          retention-days: 1
-
-  push:
-    name: Push Container Image
-    runs-on: self-hosted
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      digest: ${{ steps.push.outputs.digest }}
-
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp
-
-      - name: Load Docker image
-        run: |
-          docker load --input /tmp/image.tar
-          docker image ls -a
-
       - name: Log in to Harbor Registry
         uses: docker/login-action@v3
         with:
@@ -108,24 +63,32 @@ jobs:
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
-      - name: Push Docker image
-        id: push
-        run: |
-          # Push all tags
-          for tag in $(echo "${{ needs.build.outputs.tags }}" | tr ',' '\n'); do
-            echo "Pushing: $tag"
-            docker push "$tag"
-          done
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            FRAMEWORK_BRANCH=main
 
-          # Get the digest from the primary image
-          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${{ needs.build.outputs.image-name }}")
-          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
-          echo "Pushed digest: ${DIGEST}"
+      - name: Cleanup old Docker images
+        uses: ./.github/actions/cleanup
+        with:
+          repositories: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Keep newest 3 matching tags; adjust pattern if you use different tag schemes
+          tagPattern: '^(stage|main|latest)$'
+          keep: '3'
 
   sign:
     name: Sign Container Image
     runs-on: self-hosted
-    needs: [build, push]
+    needs: [build-and-push]
     permissions:
       contents: read
       id-token: write
@@ -146,15 +109,21 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
-          # Sign using the digest from push step
-          DIGEST="${{ needs.push.outputs.digest }}"
+          # Write key to file (GitHub secret may have escaped newlines)
+          echo "$COSIGN_PRIVATE_KEY" > /tmp/cosign.key
+
+          # Sign using the digest from build-and-push step
+          DIGEST="${{ needs.build-and-push.outputs.digest }}"
           echo "Signing image: ${DIGEST}"
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${DIGEST}"
+          cosign sign --yes --key /tmp/cosign.key "${DIGEST}"
+
+          # Clean up key file
+          rm -f /tmp/cosign.key
 
   sbom:
     name: Generate SBOM
     runs-on: self-hosted
-    needs: [build, push]
+    needs: [build-and-push]
     permissions:
       contents: read
 
@@ -169,21 +138,21 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ needs.build.outputs.image-name }}
+          image: ${{ needs.build-and-push.outputs.image-name }}
           format: spdx-json
           output-file: sbom.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ needs.build.outputs.branch }}
+          name: sbom-${{ needs.build-and-push.outputs.branch }}
           path: sbom.spdx.json
           retention-days: 90
 
   summary:
     name: Build Summary
     runs-on: self-hosted
-    needs: [build, push, sign, sbom]
+    needs: [build-and-push, sign, sbom]
     if: always()
     permissions:
       contents: read
@@ -193,24 +162,22 @@ jobs:
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ needs.build.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ needs.build-and-push.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
-          for tag in $(echo "${{ needs.build.outputs.tags }}" | tr ',' '\n'); do
+          for tag in $(echo "${{ needs.build-and-push.outputs.tags }}" | tr ',' '\n'); do
             echo "- \`$tag\`" >> $GITHUB_STEP_SUMMARY
           done
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Digest:** \`${{ needs.push.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** \`${{ needs.build-and-push.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check job statuses
-          BUILD_STATUS="${{ needs.build.result }}"
-          PUSH_STATUS="${{ needs.push.result }}"
+          BUILD_PUSH_STATUS="${{ needs.build-and-push.result }}"
           SIGN_STATUS="${{ needs.sign.result }}"
           SBOM_STATUS="${{ needs.sbom.result }}"
 
           echo "**Job Status:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Build: $BUILD_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- Push: $PUSH_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- Build & Push: $BUILD_PUSH_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- Sign: $SIGN_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- SBOM: $SBOM_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -222,9 +189,9 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "$PUSH_STATUS" = "success" ]; then
+          if [ "$BUILD_PUSH_STATUS" = "success" ]; then
             echo "### Pull Command" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull ${{ needs.build.outputs.image-name }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ needs.build-and-push.outputs.image-name }}" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
