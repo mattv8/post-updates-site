@@ -3,6 +3,32 @@ set -e
 
 echo "==> Starting Post Portal Container"
 
+# Generate secure root password automatically (user doesn't need to know this)
+if [ -z "${MYSQL_ROOT_PASSWORD}" ]; then
+    export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
+    echo "==> Generated secure MySQL root password"
+fi
+
+# Configure PHP settings from environment variables with defaults
+PHP_UPLOAD_MAX_FILESIZE="${PHP_UPLOAD_MAX_FILESIZE:-20M}"
+PHP_POST_MAX_SIZE="${PHP_POST_MAX_SIZE:-25M}"
+PHP_MEMORY_LIMIT="${PHP_MEMORY_LIMIT:-256M}"
+PHP_MAX_EXECUTION_TIME="${PHP_MAX_EXECUTION_TIME:-60}"
+
+echo "==> Configuring PHP settings..."
+cat > /etc/php/8.1/fpm/conf.d/custom.ini <<EOF
+upload_max_filesize = ${PHP_UPLOAD_MAX_FILESIZE}
+post_max_size = ${PHP_POST_MAX_SIZE}
+memory_limit = ${PHP_MEMORY_LIMIT}
+max_execution_time = ${PHP_MAX_EXECUTION_TIME}
+EOF
+
+echo "==> PHP Configuration:"
+echo "    upload_max_filesize = ${PHP_UPLOAD_MAX_FILESIZE}"
+echo "    post_max_size = ${PHP_POST_MAX_SIZE}"
+echo "    memory_limit = ${PHP_MEMORY_LIMIT}"
+echo "    max_execution_time = ${PHP_MAX_EXECUTION_TIME}"
+
 # Initialize MariaDB if needed
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "==> Initializing MariaDB database..."
@@ -51,8 +77,12 @@ fi
 
 # Stop temporary MariaDB
 echo "==> Stopping temporary MariaDB..."
-mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown
-wait $MYSQL_PID
+# Try graceful shutdown with timeout
+timeout 5 mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown 2>/dev/null || {
+    echo "==> Graceful shutdown failed, forcing stop..."
+    kill $MYSQL_PID 2>/dev/null || true
+}
+wait $MYSQL_PID 2>/dev/null || true
 
 echo "==> Initialization complete, starting services via supervisord..."
 

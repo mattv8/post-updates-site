@@ -41,16 +41,10 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Configure PHP
-RUN echo "upload_max_filesize = 20M" > /etc/php/8.1/fpm/conf.d/uploads.ini \
-    && echo "post_max_size = 25M" >> /etc/php/8.1/fpm/conf.d/uploads.ini
-
 # Configure PHP-FPM to pass environment variables
 RUN echo "" >> /etc/php/8.1/fpm/pool.d/www.conf \
     && echo "; Pass environment variables to PHP" >> /etc/php/8.1/fpm/pool.d/www.conf \
-    && echo "clear_env = no" >> /etc/php/8.1/fpm/pool.d/www.conf \
-    && echo "memory_limit = 256M" >> /etc/php/8.1/fpm/conf.d/uploads.ini \
-    && echo "max_execution_time = 60" >> /etc/php/8.1/fpm/conf.d/uploads.ini
+    && echo "clear_env = no" >> /etc/php/8.1/fpm/pool.d/www.conf
 
 # Configure PHP-FPM to not daemonize
 RUN sed -i 's/;daemonize = yes/daemonize = no/g' /etc/php/8.1/fpm/php-fpm.conf
