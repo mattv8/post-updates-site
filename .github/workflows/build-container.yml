@@ -13,7 +13,7 @@ env:
 jobs:
   build:
     name: Build Container Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
     outputs:
@@ -78,7 +78,7 @@ jobs:
 
   push:
     name: Push Container Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build
     permissions:
       contents: read
@@ -124,7 +124,7 @@ jobs:
 
   sign:
     name: Sign Container Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [build, push]
     permissions:
       contents: read
@@ -153,7 +153,7 @@ jobs:
 
   sbom:
     name: Generate SBOM
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [build, push]
     permissions:
       contents: read
@@ -182,7 +182,7 @@ jobs:
 
   summary:
     name: Build Summary
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [build, push, sign, sbom]
     if: always()
     permissions:
