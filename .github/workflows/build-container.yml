@@ -109,16 +109,12 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
-          # Write key to file (GitHub secret may have escaped newlines)
-          echo "$COSIGN_PRIVATE_KEY" > /tmp/cosign.key
-
-          # Sign using the digest from build-and-push step
+          # Get the digest from build-and-push step
           DIGEST="${{ needs.build-and-push.outputs.digest }}"
           echo "Signing image: ${DIGEST}"
-          cosign sign --yes --key /tmp/cosign.key "${DIGEST}"
 
-          # Clean up key file
-          rm -f /tmp/cosign.key
+          # Sign using env:// to keep key in memory only (more secure)
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${DIGEST}"
 
   sbom:
     name: Generate SBOM
