@@ -81,8 +81,9 @@ jobs:
         with:
           repositories: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # Keep newest 3 matching tags; adjust pattern if you use different tag schemes
-          tagPattern: '^(stage|main|latest)$'
+          # Match all tags except 'latest' (keeps branch tags, cleans old ones)
+          # This pattern excludes 'latest' so it's never deleted
+          tagPattern: '^(?!latest$).*$'
           keep: '3'
 
   sign:
@@ -96,6 +97,8 @@ jobs:
     steps:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'  # Use newer version that supports SIGSTORE PRIVATE KEY format
 
       - name: Log in to Harbor Registry
         uses: docker/login-action@v3
