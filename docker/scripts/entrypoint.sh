@@ -108,6 +108,10 @@ fi
 # Clean up PID tracking (no need to wait since we're using pkill)
 sleep 1
 
+# Configure MariaDB to listen on all interfaces (for PHPMyAdmin and external connections)
+echo "==> Configuring MariaDB to listen on all interfaces..."
+sed -i 's/^bind-address\s*=\s*127\.0\.0\.1/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf
+
 echo "==> Initialization complete, starting services via supervisord..."
 
 # Execute the main command (supervisord)
