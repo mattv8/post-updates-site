@@ -92,12 +92,21 @@ fi
 
 # Stop temporary MariaDB
 echo "==> Stopping temporary MariaDB..."
-# Try graceful shutdown with timeout
-timeout 5 mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown 2>/dev/null || {
+# Try graceful shutdown via Unix socket (since we used --skip-networking)
+if mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock shutdown 2>/dev/null; then
+    echo "==> MariaDB shutdown gracefully"
+else
     echo "==> Graceful shutdown failed, forcing stop..."
-    kill $MYSQL_PID 2>/dev/null || true
-}
-wait $MYSQL_PID 2>/dev/null || true
+    # Kill the mysqld_safe process group
+    pkill -TERM mysqld_safe 2>/dev/null || true
+    # Give it a moment to shut down gracefully
+    sleep 2
+    # Force kill any remaining processes
+    pkill -9 mariadbd 2>/dev/null || true
+    pkill -9 mysqld 2>/dev/null || true
+fi
+# Clean up PID tracking (no need to wait since we're using pkill)
+sleep 1
 
 echo "==> Initialization complete, starting services via supervisord..."
 
