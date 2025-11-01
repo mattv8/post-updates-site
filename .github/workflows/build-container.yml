@@ -149,6 +149,34 @@ jobs:
           path: sbom.spdx.json
           retention-days: 90
 
+  sync-readme:
+    name: Sync README
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync README with source files
+        id: sync
+        uses: ./.github/actions/sync-readme
+        with:
+          fail-on-diff: 'false'
+
+      - name: Commit and push changes
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m "docs: auto-update README with latest .env and docker-compose.yml"
+          git push
+
   summary:
     name: Build Summary
     runs-on: self-hosted

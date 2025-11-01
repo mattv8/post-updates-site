@@ -41,6 +41,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    OPENAI_API_KEY=
 
    # SMTP Email Configuration
+   # For production, configure your SMTP server details
    SMTP_HOST=smtp.example.com
    SMTP_PORT=587
    SMTP_SECURE=tls
@@ -60,6 +61,18 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    PHP_POST_MAX_SIZE=25M
    PHP_MEMORY_LIMIT=256M
    PHP_MAX_EXECUTION_TIME=60
+
+   # ----------------------------------------------------------------------------
+   # Development Only Settings (not used in production)
+   # ----------------------------------------------------------------------------
+   # Path to Smarty Portal Framework (for development only)
+   # Clone from: https://github.com/mattv8/smarty-portal-framework.git
+   FRAMEWORK_PATH=/path/to/smarty-portal-framework
+
+   # Development service ports
+   PHPMA_PORT=82
+   MAILPIT_PORT=83
+   MYSQL_PORT=3306
    ```
 
    </details>
@@ -80,7 +93,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
        container_name: post-portal
        restart: unless-stopped
        ports:
-         - "${PORT:-80}:80"
+         - "${PORT}:80"
        env_file:
          - .env
        environment:
