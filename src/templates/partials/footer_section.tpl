@@ -23,16 +23,16 @@
         <div class="container" style="padding: 2rem 3rem;">
           {if $settings.footer_layout == 'single'}
             <div class="row">
-              <div class="col-12">
+              <div class="col-12 ps-4">
                 {$settings.footer_column1_html nofilter}
               </div>
             </div>
           {else}
             <div class="row">
-              <div class="col-md-6 mb-3 mb-md-0">
+              <div class="col-md-6 mb-3 mb-md-0 ps-4">
                 {$settings.footer_column1_html nofilter}
               </div>
-              <div class="col-md-6">
+              <div class="col-md-6 ps-4">
                 {$settings.footer_column2_html nofilter}
               </div>
             </div>
@@ -42,7 +42,7 @@
     </div>
   {else}
     {* Footer without background image *}
-    <div class="container" style="padding: 1.5rem 0;">
+    <div class="container" style="padding: 1.5rem 1.5rem;">
       {if $settings.footer_layout == 'single'}
         <div class="row">
           <div class="col-12">
