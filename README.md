@@ -2,6 +2,8 @@
 
 A flexible post and update platform built on PHP with Smarty templates, featuring responsive image galleries, WYSIWYG content editing, and containerized deployment.
 
+**[View Live Demo](https://postportal.dev.visnovsky.us)**
+
 ## Quick Start
 
 ### Prerequisites
@@ -251,12 +253,38 @@ Changes are immediately reflected (no rebuild required).
 
 Migrations are automatically applied on container startup from the `migrations/` folder.
 
-To manually run migrations in production:
+To manually run migrations:
 ```bash
-docker exec -it post-portal bash
-/docker-scripts/run-migrations.sh
+docker exec post-portal migrate
+
 ```
 
+### Importing a SQL Dump
+
+Import database dumps using the built-in `import` command:
+
+```bash
+cat /path/to/dump.sql | sudo docker exec -i post-portal import -
+```
+
+The import command automatically handles connection cleanup, database recreation with utf8mb4, and verification.
+
+### Migrating Media Files
+
+Media files (uploaded images and their responsive variants) are stored in the `storage/uploads/` directory, which is mounted from the host filesystem. To migrate media from another installation, simply copy the files to your local `storage/uploads/` directory and ensure they have the correct permissions (owned by `www-data` with `775` permissions). Files copied to the host path are immediately available in the container since the directory is mounted as a volume.
+
+The media directory structure includes `originals/` for uploaded files and `variants/` with subdirectories for different responsive sizes (400px, 800px, 1600px, and thumbnails).
+
+**Reset development database:**
+```bash
+# Quick reset (keeps container running)
+sudo docker exec postportal-dev drop
+
+# Full reset (rebuilds container)
+cd docker
+sudo docker compose -f docker-compose.dev.yml down -v
+sudo docker compose -f docker-compose.dev.yml up --build
+```
 
 ## CI/CD
 
@@ -268,13 +296,6 @@ The project uses GitHub Actions to:
 5. Generate and attach SBOM (Software Bill of Materials)
 
 Main branch is tagged as `:latest`.
-
-**Reset development database:**
-```bash
-cd docker
-sudo docker compose -f docker-compose.dev.yml down -v
-sudo docker compose -f docker-compose.dev.yml up --build
-```
 
 ## License
 

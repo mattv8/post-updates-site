@@ -73,6 +73,7 @@ COPY migrations/ /docker-migrations/
 # Copy initialization and migration scripts
 COPY docker/scripts/init-database.sh /docker-scripts/init-database.sh
 COPY docker/scripts/run-migrations.sh /docker-scripts/run-migrations.sh
+COPY docker/scripts/import-database.sh /docker-scripts/import-database.sh
 RUN dos2unix /docker-scripts/*.sh && chmod +x /docker-scripts/*.sh
 
 # Configure supervisord

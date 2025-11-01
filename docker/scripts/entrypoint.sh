@@ -3,11 +3,26 @@ set -e
 
 echo "==> Starting Post Portal Container"
 
+# Create symlinks for convenience commands
+ln -sf /docker-scripts/import-database.sh /usr/local/bin/import
+ln -sf /docker-scripts/run-migrations.sh /usr/local/bin/migrate
+
+# Create a drop command wrapper
+cat > /usr/local/bin/drop <<'EOF'
+#!/bin/bash
+/docker-scripts/import-database.sh --drop "$@"
+EOF
+chmod +x /usr/local/bin/drop
+
 # Generate secure root password automatically (user doesn't need to know this)
 if [ -z "${MYSQL_ROOT_PASSWORD}" ]; then
     export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
     echo "==> Generated secure MySQL root password"
 fi
+
+# Store root password for use by other scripts (import, etc.)
+echo "${MYSQL_ROOT_PASSWORD}" > /var/run/mysql_root_password
+chmod 600 /var/run/mysql_root_password
 
 # Configure PHP settings from environment variables with defaults
 PHP_UPLOAD_MAX_FILESIZE="${PHP_UPLOAD_MAX_FILESIZE:-20M}"
