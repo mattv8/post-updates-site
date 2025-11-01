@@ -76,20 +76,6 @@ $page_bg_color_class = 'bg-blurred rounded-3';
 # NOTE: This is now loaded from environment variables
 $openai_api_key = getenv('OPENAI_API_KEY') ?: ''; // OpenAI API key (sk-...)
 
-# SMTP Email Configuration
-# For local development with Mailpit, use these defaults:
-# Server: mailpit, Port: 1025, No auth required
-# For production, configure your SMTP server details
-# NOTE: These are now loaded from environment variables
-$smtp_host = getenv('SMTP_HOST') ?: 'localhost'; // SMTP server hostname
-$smtp_port = (int)(getenv('SMTP_PORT') ?: 25); // SMTP port
-$smtp_secure = getenv('SMTP_SECURE') ?: ''; // Encryption: '', 'tls', or 'ssl'
-$smtp_auth = filter_var(getenv('SMTP_AUTH') ?: 'false', FILTER_VALIDATE_BOOLEAN); // Enable SMTP auth
-$smtp_username = getenv('SMTP_USERNAME') ?: ''; // SMTP username
-$smtp_password = getenv('SMTP_PASSWORD') ?: ''; // SMTP password
-$smtp_from_email = getenv('SMTP_FROM_EMAIL') ?: 'noreply@example.com'; // From email address
-$smtp_from_name = 'Post Portal'; // From name
-
 # Media Upload Configuration
 $max_upload_size = 20971520; // 20MB in bytes
 $allowed_image_formats = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];

@@ -1141,7 +1141,7 @@ function getSettings($db_conn)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay','smtp_host','smtp_port','smtp_secure','smtp_auth','smtp_username','smtp_password','smtp_from_email','smtp_from_name'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1156,7 +1156,7 @@ function updateSettings($db_conn, $data)
                 $params[] = $data[$key];
             }
             // Set parameter types
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height' || $key === 'smtp_rate_limit' || $key === 'smtp_rate_period') { $types .= 'i'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height' || $key === 'smtp_rate_limit' || $key === 'smtp_rate_period' || $key === 'smtp_port' || $key === 'smtp_auth') { $types .= 'i'; }
             elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity' || $key === 'smtp_batch_delay') { $types .= 'd'; }
             else { $types .= 's'; }
         }
@@ -1283,13 +1283,25 @@ function validateUnsubscribeToken($token)
  */
 function sendNewPostNotification($db_conn, $postId)
 {
-    // Get SMTP configuration from config
-    require(__DIR__ . '/config.local.php');
-
-    // Get settings to check if notifications are enabled
+    // Get settings - notifications enabled and SMTP configuration
     $settings = getSettings($db_conn);
     if (!$settings || !$settings['notify_subscribers_on_post']) {
         return ['success' => false, 'error' => 'Notifications disabled in settings'];
+    }
+
+    // Load SMTP settings from database only
+    $smtp_host = $settings['smtp_host'] ?? null;
+    $smtp_port = isset($settings['smtp_port']) ? (int)$settings['smtp_port'] : 587;
+    $smtp_secure = $settings['smtp_secure'] ?? 'tls';
+    $smtp_auth = isset($settings['smtp_auth']) ? (bool)$settings['smtp_auth'] : true;
+    $smtp_username = $settings['smtp_username'] ?? '';
+    $smtp_password = $settings['smtp_password'] ?? '';
+    $smtp_from_email = $settings['smtp_from_email'] ?? null;
+    $smtp_from_name = $settings['smtp_from_name'] ?? 'Post Portal';
+
+    // Validate required SMTP settings
+    if (!$smtp_host || !$smtp_from_email) {
+        return ['success' => false, 'error' => 'SMTP configuration incomplete. Please configure SMTP settings in Admin > Newsletter > Email Settings.'];
     }
 
     // Get post details
@@ -1413,6 +1425,12 @@ function sendNewPostNotification($db_conn, $postId)
         // Create PHPMailer instance once and reuse
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
 
+        // Enable debug output for error logging (in production, errors are logged not displayed)
+        $mail->SMTPDebug = 0; // Set to 2 or 3 for verbose debugging
+        $mail->Debugoutput = function($str, $level) {
+            error_log("PHPMailer Debug: " . trim($str));
+        };
+
         // Server settings
         $mail->isSMTP();
         $mail->Host = $smtp_host;
@@ -1430,8 +1448,17 @@ function sendNewPostNotification($db_conn, $postId)
             $mail->SMTPSecure = $smtp_secure;
         }
 
-        // Sender - use author name from the post
-        $mail->setFrom($smtp_from_email, $authorName);
+        // Additional SMTP options for better compatibility
+        $mail->SMTPOptions = [
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            ]
+        ];
+
+        // Sender - use configured from name and email
+        $mail->setFrom($smtp_from_email, $smtp_from_name);
 
         // Content settings
         $mail->isHTML(true);

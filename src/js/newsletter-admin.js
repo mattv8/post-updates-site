@@ -16,6 +16,38 @@
     return adminApp ? adminApp.getAttribute('data-csrf') : '';
   }
 
+  // Get SMTP configuration from form
+  function getSMTPConfigFromForm() {
+    return {
+      smtp_host: document.getElementById('smtp_host')?.value || undefined,
+      smtp_port: document.getElementById('smtp_port')?.value ? parseInt(document.getElementById('smtp_port').value) : undefined,
+      smtp_secure: document.getElementById('smtp_secure')?.value || undefined,
+      smtp_auth: document.getElementById('smtp_auth')?.checked || false,
+      smtp_username: document.getElementById('smtp_username')?.value || undefined,
+      smtp_password: document.getElementById('smtp_password')?.value || undefined,
+      smtp_from_email: document.getElementById('smtp_from_email')?.value || undefined,
+      smtp_from_name: document.getElementById('smtp_from_name')?.value || undefined
+    };
+  }
+
+  // Show SMTP test result message
+  function showSMTPResult(type, message) {
+    const resultDiv = document.getElementById('smtp_test_result');
+    if (!resultDiv) return;
+
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle-fill' : 'exclamation-triangle-fill';
+
+    resultDiv.className = 'alert ' + alertClass;
+    resultDiv.innerHTML = '<i class="bi bi-' + icon + ' me-2"></i>' + message;
+    resultDiv.classList.remove('d-none');
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      resultDiv.classList.add('d-none');
+    }, 10000);
+  }
+
   // Format date for display
   function formatDate(dateString) {
     const date = new Date(dateString);
@@ -92,7 +124,16 @@
     const ratePeriodInput = document.getElementById('smtp_rate_period');
     const batchDelayInput = document.getElementById('smtp_batch_delay');
 
-    if (!toggle && !notifyToggle && !includeBodyToggle && !rateLimitInput) return;
+    // SMTP configuration fields
+    const smtpHostInput = document.getElementById('smtp_host');
+    const smtpPortInput = document.getElementById('smtp_port');
+    const smtpSecureInput = document.getElementById('smtp_secure');
+    const smtpAuthInput = document.getElementById('smtp_auth');
+    const smtpUsernameInput = document.getElementById('smtp_username');
+    const smtpFromEmailInput = document.getElementById('smtp_from_email');
+    const smtpFromNameInput = document.getElementById('smtp_from_name');
+
+    if (!toggle && !notifyToggle && !includeBodyToggle && !rateLimitInput && !smtpHostInput) return;
 
     try {
       const response = await fetch('/api/admin/settings.php', {
@@ -122,6 +163,29 @@
         }
         if (batchDelayInput) {
           batchDelayInput.value = result.data.smtp_batch_delay || 0.5;
+        }
+
+        // Load SMTP configuration
+        if (smtpHostInput && result.data.smtp_host) {
+          smtpHostInput.value = result.data.smtp_host;
+        }
+        if (smtpPortInput && result.data.smtp_port) {
+          smtpPortInput.value = result.data.smtp_port;
+        }
+        if (smtpSecureInput && result.data.smtp_secure) {
+          smtpSecureInput.value = result.data.smtp_secure;
+        }
+        if (smtpAuthInput) {
+          smtpAuthInput.checked = result.data.smtp_auth == 1;
+        }
+        if (smtpUsernameInput && result.data.smtp_username) {
+          smtpUsernameInput.value = result.data.smtp_username;
+        }
+        if (smtpFromEmailInput && result.data.smtp_from_email) {
+          smtpFromEmailInput.value = result.data.smtp_from_email;
+        }
+        if (smtpFromNameInput && result.data.smtp_from_name) {
+          smtpFromNameInput.value = result.data.smtp_from_name;
         }
       }
     } catch (error) {
@@ -341,6 +405,30 @@
   document.addEventListener('DOMContentLoaded', function() {
     // Load show_mailing_list setting
     loadMailingListVisibility();
+
+    // Auto-enable SMTP auth when username or password is filled
+    const smtpUsernameInput = document.getElementById('smtp_username');
+    const smtpPasswordInput = document.getElementById('smtp_password');
+    const smtpAuthCheckbox = document.getElementById('smtp_auth');
+
+    function checkAutoEnableAuth() {
+      if (!smtpAuthCheckbox) return;
+
+      const hasUsername = smtpUsernameInput?.value.trim().length > 0;
+      const hasPassword = smtpPasswordInput?.value.trim().length > 0;
+
+      // Auto-enable auth if either field has content (unless manually disabled)
+      if ((hasUsername || hasPassword) && !smtpAuthCheckbox.checked) {
+        smtpAuthCheckbox.checked = true;
+      }
+    }
+
+    if (smtpUsernameInput) {
+      smtpUsernameInput.addEventListener('input', checkAutoEnableAuth);
+    }
+    if (smtpPasswordInput) {
+      smtpPasswordInput.addEventListener('input', checkAutoEnableAuth);
+    }
 
     // Load subscribers when newsletter tab is shown
     const newsletterTab = document.getElementById('tab-newsletter');
@@ -593,6 +681,193 @@
         } catch (error) {
           console.error('Error updating SMTP batch delay:', error);
           alert('Error updating SMTP batch delay');
+        }
+      });
+    }
+
+    // SMTP Configuration Save
+    const smtpSaveBtn = document.getElementById('smtp_save_config');
+    if (smtpSaveBtn) {
+      smtpSaveBtn.addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+        const smtpConfig = {};
+
+        // Only include fields that have values
+        const hostValue = document.getElementById('smtp_host')?.value?.trim();
+        if (hostValue) smtpConfig.smtp_host = hostValue;
+
+        const portValue = document.getElementById('smtp_port')?.value;
+        if (portValue) smtpConfig.smtp_port = parseInt(portValue);
+
+        const secureValue = document.getElementById('smtp_secure')?.value;
+        if (secureValue) smtpConfig.smtp_secure = secureValue;
+
+        // Always include smtp_auth (it's a boolean)
+        smtpConfig.smtp_auth = document.getElementById('smtp_auth')?.checked ? 1 : 0;
+
+        const usernameValue = document.getElementById('smtp_username')?.value?.trim();
+        if (usernameValue) smtpConfig.smtp_username = usernameValue;
+
+        const passwordValue = document.getElementById('smtp_password')?.value;
+        if (passwordValue && passwordValue.trim() !== '') {
+          smtpConfig.smtp_password = passwordValue;
+        }
+
+        const fromEmailValue = document.getElementById('smtp_from_email')?.value?.trim();
+        if (fromEmailValue) smtpConfig.smtp_from_email = fromEmailValue;
+
+        const fromNameValue = document.getElementById('smtp_from_name')?.value?.trim();
+        if (fromNameValue) smtpConfig.smtp_from_name = fromNameValue;
+
+        // Check if we have at least one field to update
+        if (Object.keys(smtpConfig).length === 0) {
+          showSMTPResult('error', 'Please enter at least one SMTP setting to save.');
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/admin/settings.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify(smtpConfig)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showSMTPResult('success', 'SMTP configuration saved successfully!');
+            // Clear password field after save
+            const passwordField = document.getElementById('smtp_password');
+            if (passwordField) passwordField.value = '';
+          } else {
+            showSMTPResult('error', 'Error saving SMTP configuration: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error saving SMTP configuration:', error);
+          showSMTPResult('error', 'Network error. Please try again.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+    }
+
+    // SMTP Test Connection
+    const smtpTestConnBtn = document.getElementById('smtp_test_connection');
+    if (smtpTestConnBtn) {
+      smtpTestConnBtn.addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Testing...';
+
+        const smtpConfig = getSMTPConfigFromForm();
+
+        try {
+          const response = await fetch('/api/admin/smtp-test.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+              action: 'connect',
+              ...smtpConfig
+            })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showSMTPResult('success',
+              '<strong>Connection Successful!</strong><br>' +
+              'Host: ' + result.config.host + ':' + result.config.port + '<br>' +
+              'Encryption: ' + (result.config.secure || 'None') + '<br>' +
+              'Auth: ' + (result.config.auth ? 'Enabled' : 'Disabled')
+            );
+          } else {
+            showSMTPResult('error',
+              '<strong>Connection Failed</strong><br>' +
+              result.error +
+              (result.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '')
+            );
+          }
+        } catch (error) {
+          console.error('Error testing SMTP connection:', error);
+          showSMTPResult('error', 'Network error. Please try again.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+    }
+
+    // SMTP Send Test Email
+    const smtpSendTestBtn = document.getElementById('smtp_send_test');
+    if (smtpSendTestBtn) {
+      smtpSendTestBtn.addEventListener('click', async function() {
+        const testEmail = prompt('Enter email address to send test email to:');
+
+        if (!testEmail) return;
+
+        // Validate email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(testEmail)) {
+          showSMTPResult('error', 'Invalid email address');
+          return;
+        }
+
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+
+        const smtpConfig = getSMTPConfigFromForm();
+
+        try {
+          const response = await fetch('/api/admin/smtp-test.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+              action: 'test',
+              test_email: testEmail,
+              ...smtpConfig
+            })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showSMTPResult('success',
+              '<strong>Test Email Sent!</strong><br>' +
+              result.message + '<br>' +
+              '<small>Check the inbox for ' + testEmail + '</small>'
+            );
+          } else {
+            showSMTPResult('error',
+              '<strong>Failed to Send Test Email</strong><br>' +
+              result.error +
+              (result.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '')
+            );
+          }
+        } catch (error) {
+          console.error('Error sending test email:', error);
+          showSMTPResult('error', 'Network error. Please try again.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
         }
       });
     }

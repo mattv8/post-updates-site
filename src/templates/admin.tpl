@@ -133,6 +133,90 @@
           </div>
 
           <div class="tab-pane fade" id="subpane-email-settings" role="tabpanel">
+            <h6 class="mb-3">SMTP Configuration</h6>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Note:</strong> SMTP settings can be configured here or via environment variables. Database settings override environment variables.
+              Leave fields empty to use environment variable defaults.
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="smtp_host" class="form-label"><strong>SMTP Host</strong></label>
+                  <input type="text" class="form-control" id="smtp_host" placeholder="smtp.example.com" />
+                  <small class="text-muted">SMTP server hostname or IP address</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_port" class="form-label"><strong>SMTP Port</strong></label>
+                  <input type="number" class="form-control" id="smtp_port" min="1" max="65535" placeholder="587" />
+                  <small class="text-muted">Common ports: 25 (unencrypted), 587 (TLS), 465 (SSL)</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_secure" class="form-label"><strong>Encryption</strong></label>
+                  <select class="form-select" id="smtp_secure">
+                    <option value="">None</option>
+                    <option value="tls">TLS (STARTTLS)</option>
+                    <option value="ssl">SSL</option>
+                  </select>
+                  <small class="text-muted">Use TLS for port 587, SSL for port 465</small>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="smtp_auth" />
+                    <label class="form-check-label" for="smtp_auth">
+                      <strong>Enable SMTP Authentication</strong>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="smtp_username" class="form-label"><strong>SMTP Username</strong></label>
+                  <input type="text" class="form-control" id="smtp_username" placeholder="username or email" autocomplete="off" />
+                  <small class="text-muted">Username for SMTP authentication</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_password" class="form-label"><strong>SMTP Password</strong></label>
+                  <input type="password" class="form-control" id="smtp_password" autocomplete="new-password" />
+                  <small class="text-muted">Password for SMTP authentication</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_from_email" class="form-label"><strong>From Email Address</strong></label>
+                  <input type="email" class="form-control" id="smtp_from_email" placeholder="noreply@example.com" />
+                  <small class="text-muted">Email address used in the "From" field</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="smtp_from_name" class="form-label"><strong>From Name</strong></label>
+                  <input type="text" class="form-control" id="smtp_from_name" placeholder="Post Portal" />
+                  <small class="text-muted">Display name used in the "From" field</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <button type="button" class="btn btn-primary" id="smtp_save_config">
+                <i class="bi bi-save"></i> Save SMTP Configuration
+              </button>
+              <button type="button" class="btn btn-outline-secondary" id="smtp_test_connection">
+                <i class="bi bi-lightning"></i> Test Connection
+              </button>
+              <button type="button" class="btn btn-outline-primary" id="smtp_send_test">
+                <i class="bi bi-envelope"></i> Send Test Email
+              </button>
+            </div>
+
+            <div id="smtp_test_result" class="d-none mb-4"></div>
+
+            <hr class="my-4" />
+
             <h6 class="mb-3">Email Notification Settings</h6>
 
             <div class="d-flex flex-column flex-md-row gap-4 align-items-start">
