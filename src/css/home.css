@@ -181,7 +181,12 @@
 
   /* Footer content wrapper mobile optimization */
   .footer-content-wrapper .container {
-    padding: 1.5rem 2rem !important; /* add horizontal padding on tablet */
+    padding: 1.5rem 1.5rem !important; /* consistent horizontal padding on tablet */
+  }
+
+  /* Footer without background image - tablet optimization */
+  footer > .container {
+    padding: 1.5rem 1.5rem !important;
   }
 
   /* Let footer grow vertically with its text on mobile/tablet */
@@ -285,7 +290,12 @@
 
   /* Footer content wrapper for extra small screens */
   .footer-content-wrapper .container {
-    padding: 1rem 0.75rem !important; /* add horizontal padding on phones */
+    padding: 1rem 1rem !important; /* consistent horizontal padding on phones */
+  }
+
+  /* Footer without background image - phone optimization */
+  footer > .container {
+    padding: 1rem 1rem !important;
   }
 
   /* Same behavior for small phones */

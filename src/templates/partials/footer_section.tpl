@@ -20,19 +20,19 @@
         <div class="footer-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: {$settings.footer_overlay_color|default:'#000'}; opacity: {$settings.footer_overlay_opacity|default:'0.5'}; z-index: 1;"></div>
       {/if}
       <div class="footer-content-wrapper" style="position: absolute; bottom: 0; left: 0; right: 0; width: 100%; z-index: 2;">
-        <div class="container" style="padding: 2rem 3rem;">
+        <div class="container" style="padding: 2rem 1.5rem;">
           {if $settings.footer_layout == 'single'}
             <div class="row">
-              <div class="col-12 ps-4">
+              <div class="col-12">
                 {$settings.footer_column1_html nofilter}
               </div>
             </div>
           {else}
             <div class="row">
-              <div class="col-md-6 mb-3 mb-md-0 ps-4">
+              <div class="col-md-6 mb-3 mb-md-0">
                 {$settings.footer_column1_html nofilter}
               </div>
-              <div class="col-md-6 ps-4">
+              <div class="col-md-6">
                 {$settings.footer_column2_html nofilter}
               </div>
             </div>
