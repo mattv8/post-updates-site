@@ -28,8 +28,9 @@
   }
 
   // Email validation regex (client-side validation)
+  // More permissive regex that allows modern TLDs and international domains
   function isValidEmail(email) {
-    const regex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
   }
 

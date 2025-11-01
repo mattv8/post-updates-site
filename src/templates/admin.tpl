@@ -257,7 +257,7 @@
         <form id="addSubscriberForm" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="newSubscriberEmail" class="form-label">Email Address</label>
-            <input type="email" class="form-control" id="newSubscriberEmail" required pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{ldelim}2,{rdelim}$" maxlength="255" />
+            <input type="email" class="form-control" id="newSubscriberEmail" required pattern="[^\s@]+@[^\s@]+\.[^\s@]+" maxlength="255" />
             <div class="invalid-feedback">
               Please enter a valid email address.
             </div>

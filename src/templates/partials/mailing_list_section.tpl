@@ -23,7 +23,7 @@
                 name="email"
                 placeholder="Enter your email"
                 required
-                pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{ldelim}2,{rdelim}$"
+                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
                 maxlength="255"
               />
               <button class="btn btn-primary" type="submit" id="newsletter-submit-btn">
