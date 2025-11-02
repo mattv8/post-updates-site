@@ -396,6 +396,25 @@
       if (aiPromptElement) {
         aiPromptElement.value = j.data.ai_system_prompt || '';
       }
+
+      // Load SMTP settings
+      const smtpHostElement = document.getElementById('smtp_host');
+      const smtpPortElement = document.getElementById('smtp_port');
+      const smtpSecureElement = document.getElementById('smtp_secure');
+      const smtpAuthElement = document.getElementById('smtp_auth');
+      const smtpUsernameElement = document.getElementById('smtp_username');
+      const smtpPasswordElement = document.getElementById('smtp_password');
+      const smtpFromEmailElement = document.getElementById('smtp_from_email');
+      const smtpFromNameElement = document.getElementById('smtp_from_name');
+
+      if (smtpHostElement) smtpHostElement.value = j.data.smtp_host || '';
+      if (smtpPortElement) smtpPortElement.value = j.data.smtp_port || 587;
+      if (smtpSecureElement) smtpSecureElement.value = j.data.smtp_secure || 'tls';
+      if (smtpAuthElement) smtpAuthElement.checked = j.data.smtp_auth == 1;
+      if (smtpUsernameElement) smtpUsernameElement.value = j.data.smtp_username || '';
+      if (smtpPasswordElement) smtpPasswordElement.value = j.data.smtp_password || '';
+      if (smtpFromEmailElement) smtpFromEmailElement.value = j.data.smtp_from_email || '';
+      if (smtpFromNameElement) smtpFromNameElement.value = j.data.smtp_from_name || '';
     });
   }
 

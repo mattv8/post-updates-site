@@ -44,6 +44,12 @@ echo "    post_max_size = ${PHP_POST_MAX_SIZE}"
 echo "    memory_limit = ${PHP_MEMORY_LIMIT}"
 echo "    max_execution_time = ${PHP_MAX_EXECUTION_TIME}"
 
+# Ensure logs directory exists and has correct permissions
+echo "==> Setting up logs directory..."
+mkdir -p /var/www/html/logs
+chown -R www-data:www-data /var/www/html/logs
+chmod -R 755 /var/www/html/logs
+
 # Initialize MariaDB if needed
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "==> Initializing MariaDB database..."

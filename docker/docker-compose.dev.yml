@@ -22,7 +22,7 @@ services:
       # Database persistence
       - dev_db_data:/var/lib/mysql
       # Application logs
-      - ../logs:/var/www/log
+      - ../logs:/var/www/html/logs
     networks:
       - dev-network
 

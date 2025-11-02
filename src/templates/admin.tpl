@@ -134,12 +134,6 @@
 
           <div class="tab-pane fade" id="subpane-email-settings" role="tabpanel">
             <h6 class="mb-3">SMTP Configuration</h6>
-            <div class="alert alert-info">
-              <i class="bi bi-info-circle me-2"></i>
-              <strong>Note:</strong> SMTP settings can be configured here or via environment variables. Database settings override environment variables.
-              Leave fields empty to use environment variable defaults.
-            </div>
-
             <div class="row mb-4">
               <div class="col-md-6">
                 <div class="mb-3">

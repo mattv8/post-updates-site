@@ -121,13 +121,18 @@ try {
 
     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
 
-    // Enable verbose debug output for testing
-    $mail->SMTPDebug = 0; // Set to 2 or 3 for detailed debugging
-    $mail->Debugoutput = function($str, $level) use (&$debugLog) {
-        $debugLog[] = trim($str);
-    };
-
+    // Enable verbose debug output based on DEBUG env variable
     $debugLog = [];
+    $debugMode = getenv('DEBUG') === 'true' || getenv('DEBUG') === '1';
+    $mail->SMTPDebug = $debugMode ? 3 : 0; // Verbose debugging in dev mode only
+    $mail->Debugoutput = function($str, $level) use (&$debugLog, $debugMode) {
+        $debugLog[] = trim($str);
+        if ($debugMode) {
+            // Only write to app log file (not error_log to avoid duplication)
+            $logFile = '/var/www/html/logs/smtp.log';
+            @file_put_contents($logFile, date('Y-m-d H:i:s') . " - " . trim($str) . "\n", FILE_APPEND);
+        }
+    };
 
     // Server settings
     $mail->isSMTP();

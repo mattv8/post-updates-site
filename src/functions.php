@@ -1136,7 +1136,53 @@ function updateMediaAltText($db_conn, $id, $altText)
 function getSettings($db_conn)
 {
     $res = mysqli_query($db_conn, 'SELECT * FROM settings WHERE id = 1');
-    return $res ? mysqli_fetch_assoc($res) : null;
+    $settings = $res ? mysqli_fetch_assoc($res) : null;
+
+    // Decrypt SMTP password if it exists
+    if ($settings && !empty($settings['smtp_password'])) {
+        $settings['smtp_password'] = decryptSmtpPassword($settings['smtp_password']);
+    }
+
+    return $settings;
+}
+
+/**
+ * Encrypt SMTP password using AES-256-CBC
+ */
+function encryptSmtpPassword($password)
+{
+    if (empty($password)) {
+        return '';
+    }
+
+    // Use a key derived from the database credentials (consistent across requests)
+    $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
+    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+    $encrypted = openssl_encrypt($password, 'aes-256-cbc', $key, 0, $iv);
+
+    // Store IV with encrypted data (base64 encoded)
+    return base64_encode($iv . $encrypted);
+}
+
+/**
+ * Decrypt SMTP password
+ */
+function decryptSmtpPassword($encryptedPassword)
+{
+    if (empty($encryptedPassword)) {
+        return '';
+    }
+
+    // Use the same key as encryption
+    $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
+    $data = base64_decode($encryptedPassword);
+
+    // Extract IV and encrypted data
+    $ivLength = openssl_cipher_iv_length('aes-256-cbc');
+    $iv = substr($data, 0, $ivLength);
+    $encrypted = substr($data, $ivLength);
+
+    return openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
 }
 
 function updateSettings($db_conn, $data)
@@ -1149,8 +1195,12 @@ function updateSettings($db_conn, $data)
     foreach ($fields as $key) {
         if (array_key_exists($key, $data)) {
             $sets[] = "$key = ?";
+            // Encrypt SMTP password before saving
+            if ($key === 'smtp_password') {
+                $params[] = encryptSmtpPassword($data[$key]);
+            }
             // Sanitize HTML fields
-            if ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'donation_instructions_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html' || $key === 'mailing_list_html') {
+            elseif ($key === 'hero_html' || $key === 'site_bio_html' || $key === 'donate_text_html' || $key === 'donation_instructions_html' || $key === 'footer_column1_html' || $key === 'footer_column2_html' || $key === 'mailing_list_html') {
                 $params[] = sanitizeHtml($data[$key]);
             } else {
                 $params[] = $data[$key];
@@ -1299,6 +1349,9 @@ function sendNewPostNotification($db_conn, $postId)
     $smtp_from_email = $settings['smtp_from_email'] ?? null;
     $smtp_from_name = $settings['smtp_from_name'] ?? 'Post Portal';
 
+    // Debug: Log SMTP configuration (without exposing password)
+    error_log("SMTP Config - Host: {$smtp_host}, Port: {$smtp_port}, Secure: {$smtp_secure}, Auth: " . ($smtp_auth ? 'true' : 'false') . ", Username: {$smtp_username}, Password Length: " . strlen($smtp_password));
+
     // Validate required SMTP settings
     if (!$smtp_host || !$smtp_from_email) {
         return ['success' => false, 'error' => 'SMTP configuration incomplete. Please configure SMTP settings in Admin > Newsletter > Email Settings.'];
@@ -1426,9 +1479,14 @@ function sendNewPostNotification($db_conn, $postId)
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
 
         // Enable debug output for error logging (in production, errors are logged not displayed)
-        $mail->SMTPDebug = 0; // Set to 2 or 3 for verbose debugging
-        $mail->Debugoutput = function($str, $level) {
-            error_log("PHPMailer Debug: " . trim($str));
+        $debugMode = getenv('DEBUG') === 'true' || getenv('DEBUG') === '1';
+        $mail->SMTPDebug = $debugMode ? 3 : 0; // Verbose debugging in dev mode only
+        $mail->Debugoutput = function($str, $level) use ($debugMode) {
+            if ($debugMode) {
+                // Only write to app log file (not error_log to avoid duplication)
+                $logFile = '/var/www/html/logs/smtp.log';
+                @file_put_contents($logFile, date('Y-m-d H:i:s') . " - " . trim($str) . "\n", FILE_APPEND);
+            }
         };
 
         // Server settings
