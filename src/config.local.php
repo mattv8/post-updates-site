@@ -52,12 +52,12 @@ $nav_buttons = array(
         'modalId' => 'UserMgmtModal',
         'modalclass' => 'modal-xl',
     ),
-    'dashboard' => array(
-        'title' => 'Dashboard',
-        'faclass' => 'chart-line',
-        'btn_color' => 'primary',
-        'btn_type' => 'link',
-        'url' => '?page=admin',
+    'home' => array(
+        'title' => 'View Site',
+        'faclass' => 'house',
+        'btn_color' => 'success',
+        'btn_type' => 'page',  // Changed from 'link'
+        'url' => '/',
     ),
 );
 
