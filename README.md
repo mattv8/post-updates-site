@@ -40,16 +40,6 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    # Get your API key from: https://platform.openai.com/api-keys
    OPENAI_API_KEY=
 
-   # SMTP Email Configuration
-   # For production, configure your SMTP server details
-   SMTP_HOST=smtp.example.com
-   SMTP_PORT=587
-   SMTP_SECURE=tls
-   SMTP_AUTH=true
-   SMTP_USERNAME=
-   SMTP_PASSWORD=
-   SMTP_FROM_EMAIL=noreply@example.com
-
    # reCAPTCHA Configuration (Optional)
    # Create your keys here: https://www.google.com/recaptcha/admin/create
    RECAPTCHA_SITE_KEY=
