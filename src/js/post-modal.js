@@ -52,6 +52,13 @@
     modal.querySelector('.hero-preview img').src = '';
     modal.querySelector('.post-hero-height').value = 100;
     modal.querySelector('.hero-height-value').textContent = '100';
+
+    // Hide upload buttons
+    const heroUploadBtn = modal.querySelector('.btn-upload-hero');
+    const galleryUploadBtn = modal.querySelector('.btn-upload-gallery');
+    if (heroUploadBtn) heroUploadBtn.style.display = 'none';
+    if (galleryUploadBtn) galleryUploadBtn.style.display = 'none';
+
     const galleryPreview = modal.querySelector('#galleryPreview');
     galleryPreview.innerHTML = '';
     galleryPreview.classList.add('empty');
@@ -107,10 +114,22 @@
     }
   };
 
-  // Enable upload button when file selected
-  heroUploadInput?.addEventListener('change', function() {
-    heroUploadBtn.disabled = !this.files.length;
-  });
+  // Show upload button when file selected
+  if (heroUploadInput && heroUploadBtn) {
+    // Initially hide the button
+    heroUploadBtn.style.display = 'none';
+
+    heroUploadInput.addEventListener('change', function() {
+      const hasFile = this.files.length > 0;
+      if (hasFile) {
+        heroUploadBtn.style.display = 'inline-block';
+        heroUploadBtn.disabled = false;
+        heroUploadBtn.textContent = 'Upload';
+      } else {
+        heroUploadBtn.style.display = 'none';
+      }
+    });
+  }
 
   // Handle hero image upload
   heroUploadBtn?.addEventListener('click', async function() {
@@ -173,8 +192,9 @@
         // Update preview with current settings
         updateHeroPreview();
 
-        // Clear file input
+        // Clear file input and hide button
         heroUploadInput.value = '';
+        heroUploadBtn.style.display = 'none';
       } else {
         alert('Upload failed: ' + (data.error || 'Unknown error'));
       }
@@ -183,7 +203,7 @@
       alert('An error occurred during upload');
     } finally {
       heroUploadBtn.disabled = false;
-      heroUploadBtn.textContent = 'Upload New';
+      heroUploadBtn.textContent = 'Upload';
     }
   });
 
@@ -275,10 +295,26 @@
   const galleryUploadBtn = modal.querySelector('.btn-upload-gallery');
   const galleryPreview = modal.querySelector('#galleryPreview');
 
-  // Enable upload button when files selected
-  galleryUploadInput?.addEventListener('change', function() {
-    galleryUploadBtn.disabled = !this.files.length;
-  });
+  // Show upload button when files selected
+  if (galleryUploadInput && galleryUploadBtn) {
+    // Initially hide the button
+    galleryUploadBtn.style.display = 'none';
+
+    galleryUploadInput.addEventListener('change', function() {
+      const fileCount = this.files.length;
+      if (fileCount === 0) {
+        galleryUploadBtn.style.display = 'none';
+      } else {
+        galleryUploadBtn.style.display = 'block';
+        galleryUploadBtn.disabled = false;
+        if (fileCount === 1) {
+          galleryUploadBtn.textContent = 'Upload 1 image';
+        } else {
+          galleryUploadBtn.textContent = `Upload ${fileCount} images`;
+        }
+      }
+    });
+  }
 
   // Handle gallery upload
   galleryUploadBtn?.addEventListener('click', async function() {
@@ -289,7 +325,8 @@
 
     try {
       galleryUploadBtn.disabled = true;
-      galleryUploadBtn.textContent = `Uploading ${files.length} file(s)...`;
+      const fileCount = files.length;
+      galleryUploadBtn.textContent = `Uploading ${fileCount} file(s)...`;
 
       for (const file of files) {
         // Validate each file
@@ -326,14 +363,19 @@
         }
       }
 
-      // Clear file input
+      // Clear file input and hide button
       galleryUploadInput.value = '';
+      galleryUploadBtn.style.display = 'none';
     } catch (error) {
       console.error('Error uploading gallery images:', error);
       alert('An error occurred during upload');
     } finally {
       galleryUploadBtn.disabled = false;
-      galleryUploadBtn.textContent = 'Add to Gallery';
+      if (fileCount === 1) {
+        galleryUploadBtn.textContent = 'Upload 1 image';
+      } else {
+        galleryUploadBtn.textContent = `Upload ${fileCount} images`;
+      }
     }
   });
 
