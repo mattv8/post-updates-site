@@ -90,7 +90,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
          MYSQL_HOST: localhost
        volumes:
          - db_data:/var/lib/mysql
-         - ./logs:/var/www/log
+         - ./logs:/var/www/html/logs
          - ./storage:/var/www/html/storage
        networks:
          - postportal-network
