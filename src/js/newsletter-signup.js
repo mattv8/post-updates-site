@@ -27,6 +27,10 @@
     return null;
   }
 
+  function deleteCookie(name) {
+    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax";
+  }
+
   // Email validation regex (client-side validation)
   // More permissive regex that allows modern TLDs and international domains
   function isValidEmail(email) {
@@ -56,6 +60,24 @@
   document.addEventListener('DOMContentLoaded', function() {
     // Check if cookie exists
     const isSubscribed = getCookie(COOKIE_NAME);
+
+    // Setup "Sign up another" button - needs to work even when already subscribed
+    const signupAnotherBtn = document.getElementById('newsletter-signup-another');
+    if (signupAnotherBtn) {
+      signupAnotherBtn.addEventListener('click', function() {
+        // Clear the cookie
+        deleteCookie(COOKIE_NAME);
+
+        // Show the form again
+        showFormState();
+
+        // Focus on email input
+        const emailInput = document.getElementById('newsletter-email');
+        if (emailInput) {
+          emailInput.focus();
+        }
+      });
+    }
 
     if (isSubscribed === 'true') {
       showSubscribedState();

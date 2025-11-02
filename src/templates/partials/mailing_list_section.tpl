@@ -41,6 +41,9 @@
       <div id="newsletter-subscribed" class="alert alert-success d-none" role="alert">
         <i class="bi bi-check-circle-fill me-2"></i>
         <strong>You're subscribed!</strong> We'll notify you when new updates are posted.
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="newsletter-signup-another">
+          <i class="bi bi-person-plus"></i> Sign up another
+        </button>
       </div>
     </div>
   </div>
