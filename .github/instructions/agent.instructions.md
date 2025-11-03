@@ -35,6 +35,10 @@ applyTo: '**'
 - Templates: `{$name}`, `{if}`, `{foreach}`.
 - Business logic in PHP; presentation in templates only.
 
+## JavaScript event handling
+- Event delegation: Use global `document` listeners for modal buttons; clicks don't always bubble through Bootstrap modals.
+- Pattern: Check e.target.closest for button class, then verify btn.closest for modal ID to scope handlers to specific modals.
+
 ## Framework management
 - Do NOT edit framework files (bundled in prod, mounted in dev).
 - Contribute framework changes upstream via PR to `smarty-portal-framework`.

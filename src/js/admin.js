@@ -3,6 +3,58 @@
   if (!root) return;
   const CSRF = root.getAttribute('data-csrf') || '';
 
+  // Notification system - shows Bootstrap toast notifications
+  function showNotification(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+      toastContainer.style.zIndex = '9999';
+      document.body.appendChild(toastContainer);
+    }
+
+    // Map type to Bootstrap alert class
+    const typeMap = {
+      'success': 'success',
+      'warning': 'warning',
+      'error': 'danger',
+      'danger': 'danger',
+      'info': 'info'
+    };
+    const bgClass = 'bg-' + (typeMap[type] || 'info');
+    const textClass = (type === 'warning') ? 'text-dark' : 'text-white';
+
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+      <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header ${bgClass} ${textClass}">
+          <strong class="me-auto">${type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : type === 'error' || type === 'danger' ? 'Error' : 'Info'}</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          ${message.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    // Initialize and show the toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+      autohide: type === 'success', // Auto-hide success messages
+      delay: 5000
+    });
+    toast.show();
+
+    // Remove from DOM after hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+      toastElement.remove();
+    });
+  }
+
   // Quill editor instances
   let heroEditor = null;
   let bioEditor = null;
@@ -844,6 +896,11 @@
         // Build author name
         const authorName = [p.author_first, p.author_last].filter(Boolean).join(' ') || p.author_username || 'Unknown';
 
+        // For draft posts, show draft content; for published posts, show published content
+        const displayTitle = isPublished ?
+          (p.title || '(untitled)') :
+          (p.title_draft || p.title || '(untitled)');
+
         // Create toggle switch HTML
         const toggleHtml = `
           <div class="form-check form-switch">
@@ -857,7 +914,7 @@
 
         tr.innerHTML = `
           <td>${p.id}</td>
-          <td>${p.title || '(untitled)'}</td>
+          <td>${displayTitle}</td>
           <td class="text-muted small">${authorName}</td>
           <td>${toggleHtml}</td>
           <td class="text-nowrap">${p.created_at}</td>
@@ -903,34 +960,83 @@
       const postId = e.target.getAttribute('data-id');
       const isPublished = e.target.checked;
 
-      // Disable toggle while updating
+      // Disable toggle while processing
       e.target.disabled = true;
 
-      const payload = {
-        status: isPublished ? 'published' : 'draft',
-        published_at: isPublished ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null
-      };
+      // If toggling to published, check if confirmation needed
+      if (isPublished) {
+        // Use confirmation wrapper
+        window.publishConfirmation.confirmAndPublish(postId, async () => {
+          // Use the publish endpoint which handles email notifications
+          const j = await api('/api/admin/posts.php?action=publish&id=' + postId, {
+            method: 'GET'
+          });
 
-      api('/api/admin/posts.php?id=' + postId, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      }).then(j => {
-        if (j.success) {
-          // Reload the posts list to show updated date
-          loadPosts();
-        } else {
-          alert('Error updating post status: ' + (j.error || 'Unknown error'));
-          // Revert the toggle
-          e.target.checked = !isPublished;
+          console.log('Publish response:', j);
+
+          if (j.success) {
+            // Check email notification status
+            if (j.email) {
+              if (j.email.sent && j.email.count > 0) {
+                // Success - show confirmation
+                const successMsg = `Post published successfully! Email notifications sent to ${j.email.count} subscriber(s).`;
+                showNotification(successMsg, 'success');
+              } else if (j.email.sent === false && !j.email.skipped) {
+                // Email failed - show warning
+                const warningMsg = `Post published successfully, but email notifications failed to send.\n\nError: ${j.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`;
+                showNotification(warningMsg, 'warning');
+              } else if (j.email.skipped) {
+                // Not first publish, no emails sent
+                showNotification('Post published successfully.', 'success');
+              }
+            } else {
+              // No email info returned
+              showNotification('Post published successfully.', 'success');
+            }
+
+            // Reload the posts list to show updated date
+            loadPosts();
+          } else {
+            throw new Error(j.error || 'Unknown error');
+          }
+        }).then(proceeded => {
+          if (!proceeded) {
+            // User cancelled - revert toggle
+            e.target.checked = false;
+            e.target.disabled = false;
+          }
+        }).catch(err => {
+          console.error('Error toggling publish status:', err);
+          alert('Error updating post status: ' + err.message);
+          e.target.checked = false;
           e.target.disabled = false;
-        }
-      }).catch(err => {
-        console.error('Error toggling publish status:', err);
-        alert('An error occurred while updating the post');
-        e.target.checked = !isPublished;
-        e.target.disabled = false;
-      });
+        });
+      } else {
+        // Toggling to draft - no confirmation needed
+        const payload = {
+          status: 'draft',
+          published_at: null
+        };
+
+        api('/api/admin/posts.php?id=' + postId, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        }).then(j => {
+          if (j.success) {
+            loadPosts();
+          } else {
+            alert('Error updating post status: ' + (j.error || 'Unknown error'));
+            e.target.checked = true;
+            e.target.disabled = false;
+          }
+        }).catch(err => {
+          console.error('Error toggling publish status:', err);
+          alert('An error occurred while updating the post');
+          e.target.checked = true;
+          e.target.disabled = false;
+        });
+      }
     }
   });
 
@@ -1033,7 +1139,7 @@
       };
 
       if (editingId) {
-        // For existing posts: save to draft fields first, then publish
+        // For existing posts: save to draft fields first, then check for confirmation, then publish
         saveBtn.textContent = 'Publishing changes...';
 
         // Save current form values to draft fields
@@ -1050,17 +1156,44 @@
           return;
         }
 
-        // Publish the draft (copies draft fields to published fields and sets status to 'published')
-        const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, {
-          method:'GET'
+        // Use confirmation wrapper for publish
+        const proceeded = await window.publishConfirmation.confirmAndPublish(editingId, async () => {
+          const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, {
+            method:'GET'
+          });
+
+          if (!publishResult.success) {
+            throw new Error(publishResult.error || 'Unknown error');
+          }
+
+          // Check email notification status and show appropriate feedback
+          if (publishResult.email) {
+            if (publishResult.email.sent && publishResult.email.count > 0) {
+              // Success - show confirmation
+              const successMsg = `Post published successfully! Email notifications sent to ${publishResult.email.count} subscriber(s).`;
+              showNotification(successMsg, 'success');
+            } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
+              // Email failed - show warning
+              const warningMsg = `Post published successfully, but email notifications failed to send.\n\nError: ${publishResult.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`;
+              showNotification(warningMsg, 'warning');
+            } else if (publishResult.email.skipped) {
+              // Not first publish, no emails sent
+              showNotification('Post published successfully.', 'success');
+            }
+          } else {
+            // No email info returned
+            showNotification('Post published successfully.', 'success');
+          }
         });
 
-        if(publishResult.success){
+        if (proceeded) {
           loadPosts();
           const modalEl = bootstrap.Modal.getInstance(postEditorModal);
           if (modalEl) modalEl.hide();
         } else {
-          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
+          // User cancelled
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
         }
       } else {
         // New posts: create directly (no draft needed yet)
@@ -1081,6 +1214,20 @@
       saveBtn.textContent = originalText;
     }
   });
+
+  // Save Draft button handler (save draft and close without publishing/email)
+  // Use shared handler from post-draft-handler.js
+  if (typeof window.setupSaveDraftHandler === 'function') {
+    window.setupSaveDraftHandler({
+      modal: postEditorModal,
+      postEditorContainer: postEditorContainer,
+      postBodyEditor: postBodyEditor,
+      getEditingId: () => editingId,
+      getGalleryMediaIds: () => galleryMediaIds,
+      refreshPostsList: loadPosts,
+      api: api
+    });
+  }
 
   // Media
   const uploadForm = document.getElementById('uploadForm');
@@ -1453,6 +1600,20 @@
     }
 
     // Setup modal event handlers
+    // Ensure editingId is set from the trigger element before the modal actually shows
+    postEditorModal.addEventListener('show.bs.modal', function(e) {
+      const trigger = e.relatedTarget;
+      if (trigger) {
+        // Edit existing post button carries data-id
+        const idAttr = trigger.getAttribute('data-id');
+        if (idAttr) {
+          editingId = parseInt(idAttr, 10) || null;
+        } else if (trigger.id === 'btnNewPost') {
+          editingId = null;
+        }
+      }
+    });
+
     postEditorModal.addEventListener('shown.bs.modal', function() {
       // Clear gallery preview first (for both new and edit)
       const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
@@ -1462,8 +1623,27 @@
       }
       galleryMediaIds = [];
 
-      // Load post data if editing
+      // Show or hide Save Draft button based on edit vs new
+      // Show for NEW posts (no editingId), hide for editing existing posts
+      const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+      if (saveDraftBtn) {
+        saveDraftBtn.style.display = editingId ? 'none' : 'inline-block';
+      }
+
+      // Hide Status dropdown when editing an existing post
       if (editingId) {
+        const statusSelect = postEditorContainer.querySelector('.post-status');
+        const statusRow = statusSelect ? statusSelect.closest('.row') : null;
+        if (statusRow) statusRow.style.display = 'none';
+      } else {
+        // Show status dropdown for new posts
+        const statusSelect = postEditorContainer.querySelector('.post-status');
+        const statusRow = statusSelect ? statusSelect.closest('.row') : null;
+        if (statusRow) statusRow.style.display = '';
+      }
+
+  // Load post data if editing (editingId set in show.bs.modal)
+  if (editingId) {
         console.log('Loading post data for ID:', editingId);
         fetch('/api/admin/posts.php?id=' + editingId).then(r=>r.json()).then(j=>{
           console.log('Post data received:', j);
@@ -1609,7 +1789,8 @@
       document.body.style.overflow = '';
       document.body.style.paddingRight = '';
 
-      // Reset gallery state
+      // Reset editing state
+      editingId = null;
       galleryMediaIds = [];
 
       // Clear post auto-save interval

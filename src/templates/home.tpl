@@ -32,7 +32,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">Updates</h2>
         {if $is_authenticated|default:false}
-          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPostModal">
+          <button class="btn btn-primary" id="btnCreatePost">
             <i class="bi bi-plus-circle me-1"></i>Create Post
           </button>
         {/if}
@@ -153,6 +153,9 @@
     {include file='templates/modals/edit_donation.tpl'}
     {include file='templates/modals/edit_footer.tpl'}
 
+    {* Publish Confirmation Modal *}
+    {include file='templates/partials/publish_confirmation_modal.tpl'}
+
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
 
     {* Edit sections JS - only for authenticated users *}
@@ -161,6 +164,8 @@
 
   {* Page-specific JS - loaded for all users *}
   <script src="js/newsletter-signup.js"></script>
+  <script src="js/publish-confirmation.js"></script>
+  <script src="js/post-draft-handler.js"></script>
   <script src="js/home.js"></script>
 
 </div>

@@ -434,6 +434,9 @@
   </div>
 </div>
 
+{* Publish Confirmation Modal *}
+{include file='templates/partials/publish_confirmation_modal.tpl'}
+
 {* Post Delete Confirmation Modal *}
 <div class="modal fade" id="deletePostModal" tabindex="-1" aria-labelledby="deletePostModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -455,5 +458,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/js/publish-confirmation.js"></script>
+<script src="/js/post-draft-handler.js"></script>
 <script src="/js/admin.js"></script>
 <script src="/js/newsletter-admin.js"></script>

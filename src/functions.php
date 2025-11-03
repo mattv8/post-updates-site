@@ -1371,10 +1371,15 @@ function sendNewPostNotification($db_conn, $postId)
 
     $subscribers = [];
     while ($row = mysqli_fetch_assoc($result)) {
-        $subscribers[] = $row['email'];
+        // Only add non-empty email addresses
+        if (!empty($row['email'])) {
+            $subscribers[] = $row['email'];
+        }
     }
 
+    // Early return if no subscribers - avoid initializing SMTP connection
     if (empty($subscribers)) {
+        error_log('No active subscribers found - skipping email notification');
         return ['success' => true, 'sent' => 0, 'message' => 'No active subscribers'];
     }
 
@@ -1494,6 +1499,10 @@ function sendNewPostNotification($db_conn, $postId)
         $mail->Host = $smtp_host;
         $mail->Port = $smtp_port;
 
+        // Set connection timeout to prevent gateway timeouts on unreachable servers
+        $mail->Timeout = 10; // Connection timeout in seconds
+        $mail->SMTPKeepAlive = true; // Keep connection alive for multiple sends
+
         if ($smtp_auth) {
             $mail->SMTPAuth = true;
             $mail->Username = $smtp_username;
@@ -1514,6 +1523,25 @@ function sendNewPostNotification($db_conn, $postId)
                 'allow_self_signed' => true
             ]
         ];
+
+        // Test connection before attempting to send emails
+        try {
+            if (!$mail->smtpConnect()) {
+                $errorMsg = 'Failed to connect to SMTP server ' . $smtp_host . ':' . $smtp_port . '. Please verify the server is reachable and settings are correct.';
+                error_log('SMTP connection failed: ' . $errorMsg);
+                return [
+                    'success' => false,
+                    'error' => 'Cannot connect to SMTP server. Please check your email settings.'
+                ];
+            }
+        } catch (Exception $e) {
+            $errorMsg = 'SMTP connection exception: ' . $e->getMessage();
+            error_log($errorMsg);
+            return [
+                'success' => false,
+                'error' => 'Cannot connect to SMTP server: ' . $e->getMessage()
+            ];
+        }
 
         // Sender - use configured from name and email
         $mail->setFrom($smtp_from_email, $smtp_from_name);

@@ -8,7 +8,7 @@
     <p class="mt-3 text-muted">Loading post...</p>
   </div>
   <div class="post-editor-content" style="display:none;">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="post-status-toggle-container d-none justify-content-between align-items-center mb-3">
     <div class="me-3">
       <label for="postStatusToggle" class="form-label mb-0">Published</label>
     </div>
@@ -158,6 +158,7 @@
 
   <div class="mt-3 d-flex gap-2 justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
+    <button type="button" class="btn btn-outline-primary btn-save-draft">Save Draft</button>
     <button type="button" class="btn btn-primary btn-save-post">Save and Publish</button>
   </div>
   {if isset($mode) && $mode == 'edit'}

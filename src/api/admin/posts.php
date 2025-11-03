@@ -39,6 +39,56 @@ function requireCsrf() {
 
 switch ($method) {
     case 'GET':
+        // Check if publish action requested (must check BEFORE single post retrieval)
+        if (isset($_GET['action']) && $_GET['action'] === 'publish' && isset($_GET['id'])) {
+            requireCsrf();
+            $id = (int)$_GET['id'];
+
+            // Check if this is a first-time publish by looking at the current state
+            $currentPost = getPost($db_conn, $id);
+            $isFirstPublish = ($currentPost && is_null($currentPost['published_at']));
+
+            // Publish the draft (copies draft fields to published fields)
+            $res = publishDraft($db_conn, $id);
+
+            if ($res['success']) {
+                $response = ['success' => true];
+
+                // Send email notification if this is the first time publishing
+                if ($isFirstPublish) {
+                    $emailResult = sendNewPostNotification($db_conn, $id);
+                    // Log email result but don't fail the publish operation
+                    if ($emailResult['success']) {
+                        error_log("Post notification sent: " . ($emailResult['message'] ?? 'Success'));
+                        $response['email'] = [
+                            'sent' => true,
+                            'count' => $emailResult['sent'] ?? 0,
+                            'message' => $emailResult['message'] ?? 'Notifications sent'
+                        ];
+                    } else {
+                        error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                        $response['email'] = [
+                            'sent' => false,
+                            'error' => $emailResult['error'] ?? 'Unknown error'
+                        ];
+                    }
+                } else {
+                    // Not first publish, so no emails sent
+                    $response['email'] = [
+                        'sent' => false,
+                        'skipped' => true,
+                        'reason' => 'Not first-time publish'
+                    ];
+                }
+
+                echo json_encode($response);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => $res['error']]);
+            }
+            break;
+        }
+
         // If specific ID requested, return single post with draft content for editing
         if (isset($_GET['id']) && $_GET['id']) {
             $id = (int)$_GET['id'];
@@ -67,38 +117,6 @@ switch ($method) {
             } else {
                 http_response_code(404);
                 echo json_encode(['success' => false, 'error' => 'Post not found']);
-            }
-            break;
-        }
-
-        // Check if publish action requested
-        if (isset($_GET['action']) && $_GET['action'] === 'publish' && isset($_GET['id'])) {
-            requireCsrf();
-            $id = (int)$_GET['id'];
-
-            // Check if this is a first-time publish by looking at the current state
-            $currentPost = getPost($db_conn, $id);
-            $isFirstPublish = ($currentPost && is_null($currentPost['published_at']));
-
-            // Publish the draft (copies draft fields to published fields)
-            $res = publishDraft($db_conn, $id);
-
-            if ($res['success']) {
-                // Send email notification if this is the first time publishing
-                if ($isFirstPublish) {
-                    $emailResult = sendNewPostNotification($db_conn, $id);
-                    // Log email result but don't fail the publish operation
-                    if ($emailResult['success']) {
-                        error_log("Post notification sent: " . ($emailResult['message'] ?? 'Success'));
-                    } else {
-                        error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
-                    }
-                }
-
-                echo json_encode(['success' => true]);
-            } else {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => $res['error']]);
             }
             break;
         }

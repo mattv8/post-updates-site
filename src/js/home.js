@@ -786,9 +786,113 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
+    // Handle Create Post button click
+    const createPostBtn = document.getElementById('btnCreatePost');
+    if (createPostBtn) {
+      createPostBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Prevent default Bootstrap modal opening
+        e.stopPropagation();
+        editingPostId = null; // Clear editing ID for new post
+
+        // Manually open the modal
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+      });
+    }
+
+    // Helper: show/hide the status toggle container using Bootstrap utils
+    function setStatusToggleVisible(visible) {
+      const c = postEditorContainer.querySelector('.post-status-toggle-container');
+      if (!c) return;
+      c.classList.toggle('d-none', !visible);
+      c.classList.toggle('d-flex', !!visible);
+    }
+
+    // Helper: bind status toggle handler once
+    function bindStatusToggleHandler() {
+      const tgl = postEditorContainer.querySelector('.post-status-toggle');
+      if (!tgl || tgl.dataset.bound) return;
+      tgl.dataset.bound = '1';
+      tgl.addEventListener('change', async () => {
+        // Ensure we have a valid post ID
+        if (!editingPostId) {
+          console.error('No editingPostId set for status toggle');
+          return;
+        }
+
+        const label = postEditorContainer.querySelector('.status-label');
+        const saveEl = postEditorContainer.querySelector('#post-status-save');
+        const isPublishing = tgl.checked;
+
+        if (label) label.textContent = isPublishing ? 'Published' : 'Draft';
+        if (saveEl) saveEl.textContent = 'Saving…';
+        tgl.disabled = true;
+
+        try {
+          if (isPublishing) {
+            // Check if confirmation needed for first-time publish
+            const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
+              const j = await api('/api/admin/posts.php?id=' + editingPostId, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ status: 'published' })
+              });
+              if (!j.success) {
+                throw new Error(j.error || 'Unknown error');
+              }
+            });
+
+            if (proceeded) {
+              if (saveEl) saveEl.textContent = 'Saved';
+              if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
+            } else {
+              // User cancelled - revert toggle
+              tgl.checked = false;
+              if (label) label.textContent = 'Draft';
+              if (saveEl) saveEl.textContent = '';
+            }
+          } else {
+            // Unpublishing - no confirmation needed
+            const j = await api('/api/admin/posts.php?id=' + editingPostId, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ status: 'draft' })
+            });
+            if (j.success) {
+              if (saveEl) saveEl.textContent = 'Saved';
+              if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
+            } else {
+              if (saveEl) saveEl.textContent = 'Save failed';
+              tgl.checked = true;
+              if (label) label.textContent = 'Published';
+            }
+          }
+        } catch (e) {
+          console.error('Status toggle save error:', e);
+          if (saveEl) saveEl.textContent = 'Save error';
+          tgl.checked = !isPublishing;
+          if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
+        } finally {
+          tgl.disabled = false;
+          setTimeout(() => { if (saveEl) saveEl.textContent = ''; }, 2000);
+        }
+      });
+    }
+
     // Initialize Quill editor when modal is first shown
     let editorInitialized = false;
     modal.addEventListener('shown.bs.modal', function() {
+      // Show/hide Save Draft button based on whether we're editing or creating
+      // Show for NEW posts (no editingPostId), hide for editing existing posts
+      const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+      if (saveDraftBtn) {
+        saveDraftBtn.style.display = editingPostId ? 'none' : 'inline-block';
+      }
+
+      // Show/hide status toggle based on whether we're editing or creating
+      // Hide for NEW posts (no editingPostId), show for editing existing posts
+      setStatusToggleVisible(!!editingPostId);
+
       // Initialize editor if not already done
       if (!editorInitialized && window.initQuillEditor) {
         const postBodyTextarea = postEditorContainer.querySelector('.post-body');
@@ -809,95 +913,87 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof window.initAITitleGenerator === 'function') {
           window.initAITitleGenerator(postEditorContainer, postBodyEditor);
         }
-        // Load post data now that editor is ready
-        loadPostData();
-        // Bind status toggle change (edit mode)
-        const tgl = postEditorContainer.querySelector('.post-status-toggle');
-        if (tgl && !tgl.dataset.bound) {
-          tgl.dataset.bound = '1';
-          tgl.addEventListener('change', async () => {
-            // Ensure we have a valid post ID
-            if (!editingPostId) {
-              console.error('No editingPostId set for status toggle');
-              return;
-            }
-
-            const label = postEditorContainer.querySelector('.status-label');
-            if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-            const saveEl = postEditorContainer.querySelector('#post-status-save');
-                if (saveEl) saveEl.textContent = 'Saving…';
-                tgl.disabled = true;
-                try {
-                  const j = await api('/api/admin/posts.php?id=' + editingPostId, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ status: tgl.checked ? 'published' : 'draft' })
-                  });
-                  if (j.success) {
-                    if (saveEl) saveEl.textContent = 'Saved';
-                    if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
-                  } else {
-                    if (saveEl) saveEl.textContent = 'Save failed';
-                    tgl.checked = !tgl.checked;
-                    if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-                  }
-                } catch (e) {
-                  console.error('Status toggle save error:', e);
-                  if (saveEl) saveEl.textContent = 'Save error';
-                  tgl.checked = !tgl.checked;
-                  if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-                } finally {
-                  tgl.disabled = false;
-                  setTimeout(()=>{ if (saveEl) saveEl.textContent=''; }, 2000);
-                }
-              });
-            }
-      } else if (editorInitialized) {
-        // Editor already initialized, just load the data
-        loadPostData();
-        // Ensure toggle is bound
-        const tgl = postEditorContainer.querySelector('.post-status-toggle');
-        if (tgl && !tgl.dataset.bound) {
-          tgl.dataset.bound = '1';
-          tgl.addEventListener('change', async () => {
-            // Ensure we have a valid post ID
-            if (!editingPostId) {
-              console.error('No editingPostId set for status toggle');
-              return;
-            }
-
-            const label = postEditorContainer.querySelector('.status-label');
-            if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-            const saveEl = postEditorContainer.querySelector('#post-status-save');
-            if (saveEl) saveEl.textContent = 'Saving…';
-            tgl.disabled = true;
-            try {
-              const j = await api('/api/admin/posts.php?id=' + editingPostId, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ status: tgl.checked ? 'published' : 'draft' })
-              });
-              if (j.success) {
-                if (saveEl) saveEl.textContent = 'Saved';
-                if (typeof window.refreshPostsList === 'function') window.refreshPostsList();
-              } else {
-                if (saveEl) saveEl.textContent = 'Save failed';
-                tgl.checked = !tgl.checked;
-                if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-              }
-            } catch (e) {
-              console.error('Status toggle save error:', e);
-              if (saveEl) saveEl.textContent = 'Save error';
-              tgl.checked = !tgl.checked;
-              if (label) label.textContent = tgl.checked ? 'Published' : 'Draft';
-            } finally {
-              tgl.disabled = false;
-              setTimeout(()=>{ if (saveEl) saveEl.textContent=''; }, 2000);
-            }
-          });
+        // Load post data if editing, otherwise clear form for new post
+        if (editingPostId) {
+          loadPostData();
+        } else {
+          clearPostForm();
         }
+        // Bind status toggle change (edit mode)
+        bindStatusToggleHandler();
+      } else if (editorInitialized) {
+        // Editor already initialized, load data if editing or clear for new post
+        if (editingPostId) {
+          loadPostData();
+        } else {
+          clearPostForm();
+        }
+        // Ensure toggle is bound
+        bindStatusToggleHandler();
       }
     });
+
+    // Clear post form for new post
+    function clearPostForm() {
+      // Hide loading, show content
+      const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+      const contentEl = postEditorContainer.querySelector('.post-editor-content');
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (contentEl) contentEl.style.display = 'block';
+
+      // Hide status toggle for new posts
+      setStatusToggleVisible(false);
+
+      // Reset toggle state
+      const statusToggle = postEditorContainer.querySelector('.post-status-toggle');
+      if (statusToggle) {
+        statusToggle.checked = false;
+      }
+      const statusLabel = postEditorContainer.querySelector('.status-label');
+      if (statusLabel) {
+        statusLabel.textContent = 'Draft';
+      }
+
+      // Clear form fields
+      postEditorContainer.querySelector('.post-title').value = '';
+
+      // Clear editor
+      if (postBodyEditor) {
+        window.clearQuillEditor(postBodyEditor);
+      } else {
+        postEditorContainer.querySelector('.post-body').value = '';
+      }
+
+      // Clear hero image
+      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+      const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+      if (heroSelect) heroSelect.value = '';
+      if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+
+      // Reset hero settings
+      const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+      const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+      if (heroHeightSlider) {
+        heroHeightSlider.value = 100;
+        const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+        if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
+      }
+      if (heroHeightValue) heroHeightValue.textContent = '100';
+
+      // Clear gallery
+      const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
+      if (galleryPreview) {
+        galleryPreview.innerHTML = '';
+        galleryPreview.classList.add('empty');
+      }
+      galleryMediaIds = [];
+
+      // Clear auto-save
+      if (postAutoSave) {
+        clearInterval(postAutoSave);
+        postAutoSave = null;
+      }
+    }
 
     // Load post data function
     function loadPostData() {
@@ -1033,12 +1129,18 @@ document.addEventListener('DOMContentLoaded', function() {
           // Hide loading, show content
           if (loadingEl) loadingEl.style.display = 'none';
           if (contentEl) contentEl.style.display = 'block';
+
+          // Show status toggle for existing posts
+          setStatusToggleVisible(true);
         })
         .catch(err => {
           console.error('Error loading post:', err);
           // Hide loading, show content even on error
           if (loadingEl) loadingEl.style.display = 'none';
           if (contentEl) contentEl.style.display = 'block';
+
+          // Show status toggle even on error (it's an existing post)
+          setStatusToggleVisible(true);
         });
     }
 
@@ -1404,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    // Save button handler
+  // Save button handler (Save and Publish)
     postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function() {
       const saveBtn = this;
       const originalText = saveBtn.textContent;
@@ -1542,12 +1644,18 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // Publish the draft (copies draft fields to published fields and sets status to 'published')
-        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, {
-          method: 'GET'
+        // Use confirmation wrapper for publish
+        const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
+          const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, {
+            method: 'GET'
+          });
+
+          if (!publishResult.success) {
+            throw new Error(publishResult.error || 'Unknown error');
+          }
         });
 
-        if (publishResult.success) {
+        if (proceeded) {
           const bsModal = bootstrap.Modal.getInstance(modal);
           if (bsModal) bsModal.hide();
           // Refresh posts list without full page reload
@@ -1557,7 +1665,9 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.reload();
           }
         } else {
-          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
+          // User cancelled
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
         }
       } catch (error) {
         console.error('Error saving post:', error);
@@ -1567,6 +1677,20 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.textContent = originalText;
       }
     });
+
+    // Save Draft button handler (save draft and close without publishing/email)
+    // Use shared handler from post-draft-handler.js
+    if (typeof window.setupSaveDraftHandler === 'function') {
+      window.setupSaveDraftHandler({
+        modal: modal,
+        postEditorContainer: postEditorContainer,
+        postBodyEditor: postBodyEditor,
+        getEditingId: () => editingPostId,
+        getGalleryMediaIds: () => galleryMediaIds,
+        refreshPostsList: window.refreshPostsList,
+        api: api
+      });
+    }
 
     // Cancel button handler
     postEditorContainer.querySelector('.btn-cancel-post').addEventListener('click', function() {
