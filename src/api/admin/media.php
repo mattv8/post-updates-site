@@ -60,15 +60,31 @@ switch ($method) {
         if (!isset($_FILES['file'])) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Missing file']); break; }
         $alt = $_POST['alt_text'] ?? '';
         $username = $_SESSION['username'];
-        $processor = new MediaProcessor(__DIR__ . '/../../storage/uploads');
-        $res = $processor->processUpload($_FILES['file'], $alt, $username);
-        if (!$res['success']) { http_response_code(400); echo json_encode($res); break; }
-        $save = saveMediaRecord($db_conn, $res['data']);
-        if ($save['success']) {
-            // Return the full media record so frontend can show preview
-            $mediaRecord = getMedia($db_conn, $save['id']);
-            echo json_encode(['success'=>true,'id'=>$save['id'],'data'=>$mediaRecord]);
-        } else { http_response_code(500); echo json_encode(['success'=>false,'error'=>$save['error']]); }
+
+        try {
+            $processor = new MediaProcessor(__DIR__ . '/../../storage/uploads');
+            $res = $processor->processUpload($_FILES['file'], $alt, $username);
+            if (!$res['success']) {
+                error_log("Media upload failed: " . ($res['error'] ?? 'Unknown error'));
+                http_response_code(400);
+                echo json_encode($res);
+                break;
+            }
+            $save = saveMediaRecord($db_conn, $res['data']);
+            if ($save['success']) {
+                // Return the full media record so frontend can show preview
+                $mediaRecord = getMedia($db_conn, $save['id']);
+                echo json_encode(['success'=>true,'id'=>$save['id'],'data'=>$mediaRecord]);
+            } else {
+                error_log("Failed to save media record: " . ($save['error'] ?? 'Unknown error'));
+                http_response_code(500);
+                echo json_encode(['success'=>false,'error'=>$save['error']]);
+            }
+        } catch (Exception $e) {
+            error_log("Media upload exception: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success'=>false,'error'=>'Server error: ' . $e->getMessage()]);
+        }
         break;
 
     case 'PUT':

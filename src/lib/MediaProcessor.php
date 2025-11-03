@@ -51,7 +51,23 @@ class MediaProcessor
 
         foreach ($dirs as $dir) {
             if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                if (!@mkdir($dir, 0775, true)) {
+                    $error = error_get_last();
+                    error_log("Failed to create directory: {$dir}");
+                    error_log("Error: " . ($error['message'] ?? 'Unknown error'));
+                    error_log("Parent directory writable: " . (is_writable(dirname($dir)) ? 'yes' : 'no'));
+                    error_log("Current user: " . get_current_user());
+                    throw new Exception("Failed to create upload directory. Please ensure storage/uploads is writable by the web server.");
+                }
+            }
+
+            // Verify directory is writable
+            if (!is_writable($dir)) {
+                error_log("Directory exists but is not writable: {$dir}");
+                error_log("Directory permissions: " . substr(sprintf('%o', fileperms($dir)), -4));
+                error_log("Directory owner: " . posix_getpwuid(fileowner($dir))['name'] ?? 'unknown');
+                error_log("Current user: " . get_current_user());
+                throw new Exception("Upload directory is not writable. Please check permissions on storage/uploads.");
             }
         }
     }

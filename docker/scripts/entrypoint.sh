@@ -50,6 +50,16 @@ mkdir -p /var/www/html/logs
 chown -R www-data:www-data /var/www/html/logs
 chmod -R 755 /var/www/html/logs
 
+# Ensure storage/uploads directory structure exists with correct permissions
+echo "==> Setting up storage/uploads directory structure..."
+mkdir -p /var/www/html/storage/uploads/originals
+mkdir -p /var/www/html/storage/uploads/variants/400
+mkdir -p /var/www/html/storage/uploads/variants/800
+mkdir -p /var/www/html/storage/uploads/variants/1600
+mkdir -p /var/www/html/storage/uploads/variants/thumbnail
+chown -R www-data:www-data /var/www/html/storage
+chmod -R 775 /var/www/html/storage
+
 # Initialize MariaDB if needed
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "==> Initializing MariaDB database..."
