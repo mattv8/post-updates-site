@@ -39,6 +39,48 @@ function requireCsrf() {
 
 switch ($method) {
     case 'GET':
+        // Check if resend email action requested
+        if (isset($_GET['action']) && $_GET['action'] === 'resend-email' && isset($_GET['id'])) {
+            requireCsrf();
+            $id = (int)$_GET['id'];
+
+            // Verify the post exists and is published
+            $currentPost = getPost($db_conn, $id);
+            if (!$currentPost) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Post not found']);
+                break;
+            }
+
+            if ($currentPost['status'] !== 'published') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Post must be published to send notifications']);
+                break;
+            }
+
+            // Send email notification
+            $emailResult = sendNewPostNotification($db_conn, $id);
+            $response = ['success' => true];
+
+            if ($emailResult['success']) {
+                error_log("Post notification resent: " . ($emailResult['message'] ?? 'Success'));
+                $response['email'] = [
+                    'sent' => true,
+                    'count' => $emailResult['sent'] ?? 0,
+                    'message' => $emailResult['message'] ?? 'Notifications sent'
+                ];
+            } else {
+                error_log("Post notification resend failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                $response['email'] = [
+                    'sent' => false,
+                    'error' => $emailResult['error'] ?? 'Unknown error'
+                ];
+            }
+
+            echo json_encode($response);
+            break;
+        }
+
         // Check if publish action requested (must check BEFORE single post retrieval)
         if (isset($_GET['action']) && $_GET['action'] === 'publish' && isset($_GET['id'])) {
             requireCsrf();

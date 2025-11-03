@@ -920,6 +920,7 @@
           <td class="text-nowrap">${p.created_at}</td>
           <td class="text-nowrap">
             <button class="btn btn-sm btn-outline-primary btn-edit-post" data-id="${p.id}" data-bs-toggle="modal" data-bs-target="#postEditorModal">Edit</button>
+            ${isPublished ? `<button class="btn btn-sm btn-outline-info btn-resend-email" data-id="${p.id}" title="Resend email notification to subscribers"><i class="bi bi-envelope"></i> Resend</button>` : ''}
             <button class="btn btn-sm btn-outline-danger" data-del="${p.id}">Delete</button>
           </td>
         `;
@@ -943,6 +944,42 @@
     if (id && e.target.classList.contains('btn-edit-post')) {
       // Edit button clicked - store the ID, data will load when modal opens
       editingId = parseInt(id,10);
+    }
+
+    if (id && (e.target.classList.contains('btn-resend-email') || e.target.closest('.btn-resend-email'))) {
+      // Resend email button clicked
+      const postId = parseInt(id, 10);
+      const button = e.target.classList.contains('btn-resend-email') ? e.target : e.target.closest('.btn-resend-email');
+
+      // Confirm before sending
+      if (confirm('Are you sure you want to resend email notifications for this post to all active subscribers?')) {
+        button.disabled = true;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+
+        api('/api/admin/posts.php?action=resend-email&id=' + postId, {
+          method: 'GET'
+        }).then(j => {
+          if (j.success) {
+            if (j.email && j.email.sent && j.email.count > 0) {
+              showNotification(`Email notifications resent to ${j.email.count} subscriber(s).`, 'success');
+            } else if (j.email && j.email.sent === false) {
+              showNotification(`Failed to send emails: ${j.email.error || 'Unknown error'}`, 'warning');
+            } else {
+              showNotification('Email sending completed.', 'success');
+            }
+          } else {
+            showNotification(`Error: ${j.error || 'Failed to resend emails'}`, 'error');
+          }
+        }).catch(err => {
+          console.error('Error resending emails:', err);
+          showNotification('Error resending emails: ' + err.message, 'error');
+        }).finally(() => {
+          button.disabled = false;
+          button.innerHTML = originalText;
+        });
+      }
+      return;
     }
 
     if (del) {
