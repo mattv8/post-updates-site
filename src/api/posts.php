@@ -64,6 +64,20 @@ if ($method === 'GET') {
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     $posts = getPublishedPosts($db_conn, $limit, $offset);
+
+    // Enrich posts with hero srcsets if variants available
+    if (is_array($posts)) {
+        foreach ($posts as &$p) {
+            $p['hero_srcset_jpg'] = '';
+            $p['hero_srcset_webp'] = '';
+            if (!empty($p['hero_variants'])) {
+                $p['hero_srcset_jpg'] = MediaProcessor::generateSrcset($p['hero_variants'], 'jpg');
+                $p['hero_srcset_webp'] = MediaProcessor::generateSrcset($p['hero_variants'], 'webp');
+            }
+        }
+        unset($p);
+    }
+
     echo json_encode(['success' => true, 'posts' => $posts]);
     exit;
 }

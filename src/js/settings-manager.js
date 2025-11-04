@@ -57,22 +57,39 @@ window.SettingsManager = (function() {
   // Load hero media preview
   async function loadHeroPreview(mediaId, previewContainer) {
     const previewImg = previewContainer.querySelector('img');
+    const uploadControls = document.querySelector('.hero-banner-upload-controls');
+    const removeBtn = document.querySelector('.btn-remove-hero-banner');
 
     if (mediaId) {
       try {
         const data = await api(`/api/admin/media.php?id=${mediaId}`);
         if (data.success && data.data) {
-          const variants = JSON.parse(data.data.variants_json || '{}');
-          const previewUrl = variants['400']?.jpg || '/storage/uploads/originals/' + data.data.filename;
+          const variants = JSON.parse(data.data.variants_json || '[]');
+          const variant800 = variants.find(v => v.width === 800);
+          let previewUrl;
+          if (variant800 && variant800.path) {
+            // Extract web-accessible path from full filesystem path
+            const pathMatch = variant800.path.match(/\/storage\/uploads\/.+$/);
+            previewUrl = pathMatch ? pathMatch[0] : variant800.path;
+          } else {
+            previewUrl = '/storage/uploads/originals/' + data.data.filename;
+          }
           previewImg.src = previewUrl;
           previewImg.alt = data.data.alt_text || '';
           previewContainer.style.display = 'block';
+
+          // Hide upload controls and show remove button
+          if (uploadControls) uploadControls.style.display = 'none';
+          if (removeBtn) removeBtn.style.opacity = '1';
         }
       } catch (error) {
         console.error('Error loading preview:', error);
       }
     } else {
       previewContainer.style.display = 'none';
+      // Show upload controls and hide remove button
+      if (uploadControls) uploadControls.style.display = 'block';
+      if (removeBtn) removeBtn.style.opacity = '0';
     }
   }
 

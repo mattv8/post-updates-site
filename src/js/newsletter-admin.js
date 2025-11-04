@@ -16,6 +16,58 @@
     return adminApp ? adminApp.getAttribute('data-csrf') : '';
   }
 
+  // Show toast notification
+  function showNotification(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+      toastContainer.style.zIndex = '9999';
+      document.body.appendChild(toastContainer);
+    }
+
+    // Map type to Bootstrap alert class
+    const typeMap = {
+      'success': 'success',
+      'warning': 'warning',
+      'error': 'danger',
+      'danger': 'danger',
+      'info': 'info'
+    };
+    const bgClass = 'bg-' + (typeMap[type] || 'info');
+    const textClass = (type === 'warning') ? 'text-dark' : 'text-white';
+
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+      <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header ${bgClass} ${textClass}">
+          <strong class="me-auto">${type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : type === 'error' || type === 'danger' ? 'Error' : 'Info'}</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          ${message.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    // Initialize and show the toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+      autohide: type === 'success', // Auto-hide success messages
+      delay: 5000
+    });
+    toast.show();
+
+    // Remove from DOM after hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+      toastElement.remove();
+    });
+  }
+
   // Get SMTP configuration from form
   function getSMTPConfigFromForm() {
     return {
@@ -172,7 +224,7 @@
         if (smtpPortInput && result.data.smtp_port) {
           smtpPortInput.value = result.data.smtp_port;
         }
-        if (smtpSecureInput && result.data.smtp_secure) {
+        if (smtpSecureInput && result.data.smtp_secure !== undefined && result.data.smtp_secure !== null) {
           smtpSecureInput.value = result.data.smtp_secure;
         }
         if (smtpAuthInput) {
@@ -469,18 +521,18 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('Mailing list visibility updated:', this.checked);
+            showNotification('Setting saved successfully', 'success');
           } else {
             console.error('Error updating mailing list visibility:', result.error);
             // Revert toggle on error
             this.checked = !this.checked;
-            alert('Error: ' + (result.error || 'Failed to update mailing list visibility'));
+            showNotification('Error: ' + (result.error || 'Failed to update mailing list visibility'), 'error');
           }
         } catch (error) {
           console.error('Error updating mailing list visibility:', error);
           // Revert toggle on error
           this.checked = !this.checked;
-          alert('Error updating mailing list visibility');
+          showNotification('Error updating mailing list visibility', 'error');
         }
       });
     }
@@ -504,16 +556,16 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('Email notification setting updated:', this.checked);
+            showNotification('Setting saved successfully', 'success');
           } else {
             console.error('Error updating email notification setting:', result.error);
             this.checked = !this.checked;
-            alert('Error: ' + (result.error || 'Failed to update email notification setting'));
+            showNotification('Error: ' + (result.error || 'Failed to update email notification setting'), 'error');
           }
         } catch (error) {
           console.error('Error updating email notification setting:', error);
           this.checked = !this.checked;
-          alert('Error updating email notification setting');
+          showNotification('Error updating email notification setting', 'error');
         }
       });
     }
@@ -536,16 +588,16 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('Email body inclusion setting updated:', this.checked);
+            showNotification('Setting saved successfully', 'success');
           } else {
             console.error('Error updating email body inclusion setting:', result.error);
             this.checked = !this.checked;
-            alert('Error: ' + (result.error || 'Failed to update email body inclusion setting'));
+            showNotification('Error: ' + (result.error || 'Failed to update email body inclusion setting'), 'error');
           }
         } catch (error) {
           console.error('Error updating email body inclusion setting:', error);
           this.checked = !this.checked;
-          alert('Error updating email body inclusion setting');
+          showNotification('Error updating email body inclusion setting', 'error');
         }
       });
     }
@@ -576,7 +628,7 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('SMTP rate limit updated:', value);
+            showNotification('Setting saved successfully', 'success');
             // Show success indicator
             if (rateLimitStatus) {
               rateLimitStatus.style.display = 'block';
@@ -586,11 +638,11 @@
             }
           } else {
             console.error('Error updating SMTP rate limit:', result.error);
-            alert('Error: ' + (result.error || 'Failed to update SMTP rate limit'));
+            showNotification('Error: ' + (result.error || 'Failed to update SMTP rate limit'), 'error');
           }
         } catch (error) {
           console.error('Error updating SMTP rate limit:', error);
-          alert('Error updating SMTP rate limit');
+          showNotification('Error updating SMTP rate limit', 'error');
         }
       });
     }
@@ -621,7 +673,7 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('SMTP rate period updated:', value);
+            showNotification('Setting saved successfully', 'success');
             // Show success indicator
             if (ratePeriodStatus) {
               ratePeriodStatus.style.display = 'block';
@@ -631,11 +683,11 @@
             }
           } else {
             console.error('Error updating SMTP rate period:', result.error);
-            alert('Error: ' + (result.error || 'Failed to update SMTP rate period'));
+            showNotification('Error: ' + (result.error || 'Failed to update SMTP rate period'), 'error');
           }
         } catch (error) {
           console.error('Error updating SMTP rate period:', error);
-          alert('Error updating SMTP rate period');
+          showNotification('Error updating SMTP rate period', 'error');
         }
       });
     }
@@ -666,7 +718,7 @@
           const result = await response.json();
 
           if (result.success) {
-            console.log('SMTP batch delay updated:', value);
+            showNotification('Setting saved successfully', 'success');
             // Show success indicator
             if (batchDelayStatus) {
               batchDelayStatus.style.display = 'block';
@@ -676,11 +728,11 @@
             }
           } else {
             console.error('Error updating SMTP batch delay:', result.error);
-            alert('Error: ' + (result.error || 'Failed to update SMTP batch delay'));
+            showNotification('Error: ' + (result.error || 'Failed to update SMTP batch delay'), 'error');
           }
         } catch (error) {
           console.error('Error updating SMTP batch delay:', error);
-          alert('Error updating SMTP batch delay');
+          showNotification('Error updating SMTP batch delay', 'error');
         }
       });
     }
@@ -704,7 +756,10 @@
         if (portValue) smtpConfig.smtp_port = parseInt(portValue);
 
         const secureValue = document.getElementById('smtp_secure')?.value;
-        if (secureValue) smtpConfig.smtp_secure = secureValue;
+        // Always include smtp_secure (valid values: 'none', 'tls', 'ssl')
+        if (secureValue) {
+          smtpConfig.smtp_secure = secureValue;
+        }
 
         // Always include smtp_auth (it's a boolean)
         smtpConfig.smtp_auth = document.getElementById('smtp_auth')?.checked ? 1 : 0;

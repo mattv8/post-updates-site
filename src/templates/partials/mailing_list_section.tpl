@@ -1,5 +1,14 @@
 {* Mailing List Section - Newsletter signup with editable content *}
 {if $settings.show_mailing_list}
+  <style>
+    #newsletter-signup-another {
+      text-decoration: none;
+      transition: text-decoration 0.2s ease;
+    }
+    #newsletter-signup-another:hover {
+      text-decoration: underline;
+    }
+  </style>
   <div class="card mb-4 position-relative">
     {if $is_authenticated|default:false}
       <button class="btn btn-sm btn-light btn-edit-section position-absolute top-0 end-0 m-2" style="z-index: 10;" data-bs-toggle="modal" data-bs-target="#editMailingListModal" title="Edit Mailing List Section">
@@ -41,9 +50,9 @@
       <div id="newsletter-subscribed" class="alert alert-success d-none" role="alert">
         <i class="bi bi-check-circle-fill me-2"></i>
         <strong>You're subscribed!</strong> We'll notify you when new updates are posted.
-        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="newsletter-signup-another">
-          <i class="bi bi-person-plus"></i> Sign up another
-        </button>
+        <a href="#" class="alert-link mt-2 d-inline-block" id="newsletter-signup-another">
+          Sign up another
+        </a>
       </div>
     </div>
   </div>

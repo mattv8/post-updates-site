@@ -169,8 +169,9 @@
    */
   /**
    * Get HTML content from Quill editor with trailing empty paragraphs removed
+   * Allows for completely empty HTML content (returns empty string for empty editors)
    * @param {Quill} quill - Quill editor instance
-   * @returns {string} HTML content
+   * @returns {string} HTML content (can be empty string if editor is empty)
    */
   window.getQuillHTML = function(quill) {
     if (!quill || !quill.root) {
@@ -185,6 +186,7 @@
     // Trim whitespace
     html = html.trim();
 
+    // Allow empty content - users can erase the default value to have no content
     return html;
   };
 

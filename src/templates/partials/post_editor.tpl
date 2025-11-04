@@ -114,6 +114,26 @@
           </div>
         </div>
       </div>
+
+      {* Crop UI Container *}
+      <div class="hero-crop-container mb-3" style="display: none;">
+        <label class="form-label">Crop Hero Image</label>
+        <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+          <img class="hero-crop-image" src="" style="max-width: 100%; display: block;" />
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-hero-auto-detect">
+            <i class="bi bi-magic"></i> Auto-Detect Bounds
+          </button>
+          <button type="button" class="btn btn-sm btn-primary btn-hero-crop-upload">
+            <i class="bi bi-upload"></i> Upload & Apply
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary btn-hero-crop-cancel">
+            Cancel
+          </button>
+        </div>
+      </div>
+
       <div class="hero-upload-controls">
         <div class="input-group">
           <select class="form-select post-hero-media">
@@ -122,9 +142,8 @@
           </select>
           <span class="mx-2">or</span>
           <input type="file" class="form-control hero-upload-input" accept="image/jpeg,image/png,image/webp,image/heic" />
-          <button type="button" class="btn btn-outline-primary btn-upload-hero" style="display:none;">Upload</button>
         </div>
-        <small class="form-text text-muted">Max 20MB. Formats: JPG, PNG, WebP, HEIC</small>
+        <small class="form-text text-muted">Max 20MB. Formats: JPG, PNG, WebP, HEIC. You can crop the image after selection.</small>
       </div>
     </div>
   </div>

@@ -190,6 +190,11 @@
 
     {* Include Create Post modal for authenticated users *}
     {include file='templates/modals/create_post.tpl'}
+
+    {* Cropper.js for image cropping *}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <script src="/js/image-crop-manager.js"></script>
     <script src="/js/post-modal.js"></script>  {else}
     {* Authenticated/Admin layout - use framework structure *}
     <div class="container-fluid inset-3">

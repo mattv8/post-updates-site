@@ -62,7 +62,7 @@ if (isset($payload['smtp_host'])) {
     $smtpConfig = [
         'host' => $payload['smtp_host'] ?? '',
         'port' => isset($payload['smtp_port']) ? (int)$payload['smtp_port'] : 587,
-        'secure' => $payload['smtp_secure'] ?? 'tls',
+        'secure' => $payload['smtp_secure'] ?? 'none',
         'auth' => isset($payload['smtp_auth']) ? (bool)$payload['smtp_auth'] : true,
         'username' => $payload['smtp_username'] ?? '',
         'password' => $payload['smtp_password'] ?? '',
@@ -76,13 +76,18 @@ if (isset($payload['smtp_host'])) {
     $smtpConfig = [
         'host' => $settings['smtp_host'] ?? '',
         'port' => isset($settings['smtp_port']) ? (int)$settings['smtp_port'] : 587,
-        'secure' => $settings['smtp_secure'] ?? 'tls',
+        'secure' => $settings['smtp_secure'] ?? 'none',
         'auth' => isset($settings['smtp_auth']) ? (bool)$settings['smtp_auth'] : true,
         'username' => $settings['smtp_username'] ?? '',
         'password' => $settings['smtp_password'] ?? '',
         'from_email' => $settings['smtp_from_email'] ?? '',
         'from_name' => $settings['smtp_from_name'] ?? 'Post Portal',
     ];
+}
+
+// Convert 'none' to empty string for PHPMailer
+if ($smtpConfig['secure'] === 'none') {
+    $smtpConfig['secure'] = '';
 }
 
 // Validate required fields

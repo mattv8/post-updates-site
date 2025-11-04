@@ -13,6 +13,7 @@ class MediaProcessor
     private $uploadsDir;
     private $originalsDir;
     private $variantsDir;
+    private $webRoot;
     private $maxFileSize = 20971520; // 20MB in bytes
     private $allowedFormats = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
     private $allowedExtensions = ['jpg', 'jpeg', 'png', 'heic', 'webp'];
@@ -25,9 +26,13 @@ class MediaProcessor
             $baseDir = __DIR__ . '/../storage/uploads';
         }
 
-        $this->uploadsDir = rtrim($baseDir, '/');
+        // Normalize the base directory path and web root
+        $this->uploadsDir = rtrim(realpath($baseDir) ?: $baseDir, '/');
         $this->originalsDir = $this->uploadsDir . '/originals';
         $this->variantsDir = $this->uploadsDir . '/variants';
+
+        // Determine web root - go up from lib to src directory
+        $this->webRoot = rtrim(realpath(__DIR__ . '/..') ?: __DIR__ . '/..', '/');
 
         $this->manager = new ImageManager(['driver' => 'gd']);
 
@@ -73,13 +78,39 @@ class MediaProcessor
     }
 
     /**
+     * Convert an absolute filesystem path to a relative web path
+     * @param string $absolutePath Full filesystem path
+     * @return string Relative path from web root (e.g., 'storage/uploads/...')
+     */
+    private function toRelativePath($absolutePath)
+    {
+        // Normalize the absolute path
+        $normalized = realpath($absolutePath) ?: $absolutePath;
+
+        // Remove the web root prefix
+        if (strpos($normalized, $this->webRoot) === 0) {
+            $relative = substr($normalized, strlen($this->webRoot) + 1);
+            return str_replace('\\', '/', $relative); // Normalize directory separators
+        }
+
+        // Fallback: try to extract storage/uploads/... pattern
+        if (preg_match('#(storage/uploads/.+)$#', str_replace('\\', '/', $absolutePath), $matches)) {
+            return $matches[1];
+        }
+
+        // Last resort: return as-is (shouldn't happen in normal operation)
+        return str_replace('\\', '/', $absolutePath);
+    }
+
+    /**
      * Process an uploaded file
      * @param array $file $_FILES array element
      * @param string $altText Optional alt text
      * @param string $username Username of uploader
+     * @param array $cropData Optional crop coordinates (x, y, width, height)
      * @return array Result with success status and data/error
      */
-    public function processUpload($file, $altText = '', $username = 'admin')
+    public function processUpload($file, $altText = '', $username = 'admin', $cropData = null)
     {
         // Validate file upload
         $validation = $this->validateUpload($file);
@@ -111,6 +142,18 @@ class MediaProcessor
                 }
             }
 
+            // Apply crop if provided
+            if ($cropData && isset($cropData['width']) && $cropData['width'] > 0) {
+                $img = $this->manager->make($originalPath);
+                $img->crop(
+                    (int)$cropData['width'],
+                    (int)$cropData['height'],
+                    (int)$cropData['x'],
+                    (int)$cropData['y']
+                );
+                $img->save($originalPath, 90);
+            }
+
             // Strip EXIF data for privacy (keep orientation)
             $this->stripExifData($originalPath);
 
@@ -131,7 +174,7 @@ class MediaProcessor
                 'width' => $width,
                 'height' => $height,
                 'alt_text' => $altText,
-                'storage_path' => str_replace(__DIR__ . '/../', '', $originalPath),
+                'storage_path' => $this->toRelativePath($originalPath),
                 'variants_json' => json_encode($variants),
                 'created_by_user_id' => $username
             ];
@@ -213,7 +256,7 @@ class MediaProcessor
 
                 $variants[] = [
                     'width' => $width,
-                    'path' => str_replace(__DIR__ . '/../', '', $variantPath),
+                    'path' => $this->toRelativePath($variantPath),
                     'format' => 'jpg'
                 ];
 
@@ -224,7 +267,7 @@ class MediaProcessor
                 if ($this->convertToWebP($variantPath, $webpPath)) {
                     $variants[] = [
                         'width' => $width,
-                        'path' => str_replace(__DIR__ . '/../', '', $webpPath),
+                        'path' => $this->toRelativePath($webpPath),
                         'format' => 'webp'
                     ];
                 }
@@ -411,15 +454,8 @@ class MediaProcessor
 
         foreach ($variantsArray as $variant) {
             if ($variant['format'] === $format) {
-                // Clean up the path to ensure it's web-accessible
-                $path = $variant['path'];
-
-                // Remove any absolute server paths
-                $path = preg_replace('#^.*/?(storage/uploads/.*)$#', '$1', $path);
-
-                // Ensure single leading slash
-                $path = '/' . ltrim($path, '/');
-
+                // Paths are already stored as relative from web root (e.g., 'storage/uploads/...')
+                $path = '/' . ltrim($variant['path'], '/');
                 $srcsetParts[] = $path . ' ' . $variant['width'] . 'w';
             }
         }
@@ -499,7 +535,7 @@ class MediaProcessor
                 'width' => $width,
                 'height' => $height,
                 'alt_text' => 'Site Logo',
-                'storage_path' => 'storage/uploads/originals/' . $uniqueFilename,
+                'storage_path' => $this->toRelativePath($originalPath),
                 'variants_json' => json_encode($variants),
                 'created_by_user_id' => $username
             ];
@@ -593,7 +629,7 @@ class MediaProcessor
                 'width' => $width,
                 'height' => $height,
                 'alt_text' => 'Site Favicon',
-                'storage_path' => 'storage/uploads/originals/' . $uniqueFilename,
+                'storage_path' => $this->toRelativePath($originalPath),
                 'variants_json' => json_encode($variants),
                 'created_by_user_id' => $username
             ];
@@ -645,7 +681,7 @@ class MediaProcessor
 
                 $variants[] = [
                     'width' => $width,
-                    'path' => 'storage/uploads/variants/' . $width . '/' . $variantFilename,
+                    'path' => $this->toRelativePath($variantPath),
                     'format' => 'png'
                 ];
 
@@ -656,7 +692,7 @@ class MediaProcessor
                 if ($this->convertToWebP($variantPath, $webpPath)) {
                     $variants[] = [
                         'width' => $width,
-                        'path' => 'storage/uploads/variants/' . $width . '/' . $webpFilename,
+                        'path' => $this->toRelativePath($webpPath),
                         'format' => 'webp'
                     ];
                 }
@@ -700,7 +736,7 @@ class MediaProcessor
 
                 $variants[] = [
                     'size' => $size,
-                    'path' => 'storage/uploads/variants/' . $size . '/' . $variantFilename,
+                    'path' => $this->toRelativePath($variantPath),
                     'format' => 'png'
                 ];
 
@@ -717,7 +753,7 @@ class MediaProcessor
             if ($this->generateIcoFile($originalPath, $icoPath)) {
                 $variants[] = [
                     'size' => 'multi',
-                    'path' => 'storage/uploads/' . $icoFilename,
+                    'path' => $this->toRelativePath($icoPath),
                     'format' => 'ico'
                 ];
             }

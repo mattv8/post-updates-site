@@ -42,7 +42,7 @@ if (!isset($settings['show_mailing_list'])) {
 if (!isset($settings['mailing_list_html'])) {
     $settings['mailing_list_html'] = '<p>Subscribe to get notified when we post updates.</p>';
 }
-$posts = getPublishedPosts($db_conn, 10, 0);
+$posts = getPublishedPosts($db_conn, 5, 0);
 
 // Precompute srcset for post hero images
 foreach ($posts as &$p) {

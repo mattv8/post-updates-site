@@ -3,6 +3,9 @@
  * Settings Draft API
  * Handles auto-save operations to draft fields for settings
  * Draft content is saved here without affecting published content
+ *
+ * Supports empty HTML content for sections like about and donate
+ * Users can erase default values to have no content displayed
  */
 header('Content-Type: application/json');
 require_once(__DIR__ . '/../../functions.php');

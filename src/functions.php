@@ -688,6 +688,11 @@ function decodeHtmlEntities($data)
 
 /**
  * Basic HTML sanitization with allowlist and attribute scrubbing
+ * Allows empty HTML content - returns empty string for empty inputs
+ * This ensures users can erase default content if desired
+ *
+ * @param string $html HTML content to sanitize (can be empty)
+ * @return string Sanitized HTML (empty string if input is empty)
  */
 function sanitizeHtml($html)
 {
@@ -994,6 +999,15 @@ function publishDraft($db_conn, $id)
     return ['success' => true];
 }
 
+/**
+ * Publish draft settings to production
+ * Uses COALESCE to preserve empty string values from draft
+ * Empty strings are NOT NULL, so they will be honored if explicitly set
+ * This allows users to erase content from about/donate sections if desired
+ *
+ * @param mysqli $db_conn Database connection
+ * @return array Result with success status
+ */
 function publishSettingsDraft($db_conn)
 {
     // Copy all draft fields to published fields for settings
@@ -1464,7 +1478,11 @@ function sendNewPostNotification($db_conn, $postId)
     // Load SMTP settings from database only
     $smtp_host = $settings['smtp_host'] ?? null;
     $smtp_port = isset($settings['smtp_port']) ? (int)$settings['smtp_port'] : 587;
-    $smtp_secure = $settings['smtp_secure'] ?? 'tls';
+    $smtp_secure = $settings['smtp_secure'] ?? 'none';
+    // Convert 'none' to empty string for PHPMailer
+    if ($smtp_secure === 'none') {
+        $smtp_secure = '';
+    }
     $smtp_auth = isset($settings['smtp_auth']) ? (bool)$settings['smtp_auth'] : true;
     $smtp_username = $settings['smtp_username'] ?? '';
     $smtp_password = $settings['smtp_password'] ?? '';
@@ -1559,23 +1577,18 @@ function sendNewPostNotification($db_conn, $postId)
         $heroImageUrl = '';
         if (!empty($post['hero_media_id'])) {
             $heroMedia = getMedia($db_conn, (int)$post['hero_media_id']);
-            if ($heroMedia && !empty($heroMedia['storage_path'])) {
-                // Clean up storage path - handle both absolute and relative paths
-                $storagePath = $heroMedia['storage_path'];
+            if ($heroMedia && !empty($heroMedia['variants_json'])) {
+                // Use 800w variant for email (optimal for email clients)
+                $variants = json_decode($heroMedia['variants_json'], true);
 
-                // Remove any ../ or ./ references and normalize the path
-                $storagePath = preg_replace('#/\.\./#', '/', $storagePath);
-                $storagePath = preg_replace('#/\./#', '/', $storagePath);
-
-                // Extract just the storage/uploads part
-                if (preg_match('#(storage/uploads/.+)$#', $storagePath, $matches)) {
-                    $storagePath = $matches[1];
-                } else {
-                    // Fallback: remove everything before 'storage/'
-                    $storagePath = preg_replace('#^.*(storage/.+)$#', '$1', $storagePath);
+                if (is_array($variants)) {
+                    foreach ($variants as $v) {
+                        if (isset($v['width']) && $v['width'] === 800 && isset($v['format']) && $v['format'] === 'jpg' && !empty($v['path'])) {
+                            $heroImageUrl = $baseUrl . '/' . ltrim($v['path'], '/');
+                            break;
+                        }
+                    }
                 }
-
-                $heroImageUrl = $baseUrl . '/' . $storagePath;
             }
         }
 

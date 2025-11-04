@@ -10,9 +10,39 @@
 <hr class="mb-3" />
 <div class="mb-3">
   <label class="form-label">Hero Background Image</label>
-  <select class="form-select" id="{$prefix}hero_media_id">
-    <option value="">None</option>
-  </select>
+
+  {* Crop UI Container *}
+  <div id="{$prefix}hero_crop_container" class="mt-3" style="display: none;">
+    <label class="form-label">Crop Hero Image</label>
+    <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+      <img id="{$prefix}hero_crop_image" src="" style="max-width: 100%; display: block;" />
+    </div>
+    <div class="mt-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="{$prefix}hero_auto_detect">
+        <i class="bi bi-magic"></i> Auto-Detect Bounds
+      </button>
+      <button type="button" class="btn btn-sm btn-primary" id="{$prefix}hero_crop_upload">
+        <i class="bi bi-upload"></i> Upload & Apply
+      </button>
+      <button type="button" class="btn btn-sm btn-secondary" id="{$prefix}hero_crop_cancel">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  {* Upload Controls - hidden when image is selected *}
+  <div class="hero-banner-upload-controls">
+    <select class="form-select" id="{$prefix}hero_media_id">
+      <option value="">Choose from library...</option>
+    </select>
+
+    <div class="mt-2">
+      <label class="form-label small">Or upload new image:</label>
+      <input type="file" class="form-control" id="{$prefix}hero_upload_input" accept="image/jpeg,image/png,image/webp,image/heic" />
+      <small class="form-text text-muted">Max 20MB. Formats: JPG, PNG, WebP, HEIC. You can crop the image after selection.</small>
+    </div>
+  </div>
+
   <div class="hero-banner-preview-container mt-3" style="display: none;">
     <div class="row g-3 align-items-start">
       <div class="col-md-7">

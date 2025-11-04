@@ -8,7 +8,7 @@
  * @param {Object} config - Configuration object
  * @param {HTMLElement} config.modal - The modal element
  * @param {HTMLElement} config.postEditorContainer - Container for post editor fields
- * @param {Object} config.postBodyEditor - Quill editor instance
+ * @param {Function} config.getPostBodyEditor - Function that returns the Quill editor instance
  * @param {Function} config.getEditingId - Function that returns current editing post ID
  * @param {Function} config.getGalleryMediaIds - Function that returns gallery media IDs array
  * @param {Function} config.refreshPostsList - Function to refresh the posts list after saving
@@ -18,7 +18,7 @@ function setupSaveDraftHandler(config) {
   const {
     modal,
     postEditorContainer,
-    postBodyEditor,
+    getPostBodyEditor,
     getEditingId,
     getGalleryMediaIds,
     refreshPostsList,
@@ -50,55 +50,10 @@ function setupSaveDraftHandler(config) {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving draft...';
 
-      // Check if there's a pending hero image file to upload
-      const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
-      const heroFile = heroUploadInput?.files[0];
-      let uploadedHeroId = postEditorContainer.querySelector('.post-hero-media').value || null;
-
-      if (heroFile && !uploadedHeroId) {
-        saveBtn.textContent = 'Uploading hero image...';
-
-        // Validate file
-        if (heroFile.size > 20 * 1024 * 1024) {
-          alert('Hero image file size must be less than 20MB');
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          return;
-        }
-
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-        if (!validTypes.includes(heroFile.type)) {
-          alert('Invalid hero image type. Please use JPG, PNG, WebP, or HEIC');
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          return;
-        }
-
-        // Upload hero image
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-        const formData = new FormData();
-        formData.append('file', heroFile);
-        formData.append('alt_text', '');
-
-        const response = await fetch('/api/admin/media.php', {
-          method: 'POST',
-          headers: {
-            'X-CSRF-Token': csrfToken
-          },
-          body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          uploadedHeroId = data.id;
-        } else {
-          alert('Hero image upload failed: ' + (data.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          return;
-        }
-      }
+      // Note: Hero image uploads are now handled by ImageCropManager
+      // Images are uploaded immediately after cropping, not on save
+      // Get the selected hero media ID from the dropdown
+      const uploadedHeroId = postEditorContainer.querySelector('.post-hero-media').value || null;
 
       // Check if there are pending gallery files to upload
       const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
@@ -153,6 +108,9 @@ function setupSaveDraftHandler(config) {
       const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
       const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
       const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
+
+      // Get the current Quill editor instance
+      const postBodyEditor = getPostBodyEditor ? getPostBodyEditor() : null;
 
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,

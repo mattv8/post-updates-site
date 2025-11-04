@@ -154,7 +154,7 @@
                 <div class="mb-3">
                   <label for="smtp_secure" class="form-label"><strong>Encryption</strong></label>
                   <select class="form-select" id="smtp_secure">
-                    <option value="">None</option>
+                    <option value="none">None</option>
                     <option value="tls">TLS (STARTTLS)</option>
                     <option value="ssl">SSL</option>
                   </select>
@@ -633,6 +633,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/js/image-crop-manager.js"></script>
+<script src="/js/admin-crop-init.js"></script>
 <script src="/js/publish-confirmation.js"></script>
 <script src="/js/post-draft-handler.js"></script>
 <script src="/js/branding.js"></script>

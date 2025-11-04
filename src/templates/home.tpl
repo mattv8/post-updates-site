@@ -45,6 +45,14 @@
           {include file='templates/partials/post_card.tpl' post=$post}
         {/foreach}
       </div>
+      <div id="posts-load-more" class="text-center mt-3">
+        <button class="btn btn-outline-primary btn-load-more-posts" data-offset="{$posts|@count}" data-limit="5">
+          Load more
+        </button>
+        <div class="text-muted small mt-2 d-none" id="posts-loading-indicator">
+          Loading more updates…
+        </div>
+      </div>
     </div>
     <div class="col-12 col-lg-4">
       <div class="sticky-top" style="top: 30px;">
@@ -157,6 +165,12 @@
     {include file='templates/partials/publish_confirmation_modal.tpl'}
 
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
+
+    {* Cropper + crop managers (needed for hero/footer image crop in modals) *}
+    <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.1/dist/cropper.min.css">
+    <script src="https://unpkg.com/cropperjs@1.6.1/dist/cropper.min.js"></script>
+    <script src="js/image-crop-manager.js"></script>
+    <script src="js/admin-crop-init.js"></script>
 
     {* Edit sections JS - only for authenticated users *}
     <script src="js/edit-sections.js"></script>

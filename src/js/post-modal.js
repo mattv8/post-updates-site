@@ -10,6 +10,7 @@
 
   let editor = null;
   let galleryMediaIds = []; // Track gallery image IDs in order
+  let heroCropManager = null; // Crop manager instance
 
   // Initialize Quill editor when modal is shown
   modal.addEventListener('shown.bs.modal', function() {
@@ -33,6 +34,30 @@
         window.initAITitleGenerator(modal, editor);
       }
     }
+
+    // Initialize hero crop manager if not already initialized
+    if (!heroCropManager && typeof window.ImageCropManager !== 'undefined') {
+      const heroUploadInput = modal.querySelector('.hero-upload-input');
+      const cropContainer = modal.querySelector('.hero-crop-container');
+      const cropImage = modal.querySelector('.hero-crop-image');
+      const uploadButton = modal.querySelector('.btn-hero-crop-upload');
+      const cancelButton = modal.querySelector('.btn-hero-crop-cancel');
+      const autoDetectButton = modal.querySelector('.btn-hero-auto-detect');
+
+      if (heroUploadInput && cropContainer && cropImage) {
+        heroCropManager = new window.ImageCropManager({
+          fileInput: heroUploadInput,
+          cropContainer: cropContainer,
+          cropImage: cropImage,
+          uploadButton: uploadButton,
+          cancelButton: cancelButton,
+          autoDetectButton: autoDetectButton,
+          uploadCallback: async (file, cropData) => {
+            return await uploadHeroImage(file, cropData);
+          }
+        });
+      }
+    }
   });
 
   // Clean up editor when modal is hidden
@@ -53,10 +78,12 @@
     modal.querySelector('.post-hero-height').value = 100;
     modal.querySelector('.hero-height-value').textContent = '100';
 
-    // Hide upload buttons
-    const heroUploadBtn = modal.querySelector('.btn-upload-hero');
+    // Hide crop container if visible
+    const heroCropContainer = modal.querySelector('.hero-crop-container');
+    if (heroCropContainer) heroCropContainer.style.display = 'none';
+
+    // Hide gallery upload button
     const galleryUploadBtn = modal.querySelector('.btn-upload-gallery');
-    if (heroUploadBtn) heroUploadBtn.style.display = 'none';
     if (galleryUploadBtn) galleryUploadBtn.style.display = 'none';
 
     const galleryPreview = modal.querySelector('#galleryPreview');
@@ -65,14 +92,11 @@
     galleryMediaIds = [];
   });
 
-  // Hero image upload handlers
-  const heroUploadInput = modal.querySelector('.hero-upload-input');
-  const heroUploadBtn = modal.querySelector('.btn-upload-hero');
+  // Hero image element references
   const heroPreviewContainer = modal.querySelector('.hero-preview-container');
   const heroPreview = modal.querySelector('.hero-preview');
-  const heroPreviewImg = heroPreview.querySelector('img');
+  const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
   const heroSelect = modal.querySelector('.post-hero-media');
-  const heroHeightControl = modal.querySelector('.hero-height-control');
   const heroHeightSlider = modal.querySelector('.post-hero-height');
   const heroHeightValue = modal.querySelector('.hero-height-value');
   const heroOverlayOpacitySlider = modal.querySelector('.post-hero-overlay-opacity');
@@ -114,98 +138,65 @@
     }
   };
 
-  // Show upload button when file selected
-  if (heroUploadInput && heroUploadBtn) {
-    // Initially hide the button
-    heroUploadBtn.style.display = 'none';
-
-    heroUploadInput.addEventListener('change', function() {
-      const hasFile = this.files.length > 0;
-      if (hasFile) {
-        heroUploadBtn.style.display = 'inline-block';
-        heroUploadBtn.disabled = false;
-        heroUploadBtn.textContent = 'Upload';
-      } else {
-        heroUploadBtn.style.display = 'none';
-      }
-    });
-  }
-
-  // Handle hero image upload
-  heroUploadBtn?.addEventListener('click', async function() {
-    const file = heroUploadInput.files[0];
-    if (!file) return;
-
-    // Validate file size (20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      alert('File size must be less than 20MB');
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-    if (!validTypes.includes(file.type)) {
-      alert('Invalid file type. Please use JPG, PNG, WebP, or HEIC');
-      return;
-    }
-
+  // Helper function to upload hero image with optional crop data
+  async function uploadHeroImage(file, cropData = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const formData = new FormData();
     formData.append('file', file);
     formData.append('alt_text', '');
 
-    try {
-      heroUploadBtn.disabled = true;
-      heroUploadBtn.textContent = 'Uploading...';
-
-      const response = await fetch('/api/admin/media.php', {
-        method: 'POST',
-        headers: {
-          'X-CSRF-Token': csrfToken
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Add to select dropdown
-        const option = document.createElement('option');
-        option.value = data.id;
-        option.textContent = file.name;
-        option.selected = true;
-        heroSelect.appendChild(option);
-
-        // Show preview
-        const variants = JSON.parse(data.data?.variants_json || '{}');
-        const previewUrl = variants['400']?.jpg || '/storage/uploads/originals/' + data.data?.filename;
-        heroPreviewImg.src = previewUrl;
-        heroPreviewContainer.style.display = 'block';
-
-        // Set initial preview height based on slider value
-        const heroPreviewDiv = modal.querySelector('.hero-preview');
-        const currentHeight = parseInt(heroHeightSlider?.value || 100);
-        if (heroPreviewDiv) {
-          heroPreviewDiv.style.paddingBottom = currentHeight + '%';
-        }
-
-        // Update preview with current settings
-        updateHeroPreview();
-
-        // Clear file input and hide button
-        heroUploadInput.value = '';
-        heroUploadBtn.style.display = 'none';
-      } else {
-        alert('Upload failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Error uploading hero image:', error);
-      alert('An error occurred during upload');
-    } finally {
-      heroUploadBtn.disabled = false;
-      heroUploadBtn.textContent = 'Upload';
+    if (cropData) {
+      formData.append('crop', JSON.stringify(cropData));
     }
-  });
+
+    const response = await fetch('/api/admin/media.php', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': csrfToken
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      const heroSelect = modal.querySelector('.post-hero-media');
+      const heroPreviewContainer = modal.querySelector('.hero-preview-container');
+      const heroPreviewImg = modal.querySelector('.hero-preview img');
+      const heroHeightSlider = modal.querySelector('.post-hero-height');
+
+      // Add to select dropdown
+      const option = document.createElement('option');
+      option.value = data.id;
+      option.textContent = file.name;
+      option.selected = true;
+      heroSelect.appendChild(option);
+
+      // Show preview - variants is an array, find the 400w jpg variant
+      const variants = JSON.parse(data.data?.variants_json || '[]');
+      const variant400 = variants.find(v => v.width === 400 && v.format === 'jpg');
+      const previewUrl = variant400
+        ? (variant400.path.startsWith('/') ? variant400.path : '/' + variant400.path)
+        : '/storage/uploads/originals/' + data.data?.filename;
+
+      heroPreviewImg.src = previewUrl;
+      heroPreviewContainer.style.display = 'block';
+
+      // Set initial preview height based on slider value
+      const heroPreviewDiv = modal.querySelector('.hero-preview');
+      const currentHeight = parseInt(heroHeightSlider?.value || 100);
+      if (heroPreviewDiv) {
+        heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+      }
+
+      // Update preview with current settings
+      updateHeroPreview();
+
+      return data;
+    } else {
+      throw new Error(data.error || 'Upload failed');
+    }
+  }
 
   // Handle hero selection from dropdown
   heroSelect?.addEventListener('change', function() {
@@ -215,8 +206,13 @@
         .then(r => r.json())
         .then(data => {
           if (data.success && data.data) {
-            const variants = JSON.parse(data.data.variants_json || '{}');
-            const previewUrl = variants['400']?.jpg || '/storage/uploads/originals/' + data.data.filename;
+            // Variants is an array, find the 400w jpg variant
+            const variants = JSON.parse(data.data.variants_json || '[]');
+            const variant400 = variants.find(v => v.width === 400 && v.format === 'jpg');
+            const previewUrl = variant400
+              ? (variant400.path.startsWith('/') ? variant400.path : '/' + variant400.path)
+              : '/storage/uploads/originals/' + data.data.filename;
+
             heroPreviewImg.src = previewUrl;
             heroPreviewImg.alt = data.data.alt_text || '';
             heroPreviewContainer.style.display = 'block';

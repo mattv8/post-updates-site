@@ -244,7 +244,6 @@
 
   // Helper function to setup auto-save for settings fields
   function setupSettingsAutoSave(editor, fieldName) {
-    console.log('setupSettingsAutoSave called for:', fieldName);
 
     // Map field names to status element IDs
     const statusMap = {
@@ -659,12 +658,17 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
-          console.log('Hero visibility updated:', this.checked);
+          showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating hero visibility:', j.error);
           // Revert checkbox on error
           this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update hero visibility'), 'error');
         }
+      }).catch(error => {
+        console.error('Error updating hero visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating hero visibility', 'error');
       });
     });
   }
@@ -679,12 +683,17 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
-          console.log('About visibility updated:', this.checked);
+          showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating about visibility:', j.error);
           // Revert checkbox on error
           this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update about visibility'), 'error');
         }
+      }).catch(error => {
+        console.error('Error updating about visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating about visibility', 'error');
       });
     });
   }
@@ -699,12 +708,17 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
-          console.log('Donation visibility updated:', this.checked);
+          showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating donation visibility:', j.error);
           // Revert checkbox on error
           this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update donation visibility'), 'error');
         }
+      }).catch(error => {
+        console.error('Error updating donation visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating donation visibility', 'error');
       });
     });
   }
@@ -719,12 +733,17 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
-          console.log('Donate button visibility updated:', this.checked);
+          showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating donate button visibility:', j.error);
           // Revert checkbox on error
           this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update donate button visibility'), 'error');
         }
+      }).catch(error => {
+        console.error('Error updating donate button visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating donate button visibility', 'error');
       });
     });
   }
@@ -770,64 +789,6 @@
   const btnNewPost = document.getElementById('btnNewPost');
   let editingId = null;
   let galleryMediaIds = []; // Track gallery image IDs in order
-
-  // Helper function to upload hero image
-  async function uploadHeroImage(file) {
-    if (!file) return null;
-
-    // Validate file size (20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      throw new Error('File size must be less than 20MB');
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-    if (!validTypes.includes(file.type)) {
-      throw new Error('Invalid file type. Please use JPG, PNG, WebP, or HEIC');
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('alt_text', '');
-
-    const response = await fetch('/api/admin/media.php', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-Token': CSRF
-      },
-      body: formData
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-      const heroPreview = postEditorContainer.querySelector('.hero-preview');
-      const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
-
-      // Add to select dropdown
-      const option = document.createElement('option');
-      option.value = data.id;
-      option.textContent = file.name;
-      option.selected = true;
-      heroSelect.appendChild(option);
-
-      // Show preview
-      if (heroPreviewImg && heroPreview) {
-        const variants = JSON.parse(data.data?.variants_json || '{}');
-        const variant400 = variants['400'];
-        const previewUrl = variant400?.jpg
-          ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
-          : '/storage/uploads/originals/' + data.data?.filename;
-        heroPreviewImg.src = previewUrl;
-        heroPreview.style.display = 'block';
-      }
-
-      return data.id;
-    } else {
-      throw new Error(data.error || 'Upload failed');
-    }
-  }
 
   // Helper function to upload gallery images
   async function uploadGalleryImages(files, addToGalleryFn) {
@@ -1009,7 +970,7 @@
             method: 'GET'
           });
 
-          console.log('Publish response:', j);
+
 
           if (j.success) {
             // Check email notification status
@@ -1127,24 +1088,9 @@
     try {
       saveBtn.disabled = true;
 
-      // Check if there are pending hero image uploads
-      const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
-      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-      if (heroUploadInput && heroUploadInput.files.length > 0) {
-        saveBtn.textContent = 'Uploading hero image...';
-        try {
-          await uploadHeroImage(heroUploadInput.files[0]);
-          // Clear the file input
-          heroUploadInput.value = '';
-          const heroUploadBtn = postEditorContainer.querySelector('.btn-upload-hero');
-          if (heroUploadBtn) heroUploadBtn.style.display = 'none';
-        } catch (error) {
-          alert('Hero image upload failed: ' + error.message);
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          return;
-        }
-      }
+      // Note: Hero image uploads are now handled by ImageCropManager
+      // Images are uploaded immediately after cropping, not on save
+      // The hero_media_id will already be set in the dropdown
 
       // Check if there are pending gallery uploads
       const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
@@ -1167,11 +1113,17 @@
 
       saveBtn.textContent = 'Saving post...';
 
+      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+      const heroMediaId = heroSelect ? heroSelect.value : null;
+
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,
         body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
         status: postEditorContainer.querySelector('.post-status').value,
-        hero_media_id: heroSelect.value || null,
+        hero_media_id: heroMediaId || null,
+        hero_image_height: heroMediaId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null,
+        hero_title_overlay: heroMediaId ? (postEditorContainer.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0) : 1,
+        hero_overlay_opacity: heroMediaId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity')?.value || 0.70) : 0.70,
         gallery_media_ids: galleryMediaIds
       };
 
@@ -1258,7 +1210,7 @@
     window.setupSaveDraftHandler({
       modal: postEditorModal,
       postEditorContainer: postEditorContainer,
-      postBodyEditor: postBodyEditor,
+      getPostBodyEditor: () => postBodyEditor,
       getEditingId: () => editingId,
       getGalleryMediaIds: () => galleryMediaIds,
       refreshPostsList: loadPosts,
@@ -1349,13 +1301,24 @@
       heroSelect.remove(1);
     }
 
-    // Add media options
+    // Deduplicate by filename - keep only the largest version of each unique filename
+    const uniqueMedia = {};
     mediaList.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = m.original_filename + ' (' + m.width + 'x' + m.height + ')';
-      heroSelect.appendChild(option);
+      const filename = m.original_filename;
+      if (!uniqueMedia[filename] || (m.width * m.height) > (uniqueMedia[filename].width * uniqueMedia[filename].height)) {
+        uniqueMedia[filename] = m;
+      }
     });
+
+    // Add media options (sorted by ID descending - newest first)
+    Object.values(uniqueMedia)
+      .sort((a, b) => b.id - a.id)
+      .forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.id;
+        option.textContent = m.original_filename;
+        heroSelect.appendChild(option);
+      });
   }
 
   function populateHeroMediaDropdown(mediaList) {
@@ -1367,13 +1330,18 @@
       heroSelect.remove(1);
     }
 
-    // Add media options
-    mediaList.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = m.original_filename + ' (' + m.width + 'x' + m.height + ')';
-      heroSelect.appendChild(option);
-    });
+    // Add ALL media options (sorted by ID descending - newest first)
+    // Important: Do not deduplicate by filename, as posts may reference older
+    // images that share a filename and would otherwise be missing from the list.
+    mediaList
+      .slice()
+      .sort((a, b) => b.id - a.id)
+      .forEach(m => {
+        const option = document.createElement('option');
+        option.value = String(m.id);
+        option.textContent = m.original_filename;
+        heroSelect.appendChild(option);
+      });
   }
 
   // Handle media deletion with confirmation
@@ -1660,6 +1628,11 @@
       }
       galleryMediaIds = [];
 
+      // Initialize post editor crop manager if not already initialized
+      if (typeof window.initPostEditorCrop === 'function' && !postEditorContainer._cropManager) {
+        postEditorContainer._cropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
+      }
+
       // Show or hide Save Draft button based on edit vs new
       // Show for NEW posts (no editingId), hide for editing existing posts
       const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
@@ -1679,15 +1652,191 @@
         if (statusRow) statusRow.style.display = '';
       }
 
+      // Setup hero image selection handler BEFORE loading post data
+      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+      const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+      const heroPreview = postEditorContainer.querySelector('.hero-preview');
+      const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
+
+      // Persist hero-related draft fields for existing posts
+      const saveHeroDraft = async () => {
+        if (!editingId) return; // Only auto-save for existing posts
+        const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+        const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+        const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+        const payload = {
+          hero_media_id: heroSelect?.value || null,
+          hero_image_height: heroSelect?.value ? parseInt(heroHeightSlider?.value || 100) : null,
+          hero_crop_overlay: heroSelect?.value ? (postEditorContainer.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0) : 0,
+          hero_title_overlay: heroSelect?.value ? (heroTitleOverlayToggle?.checked ? 1 : 0) : 1,
+          hero_overlay_opacity: heroSelect?.value ? parseFloat(heroOverlayOpacitySlider?.value || 0.70) : 0.70
+        };
+        try {
+          await api('/api/admin/posts-draft.php?id=' + editingId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+          });
+        } catch (e) {
+          console.warn('Auto-save hero draft failed:', e);
+        }
+      };
+
+      if (heroSelect && !heroSelect.dataset.listenerAdded) {
+        heroSelect.addEventListener('change', function() {
+          const heroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
+          const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
+
+          if (this.value && heroPreviewImg) {
+            // Load media info to show preview
+            fetch(`/api/admin/media.php?id=${this.value}`)
+              .then(r => r.json())
+              .then(data => {
+                if (data.success && data.data) {
+                  const variants = JSON.parse(data.data.variants_json || '[]');
+                  const variant400 = variants.find(v => v.width === 400);
+                  let previewUrl;
+                  if (variant400 && variant400.path) {
+                    // Extract web-accessible path from full filesystem path
+                    // Path format: /var/www/html/storage/uploads/... -> /storage/uploads/...
+                    const pathMatch = variant400.path.match(/\/storage\/uploads\/.+$/);
+                    previewUrl = pathMatch ? pathMatch[0] : variant400.path;
+                  } else {
+                    previewUrl = '/storage/uploads/originals/' + data.data.filename;
+                  }
+
+                  heroPreviewImg.src = previewUrl;
+                  heroPreviewImg.alt = data.data.alt_text || '';
+                  if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
+
+                  // Hide upload controls and show remove button
+                  if (heroUploadControls) heroUploadControls.style.display = 'none';
+                  if (heroRemoveBtn) heroRemoveBtn.style.opacity = '1';
+
+                  // Auto-save hero selection
+                  saveHeroDraft();
+                }
+              })
+              .catch(err => console.error('Error loading hero preview:', err));
+          } else if (heroPreviewContainer) {
+            heroPreviewContainer.style.display = 'none';
+            // Auto-save cleared hero
+            saveHeroDraft();
+          }
+        });
+        heroSelect.dataset.listenerAdded = 'true';
+      }
+
+      // Setup hero remove button
+      const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
+      if (heroRemoveBtn && !heroRemoveBtn.dataset.listenerAdded) {
+        heroRemoveBtn.addEventListener('click', function() {
+          const heroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
+
+          if (heroSelect) heroSelect.value = '';
+          if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+          if (heroPreviewImg) heroPreviewImg.src = '';
+
+          // Show upload controls and hide remove button
+          if (heroUploadControls) heroUploadControls.style.display = 'block';
+          this.style.opacity = '0';
+
+          // Notify change so preview/save logic runs
+          heroSelect?.dispatchEvent(new Event('change'));
+        });
+        heroRemoveBtn.dataset.listenerAdded = 'true';
+      }
+
+      // Setup hero height slider
+      const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+      const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+      if (heroHeightSlider && heroHeightValue && !heroHeightSlider.dataset.listenerAdded) {
+        heroHeightSlider.addEventListener('input', function() {
+          const heightPercent = parseInt(this.value);
+          heroHeightValue.textContent = heightPercent;
+
+          // Update preview padding-bottom to match actual display
+          const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+          if (heroPreviewDiv) {
+            heroPreviewDiv.style.paddingBottom = heightPercent + '%';
+          }
+          // Auto-save hero height
+          saveHeroDraft();
+        });
+        heroHeightSlider.dataset.listenerAdded = 'true';
+      }
+
+      // Setup title overlay preview update function
+      const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
+      const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+      const postTitleInput = postEditorContainer.querySelector('.post-title');
+      const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+      const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+      const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
+
+      const updateHeroPreview = () => {
+        if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
+
+        const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+        const opacity = parseFloat(heroOverlayOpacitySlider?.value || 0.70);
+        const titleText = postTitleInput?.value || 'Post Title Preview';
+
+        // Show/hide opacity control based on title overlay toggle
+        if (heroOverlayOpacityControl) {
+          heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+        }
+
+        // Update image brightness
+        if (showTitleOverlay) {
+          heroPreviewImg.style.filter = `brightness(${opacity})`;
+        } else {
+          heroPreviewImg.style.filter = 'none';
+        }
+
+        // Update title overlay visibility and text
+        if (showTitleOverlay) {
+          heroPreviewTitleOverlay.style.display = 'block';
+          const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+          if (titleElement) {
+            titleElement.textContent = titleText || 'Post Title Preview';
+          }
+        } else {
+          heroPreviewTitleOverlay.style.display = 'none';
+        }
+      };
+
+      // Setup event listeners for title overlay controls
+      if (heroTitleOverlayToggle && !heroTitleOverlayToggle.dataset.listenerAdded) {
+        heroTitleOverlayToggle.addEventListener('change', function(){
+          updateHeroPreview();
+          saveHeroDraft();
+        });
+        heroTitleOverlayToggle.dataset.listenerAdded = 'true';
+      }
+
+      if (heroOverlayOpacitySlider && !heroOverlayOpacitySlider.dataset.listenerAdded) {
+        heroOverlayOpacitySlider.addEventListener('input', function() {
+          const opacity = parseFloat(this.value);
+          if (overlayOpacityValue) {
+            overlayOpacityValue.textContent = opacity.toFixed(2);
+          }
+          updateHeroPreview();
+          saveHeroDraft();
+        });
+        heroOverlayOpacitySlider.dataset.listenerAdded = 'true';
+      }
+
+      if (postTitleInput && !postTitleInput.dataset.titleListenerAdded) {
+        postTitleInput.addEventListener('input', updateHeroPreview);
+        postTitleInput.dataset.titleListenerAdded = 'true';
+      }
+
   // Load post data if editing (editingId set in show.bs.modal)
   if (editingId) {
-        console.log('Loading post data for ID:', editingId);
         fetch('/api/admin/posts.php?id=' + editingId).then(r=>r.json()).then(j=>{
-          console.log('Post data received:', j);
           if(j.success && j.data) {
             const post = j.data;
 
-            console.log('Using post data:', post);
 
             // Use draft content for editing (falls back to published if no draft)
             postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
@@ -1718,10 +1867,78 @@
             } else {
               // Clear hero if no image
               const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-              const heroPreview = postEditorContainer.querySelector('.hero-preview');
+              const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
               if (heroSelect) heroSelect.value = '';
-              if (heroPreview) heroPreview.style.display = 'none';
+              if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
             }
+
+            // Set hero height if exists (use draft)
+            const heroImageHeight = parseInt(post.hero_image_height_editing) || 100;
+            const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+            const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+            if (heroHeightSlider) {
+              heroHeightSlider.value = heroImageHeight;
+              if (heroHeightValue) heroHeightValue.textContent = heroImageHeight;
+
+              // Update preview padding-bottom to match loaded height
+              const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+              if (heroPreviewDiv) {
+                heroPreviewDiv.style.paddingBottom = heroImageHeight + '%';
+              }
+            }
+
+            // Set hero title overlay if exists (use draft)
+            const heroTitleOverlay = post.hero_title_overlay_editing !== undefined && post.hero_title_overlay_editing !== null
+              ? parseInt(post.hero_title_overlay_editing)
+              : 1;
+            const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+            if (heroTitleOverlayToggle) {
+              heroTitleOverlayToggle.checked = heroTitleOverlay == 1;
+            }
+
+            // Set hero overlay opacity if exists (use draft)
+            const heroOverlayOpacity = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
+            const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+            const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+            if (heroOverlayOpacitySlider) {
+              heroOverlayOpacitySlider.value = heroOverlayOpacity;
+              if (overlayOpacityValue) overlayOpacityValue.textContent = heroOverlayOpacity.toFixed(2);
+            }
+
+            // Update hero preview with loaded values (wait for image to load first)
+            setTimeout(() => {
+              const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
+              const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
+              const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
+
+              if (heroPreviewImg && heroPreviewTitleOverlay) {
+                const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+                const titleText = postEditorContainer.querySelector('.post-title')?.value || 'Post Title Preview';
+
+                // Show/hide opacity control based on title overlay toggle
+                if (heroOverlayOpacityControl) {
+                  heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+                }
+
+                // Update image brightness
+                if (showTitleOverlay) {
+                  heroPreviewImg.style.filter = `brightness(${heroOverlayOpacity})`;
+                } else {
+                  heroPreviewImg.style.filter = 'none';
+                }
+
+                // Update title overlay visibility and text
+                if (showTitleOverlay) {
+                  heroPreviewTitleOverlay.style.display = 'block';
+                  const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+                  if (titleElement) {
+                    titleElement.textContent = titleText || 'Post Title Preview';
+                  }
+                } else {
+                  heroPreviewTitleOverlay.style.display = 'none';
+                }
+              }
+            }, 100);
 
             // Load gallery images if exists (use draft)
             const galleryData = post.gallery_media_ids_editing;
@@ -1749,7 +1966,6 @@
         });
       } else {
         // New post - clear the form
-        console.log('New post - clearing form');
         postEditorContainer.querySelector('.post-title').value = '';
         postEditorContainer.querySelector('.post-status').value = 'draft';
         if (postBodyEditor) {
@@ -1758,7 +1974,29 @@
           postEditorContainer.querySelector('.post-body').value = '';
         }
         postEditorContainer.querySelector('.post-hero-media').value = '';
-        postEditorContainer.querySelector('.hero-preview').style.display = 'none';
+        const clearHeroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+        if (clearHeroPreviewContainer) clearHeroPreviewContainer.style.display = 'none';
+
+        // Reset hero height slider to default
+        const clearHeroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+        const clearHeroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+        if (clearHeroHeightSlider) clearHeroHeightSlider.value = 100;
+        if (clearHeroHeightValue) clearHeroHeightValue.textContent = '100';
+
+        // Reset title overlay controls to defaults
+        const clearHeroTitleOverlay = postEditorContainer.querySelector('.post-hero-title-overlay');
+        if (clearHeroTitleOverlay) clearHeroTitleOverlay.checked = true;
+
+        const clearHeroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+        const clearOverlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+        if (clearHeroOverlayOpacity) clearHeroOverlayOpacity.value = 0.70;
+        if (clearOverlayOpacityValue) clearOverlayOpacityValue.textContent = '0.70';
+
+        // Show upload controls and hide remove button for new posts
+        const clearHeroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
+        const clearHeroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
+        if (clearHeroUploadControls) clearHeroUploadControls.style.display = 'block';
+        if (clearHeroRemoveBtn) clearHeroRemoveBtn.style.opacity = '0';
 
         // Clear auto-save for new posts (they don't have an ID yet)
         if (postAutoSave) {
@@ -1772,49 +2010,6 @@
         }
       }
 
-      // Setup hero image selection handler
-      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-      const heroPreview = postEditorContainer.querySelector('.hero-preview');
-      const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
-
-      if (heroSelect && !heroSelect.dataset.listenerAdded) {
-        heroSelect.addEventListener('change', function() {
-          if (this.value && heroPreviewImg) {
-            // Load media info to show preview
-            fetch(`/api/admin/media.php?id=${this.value}`)
-              .then(r => r.json())
-              .then(data => {
-                if (data.success && data.data) {
-                  const variants = JSON.parse(data.data.variants_json || '{}');
-                  const variant400 = variants['400'];
-                  let previewUrl;
-                  if (variant400 && variant400.jpg) {
-                    previewUrl = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
-                  } else {
-                    previewUrl = '/storage/uploads/originals/' + data.data.filename;
-                  }
-                  heroPreviewImg.src = previewUrl;
-                  heroPreviewImg.alt = data.data.alt_text || '';
-                  heroPreview.style.display = 'block';
-                }
-              });
-          } else if (heroPreview) {
-            heroPreview.style.display = 'none';
-          }
-        });
-        heroSelect.dataset.listenerAdded = 'true';
-      }
-
-      // Setup hero remove button
-      const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
-      if (heroRemoveBtn && !heroRemoveBtn.dataset.listenerAdded) {
-        heroRemoveBtn.addEventListener('click', function() {
-          if (heroSelect) heroSelect.value = '';
-          if (heroPreview) heroPreview.style.display = 'none';
-          if (heroPreviewImg) heroPreviewImg.src = '';
-        });
-        heroRemoveBtn.dataset.listenerAdded = 'true';
-      }
     });
 
     // Cleanup editor when modal is hidden
@@ -1837,50 +2032,9 @@
       }
     });
 
-    // Hero image upload handlers
-    const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
-    const heroUploadBtn = postEditorContainer.querySelector('.btn-upload-hero');
-
-    // Show/hide upload button when file selected and update button text
-    if (heroUploadInput && heroUploadBtn) {
-      // Initially hide the button
-      heroUploadBtn.style.display = 'none';
-
-      heroUploadInput.addEventListener('change', function() {
-        const hasFile = this.files.length > 0;
-        if (hasFile) {
-          heroUploadBtn.style.display = 'inline-block';
-          heroUploadBtn.disabled = false;
-          heroUploadBtn.textContent = 'Upload';
-        } else {
-          heroUploadBtn.style.display = 'none';
-        }
-      });
-    }
-
-    // Handle hero image upload
-    if (heroUploadBtn) {
-      heroUploadBtn.addEventListener('click', async function() {
-        const file = heroUploadInput.files[0];
-        if (!file) return;
-
-        try {
-          heroUploadBtn.disabled = true;
-          heroUploadBtn.textContent = 'Uploading...';
-
-          await uploadHeroImage(file);
-
-          // Clear file input and hide button
-          heroUploadInput.value = '';
-          heroUploadBtn.style.display = 'none';
-        } catch (error) {
-          alert(error.message);
-          // Re-enable button on error
-          heroUploadBtn.disabled = false;
-          heroUploadBtn.textContent = 'Upload';
-        }
-      });
-    }
+    // Hero image upload handlers - now handled by ImageCropManager
+    // The crop manager is initialized in the modal shown event handler
+    // Old manual upload handlers removed to avoid conflicts
 
     // Gallery upload handlers
     const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');

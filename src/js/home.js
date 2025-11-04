@@ -2,6 +2,95 @@
   function qs(sel, el=document) { return el.querySelector(sel); }
   function qsa(sel, el=document) { return Array.from(el.querySelectorAll(sel)); }
 
+  // Render helpers for lazy-loaded posts
+  function formatTimelineDate(publishedAt) {
+    if (!publishedAt) return '';
+    // Expecting format 'YYYY-MM-DD HH:MM:SS' in local/server time; fallback-safe parsing
+    const parts = /^([0-9]{4})-([0-9]{2})-([0-9]{2})\s+([0-9]{2}):([0-9]{2}):([0-9]{2})$/.exec(publishedAt);
+    let d;
+    if (parts) {
+      // Note: months are 0-based in JS Date
+      d = new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), Number(parts[4]), Number(parts[5]), Number(parts[6]));
+    } else {
+      const t = Date.parse(publishedAt);
+      if (!isNaN(t)) d = new Date(t);
+    }
+    if (!d) return '';
+    const month = d.toLocaleString(undefined, { month: 'short' });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `
+      <div class="timeline-month">${month}</div>
+      <div class="timeline-day">${day}</div>
+      <div class="timeline-year">${year}</div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+  }
+
+  function renderPostCard(post, isAuth) {
+    const hasHero = !!(post.hero_srcset_jpg || post.hero_srcset_webp);
+    const showTitleOverlay = (post.hero_title_overlay == 1) || (post.hero_title_overlay === undefined);
+    const opacity = post.hero_overlay_opacity != null ? post.hero_overlay_opacity : 0.70;
+    const title = escapeHtml(post.title || '');
+
+    const author = [post.author_first, post.author_last].filter(Boolean).join(' ').trim();
+    const authorHtml = author ? `<p class="text-muted small mb-2"><em>By ${escapeHtml(author)}</em></p>` : '';
+
+    const heroPicture = hasHero ? `
+      <div class="hero-image-container" style="max-height: 600px; overflow: hidden; position: relative;">
+        <picture style="display: block; height: 0; padding-bottom: ${(post.hero_image_height ?? 100)}%; position: relative; overflow: hidden;">
+          ${post.hero_srcset_webp ? `<source type="image/webp" srcset="${post.hero_srcset_webp}" sizes="(max-width: 768px) 100vw, 50vw" />` : ''}
+          ${post.hero_srcset_jpg ? `<img class="card-img-top" srcset="${post.hero_srcset_jpg}" sizes="(max-width: 768px) 100vw, 50vw" alt="${title}"
+               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; ${showTitleOverlay ? `filter: brightness(${opacity});` : ''}" />` : ''}
+        </picture>
+        ${showTitleOverlay ? `<div class="hero-title-overlay"><h5 class="card-title text-white mb-0">${title}</h5></div>` : ''}
+      </div>
+    ` : '';
+
+    const titleInBody = (!showTitleOverlay || !hasHero) ? `<h5 class="card-title">${title}</h5>` : '';
+
+    const adminBtns = isAuth ? `
+      <div class="btn-group" role="group">
+        <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="${post.id}" title="Edit post">
+          <i class="bi bi-pencil"></i> Edit
+        </button>
+        <button class="btn btn-sm btn-outline-danger btn-delete-post-home" data-post-id="${post.id}" title="Delete post">
+          <i class="bi bi-trash"></i> Delete
+        </button>
+      </div>
+    ` : '';
+
+    return `
+      <div class="timeline-item" id="post-${post.id}" data-post-id="${post.id}">
+        <div class="timeline-date">
+          <div class="timeline-date-content">
+            ${post.published_at ? formatTimelineDate(post.published_at) : ''}
+          </div>
+        </div>
+        <div class="timeline-content">
+          <div class="card post-card">
+            ${heroPicture}
+            <div class="card-body">
+              ${titleInBody}
+              ${authorHtml}
+              <div class="card-text post-preview-content">${post.body_html || ''}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted fst-italic">
+                  <span class="d-none d-md-inline">Click to read more</span>
+                  <span class="d-md-none">Tap to read more</span>
+                </small>
+                ${adminBtns}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   async function fetchPost(id) {
     const res = await fetch(`/api/posts.php?id=${encodeURIComponent(id)}`);
     const data = await res.json();
@@ -573,6 +662,76 @@
         }
       }, 100);
     }
+
+    // Hide Load More if initial count is less than the page size
+    const lmBtn = qs('.btn-load-more-posts');
+    const lmContainer = document.getElementById('posts-load-more');
+    if (lmBtn && lmContainer) {
+      const initOffset = parseInt(lmBtn.getAttribute('data-offset') || '0', 10);
+      const pageLimit = parseInt(lmBtn.getAttribute('data-limit') || '5', 10);
+      if (initOffset < pageLimit) {
+        lmContainer.classList.add('d-none');
+      }
+    }
+
+    // Load More Posts (event delegation)
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.btn-load-more-posts');
+      if (!btn) return;
+      const container = btn.closest('#posts-load-more');
+      if (!container) return;
+      e.preventDefault();
+
+      const limit = parseInt(btn.getAttribute('data-limit') || '5', 10);
+      const offset = parseInt(btn.getAttribute('data-offset') || '0', 10);
+      const list = document.getElementById('posts-list');
+      const loading = document.getElementById('posts-loading-indicator');
+      const isAuth = !!document.querySelector('meta[name="csrf-token"]');
+
+      try {
+        btn.disabled = true;
+        if (loading) loading.classList.remove('d-none');
+
+        const res = await fetch(`/api/posts.php?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load posts');
+
+        const posts = Array.isArray(data.posts) ? data.posts : [];
+        if (posts.length === 0) {
+          // Nothing more to load; hide the whole container
+          container.classList.add('d-none');
+          return;
+        }
+
+        // Build HTML and append
+        const frag = document.createElement('div');
+        frag.innerHTML = posts.map(p => renderPostCard(p, isAuth)).join('');
+        // Append children to keep only timeline-item nodes
+        while (frag.firstChild) {
+          list.appendChild(frag.firstChild);
+        }
+
+        // Re-bind handlers for newly added cards and fix anchors
+        bindCardHandlers(list);
+        ensureAnchorsOpenNewTab(list);
+
+        // Update offset
+        const newOffset = offset + posts.length;
+        btn.setAttribute('data-offset', String(newOffset));
+
+        // If fewer than requested returned, hide the load more
+        if (posts.length < limit) {
+          container.classList.add('d-none');
+        } else {
+          btn.disabled = false;
+        }
+      } catch (err) {
+        console.error('Load more error:', err);
+        btn.disabled = false;
+      } finally {
+        if (loading) loading.classList.add('d-none');
+      }
+    });
   }
 
   // Initialize donation modal platform detection and copy functionality
@@ -882,6 +1041,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Quill editor when modal is first shown
     let editorInitialized = false;
     modal.addEventListener('shown.bs.modal', function() {
+      // Initialize crop manager for hero image if not already done
+      if (typeof window.initPostEditorCrop === 'function' && !modal._postCropManager) {
+        modal._postCropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
+      }
+
       // Show/hide Save Draft button based on whether we're editing or creating
       // Show for NEW posts (no editingPostId), hide for editing existing posts
       const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
@@ -895,6 +1059,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Initialize editor if not already done
       if (!editorInitialized && window.initQuillEditor) {
+        // IMPORTANT: Make sure the post-editor-content is visible before initializing Quill
+        // Quill needs to measure the container, and this fails if it's hidden
+        const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+        const contentEl = postEditorContainer.querySelector('.post-editor-content');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'block';
+
         const postBodyTextarea = postEditorContainer.querySelector('.post-body');
         postBodyEditor = window.initQuillEditor(postBodyTextarea, {
           placeholder: 'Write your post content here...',
@@ -999,14 +1170,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadPostData() {
       if (!editingPostId) return;
 
-      // Loading spinner is already shown when edit button was clicked
-      // Just ensure it's visible in case this is called directly
+      // Show loading spinner while fetching data
       const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
       const contentEl = postEditorContainer.querySelector('.post-editor-content');
-      if (loadingEl && loadingEl.style.display !== 'block') {
-        loadingEl.style.display = 'block';
-        if (contentEl) contentEl.style.display = 'none';
-      }
+      if (loadingEl) loadingEl.style.display = 'block';
+      if (contentEl) contentEl.style.display = 'none';
 
       // Clear gallery preview
       const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
@@ -1174,6 +1342,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const postTitleInput = postEditorContainer.querySelector('.post-title');
     const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
 
+    // Save just the hero-related fields to draft for existing posts
+    const saveHeroDraft = async () => {
+      if (!editingPostId) return; // Only auto-save for existing posts
+      const payload = {
+        hero_media_id: heroSelect?.value || null,
+        hero_image_height: heroSelect?.value ? parseInt(heroHeightSlider?.value || 100) : null,
+        hero_crop_overlay: heroSelect?.value ? (postEditorContainer.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0) : 0,
+        hero_title_overlay: heroSelect?.value ? (heroTitleOverlayToggle?.checked ? 1 : 0) : 1,
+        hero_overlay_opacity: heroSelect?.value ? parseFloat(heroOverlayOpacitySlider?.value || 0.70) : 0.70
+      };
+      try {
+        await api('/api/admin/posts-draft.php?id=' + editingPostId, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.warn('Auto-save hero draft failed:', e);
+      }
+    };
+
     // Function to update preview based on settings
     const updateHeroPreview = () => {
       if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
@@ -1206,6 +1395,12 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     };
 
+    // Expose for cross-file calls (used by crop init upload flow)
+    // Accepts optional container arg but uses current closure variables
+    window.updatePostHeroPreview = function() {
+      updateHeroPreview();
+    };
+
     if (heroSelect) {
       heroSelect.addEventListener('change', function() {
         if (this.value && heroPreviewImg) {
@@ -1213,11 +1408,33 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
               if (data.success && data.data) {
-                const variants = JSON.parse(data.data.variants_json || '{}');
-                const variant400 = variants['400'];
-                const previewUrl = variant400?.jpg
-                  ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
-                  : '/storage/uploads/originals/' + data.data.filename;
+                let previewUrl = '';
+                try {
+                  const variants = JSON.parse(data.data.variants_json || '[]');
+                  if (Array.isArray(variants)) {
+                    // Prefer 400w jpg, fall back to any 400w, then 800w
+                    let v = variants.find(v => v.width === 400 && v.format === 'jpg')
+                         || variants.find(v => v.width === 400)
+                         || variants.find(v => v.width === 800);
+                    if (v && v.path) {
+                      const m = v.path.match(/\/storage\/uploads\/.+$/);
+                      previewUrl = m ? m[0] : v.path;
+                    }
+                  } else {
+                    // Legacy object shape: { "400": { jpg: "..." } }
+                    const variant400 = variants['400'];
+                    if (variant400?.jpg) {
+                      previewUrl = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
+                    }
+                  }
+                } catch (e) {
+                  // Ignore parse issues; will fallback below
+                }
+
+                if (!previewUrl) {
+                  previewUrl = '/storage/uploads/originals/' + data.data.filename;
+                }
+
                 heroPreviewImg.src = previewUrl;
                 heroPreviewImg.alt = data.data.alt_text || '';
                 if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
@@ -1230,13 +1447,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Update preview with current settings
-                if (typeof updateHeroPreview === 'function') {
-                  updateHeroPreview();
-                }
+                updateHeroPreview();
+
+                // Auto-save hero selection to draft for existing posts
+                saveHeroDraft();
               }
             });
         } else {
           if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+          // Save cleared hero selection
+          saveHeroDraft();
         }
       });
     }
@@ -1251,6 +1471,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (heroPreviewDiv) {
           heroPreviewDiv.style.paddingBottom = heightPercent + '%';
         }
+        // Auto-save
+        saveHeroDraft();
       });
     }
 
@@ -1260,12 +1482,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const opacity = parseFloat(this.value);
         overlayOpacityValue.textContent = opacity.toFixed(2);
         updateHeroPreview();
+        saveHeroDraft();
       });
     }
 
     // Title overlay toggle handler
     if (heroTitleOverlayToggle) {
-      heroTitleOverlayToggle.addEventListener('change', updateHeroPreview);
+      heroTitleOverlayToggle.addEventListener('change', function() {
+        updateHeroPreview();
+        saveHeroDraft();
+      });
     }
 
     // Update preview when title changes
@@ -1684,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', function() {
       window.setupSaveDraftHandler({
         modal: modal,
         postEditorContainer: postEditorContainer,
-        postBodyEditor: postBodyEditor,
+        getPostBodyEditor: () => postBodyEditor,
         getEditingId: () => editingPostId,
         getGalleryMediaIds: () => galleryMediaIds,
         refreshPostsList: window.refreshPostsList,

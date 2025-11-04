@@ -135,6 +135,7 @@
   }
 
   // Function to update hero banner preview
+  // Make it globally accessible for crop init
   function updateHeroBannerPreview() {
     const modal = document.getElementById('editHeroModal');
     if (!modal) {
@@ -175,6 +176,8 @@
       textPreview.innerHTML = htmlContent || 'Hero text will appear here...';
     }
   }
+  // Expose globally for crop init
+  window.updateHeroBannerPreview = updateHeroBannerPreview;
 
   function populateAboutForm(settings) {
     const modal = document.getElementById('editAboutModal');
@@ -287,6 +290,17 @@
       window.footerPreviewManager.populate(settings);
       // Update text preview with current footer content
       updateFooterTextPreview();
+
+      // Hide upload controls when a media is already selected
+      const uploadControls = document.querySelector('.footer-upload-controls');
+      const removeBtn = document.querySelector('.btn-remove-footer-bg');
+      if (settings.footer_media_id) {
+        if (uploadControls) uploadControls.style.display = 'none';
+        if (removeBtn) removeBtn.style.opacity = '1';
+      } else {
+        if (uploadControls) uploadControls.style.display = 'block';
+        if (removeBtn) removeBtn.style.opacity = '0';
+      }
     }
   }
 
@@ -653,6 +667,7 @@
     }
 
     // Initialize Quill editor when modal is first shown
+    let modalHeroCropManager = null;
     heroModal.addEventListener('shown.bs.modal', async function() {
       const editorContainer = heroModal.querySelector('#modal_hero_html');
       const loadingDiv = heroModal.querySelector('.modal-loading');
@@ -717,6 +732,14 @@
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
+
+      // Initialize crop manager for modal hero AFTER form is shown
+      const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      if (!modalHeroCropManager && typeof window.initModalHeroCrop === 'function') {
+        console.log('Calling initModalHeroCrop...');
+        modalHeroCropManager = window.initModalHeroCrop(CSRF);
+        console.log('initModalHeroCrop returned:', modalHeroCropManager);
+      }
     });
 
     // Hero height slider handler
@@ -799,7 +822,12 @@
     heroModal.querySelector('.btn-remove-hero-banner')?.addEventListener('click', function() {
       heroModal.querySelector('#modal_hero_media_id').value = '';
       const previewContainer = heroModal.querySelector('.hero-banner-preview-container');
+      const uploadControls = document.querySelector('.hero-banner-upload-controls');
       if (previewContainer) previewContainer.style.display = 'none';
+
+      // Show upload controls and hide remove button
+      if (uploadControls) uploadControls.style.display = 'block';
+      this.style.opacity = '0';
 
       // Reset height slider
       const heroHeightSlider = heroModal.querySelector('#modal_hero_height');
@@ -1618,6 +1646,12 @@
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (form) form.style.display = 'block';
       if (saveBtn) saveBtn.disabled = false;
+
+      // Initialize modal footer crop after form is visible
+      const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      if (typeof window.initModalFooterCrop === 'function' && !footerModal._footerCropManager) {
+        footerModal._footerCropManager = window.initModalFooterCrop(CSRF);
+      }
     });
 
     // Clean up when hidden

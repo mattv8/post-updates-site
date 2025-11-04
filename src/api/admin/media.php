@@ -61,9 +61,15 @@ switch ($method) {
         $alt = $_POST['alt_text'] ?? '';
         $username = $_SESSION['username'];
 
+        // Parse crop data if provided
+        $cropData = null;
+        if (!empty($_POST['crop'])) {
+            $cropData = json_decode($_POST['crop'], true);
+        }
+
         try {
             $processor = new MediaProcessor(__DIR__ . '/../../storage/uploads');
-            $res = $processor->processUpload($_FILES['file'], $alt, $username);
+            $res = $processor->processUpload($_FILES['file'], $alt, $username, $cropData);
             if (!$res['success']) {
                 error_log("Media upload failed: " . ($res['error'] ?? 'Unknown error'));
                 http_response_code(400);
