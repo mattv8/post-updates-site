@@ -32,8 +32,26 @@
     {include file="templates/header.tpl"}
   {/if}
 
-  <link href="{$favicon}" rel="icon" type="image/svg+xml" />
-  <link href="{$favicon}" rel="shortcut icon" />
+  {* Favicon - use dynamic favicon from branding settings or default *}
+  {if $favicon_ico}
+    <link href="{$favicon_ico}" rel="icon" type="image/x-icon" />
+    <link href="{$favicon_ico}" rel="shortcut icon" />
+  {/if}
+  {if $favicon_16}
+    <link href="{$favicon_16}" rel="icon" type="image/png" sizes="16x16" />
+  {/if}
+  {if $favicon_32}
+    <link href="{$favicon_32}" rel="icon" type="image/png" sizes="32x32" />
+  {/if}
+  {if $favicon_192}
+    <link href="{$favicon_192}" rel="icon" type="image/png" sizes="192x192" />
+  {/if}
+  {if $favicon_512}
+    <link href="{$favicon_512}" rel="icon" type="image/png" sizes="512x512" />
+  {/if}
+  {if $favicon_svg}
+    <link href="{$favicon_svg}" rel="icon" type="image/svg+xml" />
+  {/if}
 </head>
 
 <body>
@@ -52,11 +70,23 @@
     {* Simple public navigation for unauthenticated users *}
     <nav class="navbar navbar-light bg-light shadow-sm">
       <div class="container d-flex align-items-center">
-        <a class="navbar-brand fw-bold fs-4 m-0 py-2" href="?page=home">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public" href="?page=home">
+          {if $settings.show_logo && $logo_url}
+            {if $logo_srcset_png && $logo_srcset_webp}
+              {* Custom uploaded logo with responsive variants *}
+              <picture>
+                <source type="image/webp" srcset="{$logo_srcset_webp}" />
+                <img src="{$logo_url}" srcset="{$logo_srcset_png}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
+              </picture>
+            {else}
+              {* Default logo or simple image *}
+              <img src="{$logo_url}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
+            {/if}
+          {/if}
           {if $settings.site_title}
-            {$settings.site_title|escape}
+            <span>{$settings.site_title|escape}</span>
           {else}
-            Post Portal
+            <span>Post Portal</span>
           {/if}
         </a>
         <div>
@@ -91,11 +121,23 @@
     {* Public page with authenticated menu *}
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
       <div class="container-fluid d-flex align-items-center">
-        <a class="navbar-brand fw-bold fs-4 m-0 py-2" href="?page=home">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public-auth" href="?page=home">
+          {if $settings.show_logo && $logo_url}
+            {if $logo_srcset_png && $logo_srcset_webp}
+              {* Custom uploaded logo with responsive variants *}
+              <picture>
+                <source type="image/webp" srcset="{$logo_srcset_webp}" />
+                <img src="{$logo_url}" srcset="{$logo_srcset_png}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
+              </picture>
+            {else}
+              {* Default logo or simple image *}
+              <img src="{$logo_url}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
+            {/if}
+          {/if}
           {if $settings.site_title}
-            {$settings.site_title|escape}
+            <span>{$settings.site_title|escape}</span>
           {else}
-            Post Portal
+            <span>Post Portal</span>
           {/if}
         </a>
 

@@ -88,6 +88,10 @@ if (!empty($settings['donation_qr_media_id'])) {
     }
 }
 
+// Get logo and favicon URLs
+$logoUrls = getLogoUrls($db_conn, $settings['logo_media_id'] ?? null);
+$faviconUrls = getFaviconUrls($db_conn, $settings['favicon_media_id'] ?? null);
+
 $smarty->assign('settings', $settings);
 $smarty->assign('posts', $posts);
 $smarty->assign('hero_jpg', $hero_jpg);
@@ -96,6 +100,15 @@ $smarty->assign('footer_jpg', $footer_jpg);
 $smarty->assign('footer_webp', $footer_webp);
 $smarty->assign('donation_qr_jpg', $donation_qr_jpg);
 $smarty->assign('donation_qr_webp', $donation_qr_webp);
+$smarty->assign('logo_url', $logoUrls['logo_url']);
+$smarty->assign('logo_srcset_png', $logoUrls['logo_srcset_png']);
+$smarty->assign('logo_srcset_webp', $logoUrls['logo_srcset_webp']);
+$smarty->assign('favicon_ico', $faviconUrls['favicon_ico']);
+$smarty->assign('favicon_svg', $faviconUrls['favicon_svg']);
+$smarty->assign('favicon_16', $faviconUrls['favicon_16']);
+$smarty->assign('favicon_32', $faviconUrls['favicon_32']);
+$smarty->assign('favicon_192', $faviconUrls['favicon_192']);
+$smarty->assign('favicon_512', $faviconUrls['favicon_512']);
 $smarty->assign('page_title', $settings['site_title'] ?? '');
 $smarty->assign('is_authenticated', !empty($_SESSION['authenticated']));
 

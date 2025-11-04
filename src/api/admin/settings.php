@@ -50,6 +50,7 @@ switch ($method) {
         break;
 
     case 'POST':
+    case 'PUT':
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
         if (!validateCsrfToken($token)) { http_response_code(419); echo json_encode(['success'=>false,'error'=>'CSRF validation failed']); exit; }
         $payload = $_POST;

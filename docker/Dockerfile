@@ -55,7 +55,13 @@ RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 # Create application directory structure
 RUN mkdir -p /var/www/html \
     && mkdir -p /var/www/html/storage/uploads/originals \
+    && mkdir -p /var/www/html/storage/uploads/variants/16 \
+    && mkdir -p /var/www/html/storage/uploads/variants/32 \
+    && mkdir -p /var/www/html/storage/uploads/variants/48 \
+    && mkdir -p /var/www/html/storage/uploads/variants/192 \
+    && mkdir -p /var/www/html/storage/uploads/variants/200 \
     && mkdir -p /var/www/html/storage/uploads/variants/400 \
+    && mkdir -p /var/www/html/storage/uploads/variants/512 \
     && mkdir -p /var/www/html/storage/uploads/variants/800 \
     && mkdir -p /var/www/html/storage/uploads/variants/1600 \
     && mkdir -p /var/www/html/storage/uploads/variants/thumbnail \

@@ -19,6 +19,8 @@ services:
       # Mount framework from external location (overrides symlink)
       - ${FRAMEWORK_PATH}/framework:/var/www/html/framework:ro
       - ${FRAMEWORK_PATH}/index.php:/var/www/html/index.php:ro
+      # Mount migrations for live development
+      - ../migrations:/docker-migrations:ro
       # Database persistence
       - dev_db_data:/var/lib/mysql
       # Application logs

@@ -165,5 +165,31 @@ function checkMediaUsage($db_conn, $media_id) {
         ];
     }
 
+    // Check site settings for logo
+    $stmt = mysqli_prepare($db_conn, 'SELECT logo_media_id FROM settings WHERE logo_media_id = ? LIMIT 1');
+    mysqli_stmt_bind_param($stmt, 'i', $media_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    if (mysqli_fetch_assoc($result)) {
+        $affectedPosts[] = [
+            'id' => 0,
+            'title' => 'Site Logo',
+            'usage' => 'branding logo'
+        ];
+    }
+
+    // Check site settings for favicon
+    $stmt = mysqli_prepare($db_conn, 'SELECT favicon_media_id FROM settings WHERE favicon_media_id = ? LIMIT 1');
+    mysqli_stmt_bind_param($stmt, 'i', $media_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    if (mysqli_fetch_assoc($result)) {
+        $affectedPosts[] = [
+            'id' => 0,
+            'title' => 'Site Favicon',
+            'usage' => 'branding favicon'
+        ];
+    }
+
     return $affectedPosts;
 }

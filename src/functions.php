@@ -1147,6 +1147,128 @@ function getSettings($db_conn)
 }
 
 /**
+ * Get logo URL (with retina support via srcset)
+ * Returns array with logo_url and logo_srcset_png
+ */
+function getLogoUrls($db_conn, $logo_media_id = null)
+{
+    global $logo;
+
+    if (!$logo_media_id) {
+        // Return default logo from config
+        $default_logo = $logo ?? '/images/default-logo.svg';
+        return [
+            'logo_url' => $default_logo,
+            'logo_srcset_png' => '',
+            'logo_srcset_webp' => ''
+        ];
+    }
+
+    $media = getMedia($db_conn, (int)$logo_media_id);
+    if (!$media || empty($media['variants_json'])) {
+        // Return default logo from config
+        $default_logo = $logo ?? '/images/default-logo.svg';
+        return [
+            'logo_url' => $default_logo,
+            'logo_srcset_png' => '',
+            'logo_srcset_webp' => ''
+        ];
+    }
+
+    require_once(__DIR__ . '/lib/MediaProcessor.php');
+    $variants = json_decode($media['variants_json'], true);
+
+    // Find the 200w PNG variant for default
+    $logo200 = null;
+    foreach ($variants as $v) {
+        if ($v['width'] == 200 && $v['format'] == 'png') {
+            $logo200 = $v;
+            break;
+        }
+    }
+
+    $default_logo = $logo ?? '/images/default-logo.svg';
+    $logo_url = $logo200 ? ('/' . $logo200['path']) : $default_logo;
+    $logo_srcset_png = MediaProcessor::generateSrcset($variants, 'png');
+    $logo_srcset_webp = MediaProcessor::generateSrcset($variants, 'webp');
+
+    return [
+        'logo_url' => $logo_url,
+        'logo_srcset_png' => $logo_srcset_png,
+        'logo_srcset_webp' => $logo_srcset_webp
+    ];
+}
+
+/**
+ * Get favicon URLs for various sizes
+ * Returns array with favicon URLs for different sizes
+ */
+function getFaviconUrls($db_conn, $favicon_media_id = null)
+{
+    if (!$favicon_media_id) {
+        // Return default favicon
+        return [
+            'favicon_ico' => '/images/favicon.svg',
+            'favicon_svg' => '/images/favicon.svg',
+            'favicon_32' => '/images/favicon.svg',
+            'favicon_16' => '/images/favicon.svg',
+            'favicon_192' => '/images/favicon.svg',
+            'favicon_512' => '/images/favicon.svg'
+        ];
+    }
+
+    $media = getMedia($db_conn, (int)$favicon_media_id);
+    if (!$media || empty($media['variants_json'])) {
+        return [
+            'favicon_ico' => '/images/favicon.svg',
+            'favicon_svg' => '/images/favicon.svg',
+            'favicon_32' => '/images/favicon.svg',
+            'favicon_16' => '/images/favicon.svg',
+            'favicon_192' => '/images/favicon.svg',
+            'favicon_512' => '/images/favicon.svg'
+        ];
+    }
+
+    $variants = json_decode($media['variants_json'], true);
+
+    // Initialize with defaults
+    $result = [
+        'favicon_ico' => null,
+        'favicon_svg' => null,
+        'favicon_16' => null,
+        'favicon_32' => null,
+        'favicon_192' => null,
+        'favicon_512' => null
+    ];
+
+    // Find .ico file
+    foreach ($variants as $v) {
+        if (isset($v['format']) && $v['format'] == 'ico') {
+            $result['favicon_ico'] = '/' . $v['path'];
+            break;
+        }
+    }
+
+    // Find PNG sizes
+    $sizes = [16, 32, 192, 512];
+    foreach ($sizes as $size) {
+        foreach ($variants as $v) {
+            if (isset($v['format']) && $v['format'] == 'png' && isset($v['size']) && $v['size'] == $size) {
+                $result['favicon_' . $size] = '/' . $v['path'];
+                break;
+            }
+        }
+    }
+
+    // Use 32x32 PNG as .ico fallback if .ico wasn't generated
+    if (!$result['favicon_ico'] && $result['favicon_32']) {
+        $result['favicon_ico'] = $result['favicon_32'];
+    }
+
+    return $result;
+}
+
+/**
  * Encrypt SMTP password using AES-256-CBC
  */
 function encryptSmtpPassword($password)
@@ -1187,7 +1309,7 @@ function decryptSmtpPassword($encryptedPassword)
 
 function updateSettings($db_conn, $data)
 {
-    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay','smtp_host','smtp_port','smtp_secure','smtp_auth','smtp_username','smtp_password','smtp_from_email','smtp_from_name'];
+    $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay','smtp_host','smtp_port','smtp_secure','smtp_auth','smtp_username','smtp_password','smtp_from_email','smtp_from_name','show_logo'];
     $sets = [];
     $params = [];
     $types = '';
@@ -1206,7 +1328,7 @@ function updateSettings($db_conn, $data)
                 $params[] = $data[$key];
             }
             // Set parameter types
-            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height' || $key === 'smtp_rate_limit' || $key === 'smtp_rate_period' || $key === 'smtp_port' || $key === 'smtp_auth') { $types .= 'i'; }
+            if ($key === 'hero_media_id' || $key === 'show_hero' || $key === 'show_about' || $key === 'show_donation' || $key === 'show_mailing_list' || $key === 'notify_subscribers_on_post' || $key === 'email_include_post_body' || $key === 'show_donate_button' || $key === 'donation_qr_media_id' || $key === 'hero_height' || $key === 'show_footer' || $key === 'footer_media_id' || $key === 'footer_height' || $key === 'smtp_rate_limit' || $key === 'smtp_rate_period' || $key === 'smtp_port' || $key === 'smtp_auth' || $key === 'show_logo') { $types .= 'i'; }
             elseif ($key === 'hero_overlay_opacity' || $key === 'footer_overlay_opacity' || $key === 'smtp_batch_delay') { $types .= 'd'; }
             else { $types .= 's'; }
         }

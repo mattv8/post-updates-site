@@ -64,12 +64,8 @@ $nav_buttons = array(
 # Default Page
 $default_page = 'home'; // Public homepage
 
-# UI elements - logo, background, etc.
-$logo = "images/default-logo.png"; // Replace with your logo path
-$background_image = "images/default-background.jpg"; // Replace with your background image path
-$custom_css = "css/custom.css";
-$display_footer = false;
-$page_bg_color_class = 'bg-blurred rounded-3';
+# UI elements.
+$logo = "/images/default-logo.svg"; // Replace with your logo path (absolute path from web root)
 
 # OpenAI Configuration
 # Get your API key from: https://platform.openai.com/api-keys
