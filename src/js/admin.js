@@ -1221,16 +1221,82 @@
   // Media
   const uploadForm = document.getElementById('uploadForm');
   const mediaGrid = document.getElementById('mediaGrid');
-  uploadForm.addEventListener('submit', function(e){
-    e.preventDefault();
-    const f = document.getElementById('mediaFile').files[0];
-    if (!f) return alert('Choose a file');
-    if (f.size > 20*1024*1024) return alert('Max 20MB');
-    const fd = new FormData(); fd.append('file', f); fd.append('alt_text', document.getElementById('mediaAlt').value||'');
-    fetch('/api/admin/media.php', {method:'POST', headers:{'X-CSRF-Token': CSRF}, body: fd}).then(r=>r.json()).then(j=>{
-      if (j.success) { loadMedia(); uploadForm.reset(); } else alert(j.error||'Upload failed');
+
+  // Media crop manager for admin media tab
+  (function initAdminMediaCropper(){
+    if (typeof window.ImageCropManager === 'undefined') return;
+
+    const fileInput = document.getElementById('mediaFile');
+    const altInput = document.getElementById('mediaAlt');
+    const cropContainer = document.getElementById('mediaCropContainer');
+    const cropImage = document.getElementById('mediaCropImage');
+    const autoDetectBtn = document.getElementById('mediaAutoDetect');
+    const uploadBtn = document.getElementById('mediaUploadBtn');
+    const cancelBtn = document.getElementById('mediaCancelBtn');
+    const submitBtn = document.getElementById('mediaSubmitBtn');
+
+    if (!fileInput || !cropContainer || !cropImage || !uploadBtn || !cancelBtn) return;
+
+    const mediaCropManager = new window.ImageCropManager({
+      fileInput: fileInput,
+      cropContainer: cropContainer,
+      cropImage: cropImage,
+      uploadButton: uploadBtn,
+      cancelButton: cancelBtn,
+      autoDetectButton: autoDetectBtn,
+      onCropInit: () => {
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('disabled'); }
+      },
+      onCropCancel: () => {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('disabled'); }
+      },
+      uploadCallback: async (file, cropData) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('alt_text', altInput?.value || '');
+        if (cropData) fd.append('crop', JSON.stringify(cropData));
+
+        const resp = await fetch('/api/admin/media.php', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': CSRF },
+          body: fd
+        });
+        const j = await resp.json();
+        if (!j.success) throw new Error(j.error || 'Upload failed');
+
+        // Reset form and reload media grid
+        if (uploadForm) uploadForm.reset();
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('disabled'); }
+        loadMedia();
+        return j;
+      }
     });
-  });
+
+    // Prevent default submit if crop UI is active; allow fallback direct upload otherwise
+    if (uploadForm) {
+      uploadForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        const f = fileInput.files[0];
+        if (!f) return alert('Choose a file');
+
+        // If crop UI is visible, let the dedicated Upload & Apply button handle the upload
+        if (cropContainer && cropContainer.style.display !== 'none') {
+          return; // No-op; user should click Upload & Apply
+        }
+
+        // Fallback: direct upload without cropping
+        if (f.size > 20*1024*1024) return alert('Max 20MB');
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('alt_text', altInput?.value || '');
+        fetch('/api/admin/media.php', {method:'POST', headers:{'X-CSRF-Token': CSRF}, body: fd})
+          .then(r=>r.json()).then(j=>{
+            if (j.success) { loadMedia(); uploadForm.reset(); }
+            else alert(j.error||'Upload failed');
+          });
+      });
+    }
+  })();
 
   function loadMedia(){
     fetch('/api/admin/media.php').then(r=>r.json()).then(j=>{

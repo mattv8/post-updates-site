@@ -44,6 +44,23 @@
       </form>
     </div>
 
+      {* Media Crop UI *}
+      <div id="mediaCropContainer" class="mt-3" style="display: none;">
+        <label class="form-label">Crop Image</label>
+        <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+          <img id="mediaCropImage" src="" style="max-width: 100%; display: block;" />
+        </div>
+        <div class="mt-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaAutoDetect">
+            <i class="bi bi-magic"></i> Auto-Detect Bounds
+          </button>
+          <button type="button" class="btn btn-sm btn-primary" id="mediaUploadBtn">
+            <i class="bi bi-upload"></i> Upload & Apply
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" id="mediaCancelBtn">Cancel</button>
+        </div>
+      </div>
+
     <div class="tab-pane fade" id="pane-about" role="tabpanel">
       <form id="aboutForm" class="mt-3">
         {include file='templates/partials/about_form.tpl'}
