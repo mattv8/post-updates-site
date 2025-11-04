@@ -7,7 +7,7 @@ require_once(__DIR__ . '/framework/lib/functions.php');
 require_once(__DIR__ . '/vendor/autoload.php'); // Composer autoload
 
 // Default AI system prompt for title generation
-define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.');
+define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates concise, engaging titles for update posts. The title should be short (3-8 words), and capture the essence of the update. Return ONLY the title text, nothing else.');
 
 /**
  * Debug logging function that only logs when debug mode is enabled

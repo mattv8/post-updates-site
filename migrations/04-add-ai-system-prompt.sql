@@ -7,5 +7,5 @@ ADD COLUMN `ai_system_prompt` TEXT DEFAULT NULL COMMENT 'Custom system prompt fo
 
 -- Set default AI system prompt
 UPDATE `settings`
-SET `ai_system_prompt` = 'You are a helpful assistant that creates concise, engaging titles for health update posts. The title should be short (3-8 words), empathetic, and capture the essence of the update. Return ONLY the title text, nothing else.'
+SET `ai_system_prompt` = 'You are a helpful assistant that creates concise, engaging titles for update posts. The title should be short (3-8 words), and capture the essence of the update. Return ONLY the title text, nothing else.'
 WHERE `id` = 1 AND `ai_system_prompt` IS NULL;

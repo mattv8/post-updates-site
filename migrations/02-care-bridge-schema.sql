@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `media` (
 
 -- --------------------------------------------------------
 -- Table structure for table `posts`
--- Stores health update posts with hero images and galleries
+-- Stores  update posts with hero images and galleries
 -- --------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `posts` (
