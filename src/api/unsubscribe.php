@@ -15,12 +15,18 @@ if (!$db_conn) {
     exit;
 }
 
+// Get site settings for consistent branding
+$settings = getSettings($db_conn);
+
 // Initialize Smarty
 require_once(__DIR__ . '/../framework/vendor/smarty4/libs/Smarty.class.php');
 $smarty = new Smarty();
 $smarty->setTemplateDir(__DIR__ . '/../templates');
 $smarty->setCompileDir(__DIR__ . '/../cache');
 $smarty->setCacheDir(__DIR__ . '/../cache');
+
+// Assign settings to all unsubscribe page views
+$smarty->assign('settings', $settings);
 
 $method = $_SERVER['REQUEST_METHOD'];
 

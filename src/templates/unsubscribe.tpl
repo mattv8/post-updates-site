@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{$page_title|default:'Unsubscribe'}</title>
+    <title>{if $settings.site_title}{$page_title|default:'Unsubscribe'} - {$settings.site_title|escape}{else}{$page_title|default:'Unsubscribe'}{/if}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
