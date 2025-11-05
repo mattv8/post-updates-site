@@ -58,14 +58,17 @@ $action = $payload['action'] ?? 'test';
 $smtpConfig = [];
 
 if (isset($payload['smtp_host'])) {
-    // Use provided configuration
+    // Use provided configuration from form
+    // BUT if password is empty, fall back to database password
+    $settings = getSettings($db_conn);
+
     $smtpConfig = [
         'host' => $payload['smtp_host'] ?? '',
         'port' => isset($payload['smtp_port']) ? (int)$payload['smtp_port'] : 587,
         'secure' => $payload['smtp_secure'] ?? 'none',
         'auth' => isset($payload['smtp_auth']) ? (bool)$payload['smtp_auth'] : true,
         'username' => $payload['smtp_username'] ?? '',
-        'password' => $payload['smtp_password'] ?? '',
+        'password' => !empty($payload['smtp_password']) ? $payload['smtp_password'] : ($settings['smtp_password'] ?? ''),
         'from_email' => $payload['smtp_from_email'] ?? '',
         'from_name' => $payload['smtp_from_name'] ?? 'Post Portal',
     ];
@@ -83,9 +86,7 @@ if (isset($payload['smtp_host'])) {
         'from_email' => $settings['smtp_from_email'] ?? '',
         'from_name' => $settings['smtp_from_name'] ?? 'Post Portal',
     ];
-}
-
-// Convert 'none' to empty string for PHPMailer
+}// Convert 'none' to empty string for PHPMailer
 if ($smtpConfig['secure'] === 'none') {
     $smtpConfig['secure'] = '';
 }
@@ -154,9 +155,7 @@ try {
 
     if ($smtpConfig['secure']) {
         $mail->SMTPSecure = $smtpConfig['secure'];
-    }
-
-    // Additional options to help with debugging
+    }    // Additional options to help with debugging
     $mail->SMTPOptions = [
         'ssl' => [
             'verify_peer' => false,

@@ -480,6 +480,19 @@
     }
     if (smtpPasswordInput) {
       smtpPasswordInput.addEventListener('input', checkAutoEnableAuth);
+
+      // Add validation warning for spaces in password
+      smtpPasswordInput.addEventListener('blur', function() {
+        const password = this.value;
+
+        // Only check if there's a value
+        if (password && /\s/.test(password)) {
+          showNotification(
+            'Warning: Your SMTP password contains spaces. This is unusual for most mail providers (e.g., Gmail app passwords should not have spaces). Please verify you copied it correctly.',
+            'warning'
+          );
+        }
+      });
     }
 
     // Load subscribers when newsletter tab is shown
@@ -800,9 +813,17 @@
 
           if (result.success) {
             showSMTPResult('success', 'SMTP configuration saved successfully!');
-            // Clear password field after save
+
+            // Reload settings to populate password field with placeholder for testing
+            // This allows immediate SMTP testing after saving
+            await loadMailingListVisibility();
+
+            // Clear password field after save (security) but add placeholder
             const passwordField = document.getElementById('smtp_password');
-            if (passwordField) passwordField.value = '';
+            if (passwordField) {
+              passwordField.value = '';
+              passwordField.placeholder = '(saved - leave blank to use saved password)';
+            }
           } else {
             showSMTPResult('error', 'Error saving SMTP configuration: ' + (result.error || 'Unknown error'));
           }

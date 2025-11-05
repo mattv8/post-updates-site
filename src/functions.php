@@ -1309,19 +1309,39 @@ function decryptSmtpPassword($encryptedPassword)
         return '';
     }
 
-    // Use the same key as encryption
-    $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
-    $data = base64_decode($encryptedPassword);
+    try {
+        // Use the same key as encryption
+        $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
+        $data = base64_decode($encryptedPassword, true);
 
-    // Extract IV and encrypted data
-    $ivLength = openssl_cipher_iv_length('aes-256-cbc');
-    $iv = substr($data, 0, $ivLength);
-    $encrypted = substr($data, $ivLength);
+        if ($data === false) {
+            error_log("decryptSmtpPassword: Failed to base64 decode - invalid encrypted data");
+            return '';
+        }
 
-    return openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
-}
+        // Extract IV and encrypted data
+        $ivLength = openssl_cipher_iv_length('aes-256-cbc');
+        $iv = substr($data, 0, $ivLength);
+        $encrypted = substr($data, $ivLength);
 
-function updateSettings($db_conn, $data)
+        if (strlen($iv) !== $ivLength) {
+            error_log("decryptSmtpPassword: Invalid IV length - corrupted encrypted data");
+            return '';
+        }
+
+        $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
+
+        if ($decrypted === false) {
+            error_log("decryptSmtpPassword: Decryption failed - possible key mismatch or corrupted data");
+            return '';
+        }
+
+        return $decrypted;
+    } catch (Exception $e) {
+        error_log("decryptSmtpPassword: Exception - " . $e->getMessage());
+        return '';
+    }
+}function updateSettings($db_conn, $data)
 {
     $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay','smtp_host','smtp_port','smtp_secure','smtp_auth','smtp_username','smtp_password','smtp_from_email','smtp_from_name','show_logo'];
     $sets = [];
