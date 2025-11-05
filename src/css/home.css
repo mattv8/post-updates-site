@@ -45,6 +45,42 @@
   margin-bottom: 0.25rem;
 }
 
+/* Nested list styling - ensure proper indentation and list markers */
+.hero-content ul ul,
+.hero-content ol ol,
+.hero-content ul ol,
+.hero-content ol ul {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.5rem;
+}
+
+/* Different bullet styles for nested unordered lists */
+.hero-content ul {
+  list-style-type: disc;
+}
+
+.hero-content ul ul {
+  list-style-type: circle;
+}
+
+.hero-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Ensure ordered lists maintain proper numbering at each level */
+.hero-content ol {
+  list-style-type: decimal;
+}
+
+.hero-content ol ol {
+  list-style-type: lower-alpha;
+}
+
+.hero-content ol ol ol {
+  list-style-type: lower-roman;
+}
+
 .hero-content strong,
 .hero-content b {
   font-weight: 700;
@@ -627,6 +663,42 @@
   margin-bottom: 0.25rem;
 }
 
+/* Nested list styling - ensure proper indentation and list markers */
+.post-preview-content ul ul,
+.post-preview-content ol ol,
+.post-preview-content ul ol,
+.post-preview-content ol ul {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.5rem;
+}
+
+/* Different bullet styles for nested unordered lists */
+.post-preview-content ul {
+  list-style-type: disc;
+}
+
+.post-preview-content ul ul {
+  list-style-type: circle;
+}
+
+.post-preview-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Ensure ordered lists maintain proper numbering at each level */
+.post-preview-content ol {
+  list-style-type: decimal;
+}
+
+.post-preview-content ol ol {
+  list-style-type: lower-alpha;
+}
+
+.post-preview-content ol ol ol {
+  list-style-type: lower-roman;
+}
+
 .post-preview-content a {
   color: #0d6efd;
   text-decoration: underline;
@@ -786,6 +858,42 @@ footer ol {
 footer li {
   margin-bottom: 0.25rem;
   color: #6c757d;
+}
+
+/* Nested list styling for footer */
+footer ul ul,
+footer ol ol,
+footer ul ol,
+footer ol ul {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.5rem;
+}
+
+/* Different bullet styles for nested unordered lists */
+footer ul {
+  list-style-type: disc;
+}
+
+footer ul ul {
+  list-style-type: circle;
+}
+
+footer ul ul ul {
+  list-style-type: square;
+}
+
+/* Ensure ordered lists maintain proper numbering at each level */
+footer ol {
+  list-style-type: decimal;
+}
+
+footer ol ol {
+  list-style-type: lower-alpha;
+}
+
+footer ol ol ol {
+  list-style-type: lower-roman;
 }
 
 footer blockquote {

@@ -169,6 +169,7 @@
    */
   /**
    * Get HTML content from Quill editor with trailing empty paragraphs removed
+   * Converts Quill's flat list structure with indent classes to nested HTML lists
    * Allows for completely empty HTML content (returns empty string for empty editors)
    * @param {Quill} quill - Quill editor instance
    * @returns {string} HTML content (can be empty string if editor is empty)
@@ -186,12 +187,107 @@
     // Trim whitespace
     html = html.trim();
 
+    // Convert Quill's flat list structure to nested HTML lists
+    html = convertQuillListsToNestedHTML(html);
+
     // Allow empty content - users can erase the default value to have no content
     return html;
   };
 
   /**
+   * Convert Quill's flat list structure with ql-indent-N classes to nested HTML lists
+   * @param {string} html - HTML from Quill editor
+   * @returns {string} HTML with properly nested lists
+   */
+  function convertQuillListsToNestedHTML(html) {
+    if (!html) return '';
+
+    // Create a temporary DOM element to parse the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Find all lists
+    const lists = temp.querySelectorAll('ul, ol');
+
+    lists.forEach(list => {
+      nestQuillList(list);
+    });
+
+    return temp.innerHTML;
+  }
+
+  /**
+   * Convert flat Quill list to nested HTML structure
+   * @param {Element} list - The list element to nest
+   */
+  function nestQuillList(list) {
+    const items = Array.from(list.children);
+    const stack = [{ list: list, indent: 0 }]; // Stack to track current nesting level
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Get indent level from class (ql-indent-1, ql-indent-2, etc.)
+      let indent = 0;
+      const indentClass = Array.from(item.classList).find(c => c.startsWith('ql-indent-'));
+      if (indentClass) {
+        indent = parseInt(indentClass.replace('ql-indent-', ''));
+        // Remove the Quill indent class since we're converting to nested structure
+        item.classList.remove(indentClass);
+      }
+
+      // Pop stack until we find the right parent level
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+        stack.pop();
+      }
+
+      const currentParent = stack[stack.length - 1];
+
+      // If indent is greater than current parent's indent, we need to create nested list(s)
+      if (indent > currentParent.indent) {
+        // Get the last item at the current level to nest under
+        const parentItem = currentParent.list.children[currentParent.list.children.length - 1];
+
+        if (parentItem) {
+          // May need to create multiple levels if jumping more than 1 indent
+          let targetList = currentParent.list;
+          let targetIndent = currentParent.indent;
+
+          while (targetIndent < indent) {
+            // Get the last item in target list
+            const lastItem = targetList.children[targetList.children.length - 1];
+
+            if (lastItem) {
+              // Create nested list
+              const nestedList = document.createElement(list.tagName.toLowerCase());
+              lastItem.appendChild(nestedList);
+
+              targetList = nestedList;
+              targetIndent++;
+
+              // Add to stack
+              stack.push({ list: nestedList, indent: targetIndent });
+            } else {
+              break;
+            }
+          }
+
+          // Add item to the deepest nested list
+          targetList.appendChild(item);
+        } else {
+          // No parent item, add to current list
+          currentParent.list.appendChild(item);
+        }
+      } else {
+        // Same or lower indent - add to current parent list
+        currentParent.list.appendChild(item);
+      }
+    }
+  }
+
+  /**
    * Set HTML content in Quill editor
+   * Converts nested lists to Quill's flat list structure with indent classes
    * @param {Quill} quill - Quill editor instance
    * @param {string} html - HTML content to set
    */
@@ -200,10 +296,74 @@
       console.warn('setQuillHTML: Invalid Quill instance');
       return;
     }
+
+    // Convert nested lists to Quill's format before setting content
+    const convertedHtml = convertNestedListsToQuillFormat(html || '');
+
     // Use clipboard module to properly set HTML without adding extra newlines
-    const delta = quill.clipboard.convert(html || '');
+    const delta = quill.clipboard.convert(convertedHtml);
     quill.setContents(delta, 'silent');
   };
+
+  /**
+   * Convert nested HTML lists to Quill's flat list structure with indent classes
+   * Quill doesn't use nested <ul>/<ol> tags, it uses flat lists with ql-indent-N classes
+   * @param {string} html - HTML content with potentially nested lists
+   * @returns {string} HTML with flat lists and indent classes
+   */
+  function convertNestedListsToQuillFormat(html) {
+    if (!html) return '';
+
+    // Create a temporary DOM element to parse the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Find all list elements (ul and ol)
+    const lists = temp.querySelectorAll('ul, ol');
+
+    lists.forEach(list => {
+      flattenNestedList(list);
+    });
+
+    return temp.innerHTML;
+  }
+
+  /**
+   * Recursively flatten a nested list structure into Quill's flat format
+   * @param {Element} list - The list element to flatten
+   * @param {number} baseIndent - Base indentation level
+   */
+  function flattenNestedList(list, baseIndent = 0) {
+    const listItems = Array.from(list.children);
+
+    listItems.forEach(li => {
+      // Set the indent level for this list item
+      if (baseIndent > 0) {
+        li.classList.add(`ql-indent-${baseIndent}`);
+      }
+
+      // Find nested lists within this list item (direct children only)
+      const nestedLists = Array.from(li.querySelectorAll(':scope > ul, :scope > ol'));
+
+      nestedLists.forEach(nestedList => {
+        // Recursively flatten the nested list first to handle deeper nesting
+        flattenNestedList(nestedList, baseIndent + 1);
+
+        // Get all items from the nested list (now flattened)
+        const nestedItems = Array.from(nestedList.children);
+
+        // Move nested items to parent list level (after current item)
+        let insertAfter = li;
+        nestedItems.forEach(nestedLi => {
+          li.parentNode.insertBefore(nestedLi, insertAfter.nextSibling);
+          insertAfter = nestedLi; // Keep items in order
+        });
+
+        // Remove the now-empty nested list
+        nestedList.remove();
+      });
+    });
+  }
 
   /**
    * Clear Quill editor content

@@ -313,6 +313,42 @@
   margin-bottom: 0.5rem;
 }
 
+/* Nested list styling - ensure proper indentation and list markers */
+#overlay-body ul ul,
+#overlay-body ol ol,
+#overlay-body ul ol,
+#overlay-body ol ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+/* Different bullet styles for nested unordered lists */
+#overlay-body ul {
+  list-style-type: disc;
+}
+
+#overlay-body ul ul {
+  list-style-type: circle;
+}
+
+#overlay-body ul ul ul {
+  list-style-type: square;
+}
+
+/* Ensure ordered lists maintain proper numbering at each level */
+#overlay-body ol {
+  list-style-type: decimal;
+}
+
+#overlay-body ol ol {
+  list-style-type: lower-alpha;
+}
+
+#overlay-body ol ol ol {
+  list-style-type: lower-roman;
+}
+
 #overlay-body a {
   color: #0d6efd;
   text-decoration: underline;

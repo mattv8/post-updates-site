@@ -1206,10 +1206,14 @@ document.addEventListener('DOMContentLoaded', function() {
               window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
 
               // Set up auto-save for this post (saves to draft)
+              // Only enable autosave if we have a valid post ID
               if (postAutoSave) {
                 clearInterval(postAutoSave);
+                postAutoSave = null;
               }
-              postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
+              if (editingPostId) {
+                postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
+              }
             } else {
               postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
             }
