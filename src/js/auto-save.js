@@ -94,7 +94,9 @@
 
     // Function to perform the actual save
     const performSave = () => {
-      if (!editor) return;
+      if (!editor) {
+        return;
+      }
 
       const currentContent = window.getQuillHTML(editor);
 
@@ -167,7 +169,7 @@
     };
 
     // Setup selection change listener to save when user moves cursor
-    editor.on('selection-change', function(range, oldRange, source) {
+    const selectionChangeHandler = function(range, oldRange, source) {
       if (range === null) return; // Editor lost focus
       if (!initialized) return; // Don't trigger until initialized
 
@@ -176,10 +178,25 @@
         clearTimeout(saveTimeout);
       }
       saveTimeout = setTimeout(performSave, debounceDelay);
-    });
+    };
+
+    editor.on('selection-change', selectionChangeHandler);
 
     // Also save periodically
-    return setInterval(performSave, interval);
+    const intervalId = setInterval(performSave, interval);
+
+    // Return an object with the interval ID and a cleanup function
+    return {
+      intervalId: intervalId,
+      cleanup: function() {
+        clearInterval(intervalId);
+        editor.off('selection-change', selectionChangeHandler);
+        if (saveTimeout) {
+          clearTimeout(saveTimeout);
+          saveTimeout = null;
+        }
+      }
+    };
   };
 
 })();

@@ -790,6 +790,25 @@
   let editingId = null;
   let galleryMediaIds = []; // Track gallery image IDs in order
 
+  // Re-enable Save & Publish if confirmation is cancelled
+  if (!postEditorContainer.dataset.publishCancelBound) {
+    document.addEventListener('publish-confirmation:cancelled', () => {
+      const btn = postEditorContainer.querySelector('.btn-save-post');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save and Publish';
+      }
+      // Trigger a refresh of the post editor to show the saved draft
+      if (editingId) {
+        const refreshEvent = new CustomEvent('post-editor:refresh-needed');
+        document.dispatchEvent(refreshEvent);
+        // Also refresh the posts list table to show the new draft
+        loadPosts();
+      }
+    });
+    postEditorContainer.dataset.publishCancelBound = '1';
+  }
+
   // Helper function to upload gallery images
   async function uploadGalleryImages(files, addToGalleryFn) {
     const uploadedIds = [];
@@ -1146,34 +1165,34 @@
         }
 
         // Use confirmation wrapper for publish
-        const proceeded = await window.publishConfirmation.confirmAndPublish(editingId, async () => {
-          const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, {
-            method:'GET'
-          });
-
-          if (!publishResult.success) {
-            throw new Error(publishResult.error || 'Unknown error');
-          }
-
-          // Check email notification status and show appropriate feedback
-          if (publishResult.email) {
-            if (publishResult.email.sent && publishResult.email.count > 0) {
-              // Success - show confirmation
-              const successMsg = `Post published successfully! Email notifications sent to ${publishResult.email.count} subscriber(s).`;
-              showNotification(successMsg, 'success');
-            } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-              // Email failed - show warning
-              const warningMsg = `Post published successfully, but email notifications failed to send.\n\nError: ${publishResult.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`;
-              showNotification(warningMsg, 'warning');
-            } else if (publishResult.email.skipped) {
-              // Not first publish, no emails sent
+        const proceeded = await window.publishConfirmation.confirmAndPublish(
+          editingId,
+          async () => {
+            const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, { method:'GET' });
+            if (!publishResult.success) {
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+            if (publishResult.email) {
+              if (publishResult.email.sent && publishResult.email.count > 0) {
+                showNotification(`Post published successfully! Email notifications sent to ${publishResult.email.count} subscriber(s).`, 'success');
+              } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
+                showNotification(`Post published successfully, but email notifications failed to send.\n\nError: ${publishResult.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`, 'warning');
+              } else {
+                showNotification('Post published successfully.', 'success');
+              }
+            } else {
               showNotification('Post published successfully.', 'success');
             }
-          } else {
-            // No email info returned
-            showNotification('Post published successfully.', 'success');
+          },
+          async () => {
+            // Publish without sending emails
+            const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId + '&skip_email=1', { method:'GET' });
+            if (!publishResult.success) {
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+            showNotification('Post published successfully (emails skipped).', 'success');
           }
-        });
+        );
 
         if (proceeded) {
           loadPosts();
@@ -1185,15 +1204,65 @@
           saveBtn.textContent = originalText;
         }
       } else {
-        // New posts: create directly (no draft needed yet); this button intent is publish
-        payload.status = 'published';
-        const j = await api('/api/admin/posts.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        if(j.success){
+        // New post: ALWAYS require confirmation prior to first publish.
+        // Step 1: create as draft to obtain ID
+        saveBtn.textContent = 'Creating draft...';
+        const createDraft = await api('/api/admin/posts.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ...payload, status: 'draft' })
+        });
+        if (!createDraft.success || !createDraft.id) {
+          alert('Error creating draft: ' + (createDraft.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        const newId = createDraft.id;
+        editingId = newId; // transition to edit mode
+
+        // Set up auto-save now that we have an ID
+        if (postBodyEditor) {
+          if (postAutoSave) clearInterval(postAutoSave);
+          postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
+        }
+
+        // Hide Save Draft button now that we're editing
+        const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+        if (saveDraftBtn) saveDraftBtn.style.display = 'none';
+
+        // Step 2: ask for confirmation, then publish
+        saveBtn.textContent = 'Confirming publish...';
+        const proceeded = await window.publishConfirmation.confirmAndPublish(
+          newId,
+          async () => {
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId, { method: 'GET' });
+            if (!publishResult.success) {
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+          },
+          async () => {
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
+            if (!publishResult.success) {
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+            showNotification('Post published (emails skipped).', 'success');
+          }
+        );
+
+        if (proceeded) {
           loadPosts();
           const modalEl = bootstrap.Modal.getInstance(postEditorModal);
           if (modalEl) modalEl.hide();
         } else {
-          alert('Error: ' + (j.error || 'Unknown error'));
+          // User cancelled: keep draft open, refresh data, and re-enable button
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          // Refresh posts list to show the new draft
+          loadPosts();
+          // Note: post editor refresh happens via the global cancellation event handler
+          showNotification('Draft saved (not published).', 'info');
         }
       }
     } catch (error) {
@@ -1695,6 +1764,16 @@
       }
       galleryMediaIds = [];
 
+      // Reset auto-save indicator immediately for new posts
+      // This prevents stale "Draft saved" messages from previous edits
+      if (!editingId) {
+        const statusElement = document.getElementById('post-autosave-status');
+        if (statusElement) {
+          statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+          statusElement.className = 'editor-autosave-indicator';
+        }
+      }
+
       // Initialize post editor crop manager if not already initialized
       if (typeof window.initPostEditorCrop === 'function' && !postEditorContainer._cropManager) {
         postEditorContainer._cropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
@@ -1888,8 +1967,10 @@
         postTitleInput.dataset.titleListenerAdded = 'true';
       }
 
-  // Load post data if editing (editingId set in show.bs.modal)
-  if (editingId) {
+  // Function to load post data into editor
+  const loadPostIntoEditor = () => {
+    // Load post data if editing (editingId set in show.bs.modal)
+    if (editingId) {
         fetch('/api/admin/posts.php?id=' + editingId).then(r=>r.json()).then(j=>{
           if(j.success && j.data) {
             const post = j.data;
@@ -1897,7 +1978,6 @@
 
             // Use draft content for editing (falls back to published if no draft)
             postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
-            postEditorContainer.querySelector('.post-status').value = post.status || 'draft';
 
             // Set post body in editor (use draft content)
             if (postBodyEditor) {
@@ -1905,7 +1985,12 @@
 
               // Set up auto-save for this post (saves to draft)
               if (postAutoSave) {
-                clearInterval(postAutoSave);
+                if (typeof postAutoSave.cleanup === 'function') {
+                  postAutoSave.cleanup();
+                } else {
+                  clearInterval(postAutoSave);
+                }
+                postAutoSave = null;
               }
               postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
             } else {
@@ -2030,7 +2115,6 @@
       } else {
         // New post - clear the form
         postEditorContainer.querySelector('.post-title').value = '';
-        postEditorContainer.querySelector('.post-status').value = 'draft';
 
         // For new posts, show Save Draft button (ensure visible)
         const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
@@ -2069,7 +2153,11 @@
 
         // Clear auto-save for new posts (they don't have an ID yet)
         if (postAutoSave) {
-          clearInterval(postAutoSave);
+          if (typeof postAutoSave.cleanup === 'function') {
+            postAutoSave.cleanup();
+          } else {
+            clearInterval(postAutoSave);
+          }
           postAutoSave = null;
         }
         const statusElement = document.getElementById('post-autosave-status');
@@ -2078,6 +2166,25 @@
           statusElement.className = 'editor-autosave-indicator';
         }
       }
+    };
+
+    // Call initial load
+    loadPostIntoEditor();
+
+    // Listen for refresh requests from cancellation handler
+    const refreshListener = () => {
+      // Check editingId at runtime (not captured in closure)
+      if (editingId) {
+        loadPostIntoEditor();
+      }
+    };
+    document.addEventListener('post-editor:refresh-needed', refreshListener);
+
+    // Clean up listener when modal closes
+    postEditorModal.addEventListener('hidden.bs.modal', function cleanup() {
+      document.removeEventListener('post-editor:refresh-needed', refreshListener);
+      postEditorModal.removeEventListener('hidden.bs.modal', cleanup);
+    }, { once: true });
 
     });
 
@@ -2096,7 +2203,12 @@
 
       // Clear post auto-save interval
       if (postAutoSave) {
-        clearInterval(postAutoSave);
+        if (typeof postAutoSave.cleanup === 'function') {
+          postAutoSave.cleanup();
+        } else {
+          // Fallback for old interval ID format
+          clearInterval(postAutoSave);
+        }
         postAutoSave = null;
       }
 

@@ -8,18 +8,6 @@
     <p class="mt-3 text-muted">Loading post...</p>
   </div>
   <div class="post-editor-content" style="display:none;">
-  <div class="post-status-toggle-container d-none justify-content-between align-items-center mb-3">
-    <div class="me-3">
-      <label for="postStatusToggle" class="form-label mb-0">Published</label>
-    </div>
-    <div class="d-flex align-items-center gap-3">
-      <div class="form-check form-switch m-0">
-        <input class="form-check-input post-status-toggle" type="checkbox" id="postStatusToggle">
-        <label class="form-check-label ms-1" for="postStatusToggle"><span class="status-label">Published</span></label>
-      </div>
-      <small id="post-status-save" class="text-muted"></small>
-    </div>
-  </div>
   {/if}
   <div class="mb-3">
     <label class="form-label">Title (optional)</label>

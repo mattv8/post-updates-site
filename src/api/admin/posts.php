@@ -85,6 +85,12 @@ switch ($method) {
         if (isset($_GET['action']) && $_GET['action'] === 'publish' && isset($_GET['id'])) {
             requireCsrf();
             $id = (int)$_GET['id'];
+            // Allow opting out of email notifications for first publish
+            $skipEmail = false;
+            if (isset($_GET['skip_email'])) {
+                $val = strtolower((string)$_GET['skip_email']);
+                $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+            }
 
             // Check if this is a first-time publish by looking at the current state
             $currentPost = getPost($db_conn, $id);
@@ -96,8 +102,8 @@ switch ($method) {
             if ($res['success']) {
                 $response = ['success' => true];
 
-                // Send email notification if this is the first time publishing
-                if ($isFirstPublish) {
+                // Send email notification if this is the first time publishing and not explicitly skipped
+                if ($isFirstPublish && !$skipEmail) {
                     $emailResult = sendNewPostNotification($db_conn, $id);
                     // Log email result but don't fail the publish operation
                     if ($emailResult['success']) {
@@ -115,11 +121,11 @@ switch ($method) {
                         ];
                     }
                 } else {
-                    // Not first publish, so no emails sent
+                    // Not first publish or user opted to skip, so no emails sent
                     $response['email'] = [
                         'sent' => false,
                         'skipped' => true,
-                        'reason' => 'Not first-time publish'
+                        'reason' => $isFirstPublish ? 'User opted out' : 'Not first-time publish'
                     ];
                 }
 
@@ -196,13 +202,28 @@ switch ($method) {
 
             // Check if this new post is being published immediately
             if (isset($payload['status']) && $payload['status'] === 'published') {
-                // Send email notification for new published post
-                $emailResult = sendNewPostNotification($db_conn, $postId);
-                // Log email result but don't fail the create operation
-                if ($emailResult['success']) {
-                    error_log("Post notification sent: " . $emailResult['message']);
+                // Allow opting out of email notifications via query or payload
+                parse_str($_SERVER['QUERY_STRING'] ?? '', $query);
+                $skipEmail = false;
+                if (isset($query['skip_email'])) {
+                    $val = strtolower((string)$query['skip_email']);
+                    $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+                } elseif (isset($payload['skip_email'])) {
+                    $val = strtolower((string)$payload['skip_email']);
+                    $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+                }
+
+                if (!$skipEmail) {
+                    // Send email notification for new published post
+                    $emailResult = sendNewPostNotification($db_conn, $postId);
+                    // Log email result but don't fail the create operation
+                    if ($emailResult['success']) {
+                        error_log("Post notification sent: " . $emailResult['message']);
+                    } else {
+                        error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                    }
                 } else {
-                    error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
+                    error_log("Post created and published without sending emails (user opted out)");
                 }
             }
 
@@ -222,6 +243,15 @@ switch ($method) {
         // Check if this is a first-time publish (status changing to 'published' and no published_at exists)
         $payload = json_decode(file_get_contents('php://input'), true) ?: [];
         $sendNotification = false;
+        // Allow opting out of email notifications via query or payload
+        $skipEmail = false;
+        if (isset($query['skip_email'])) {
+            $val = strtolower((string)$query['skip_email']);
+            $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+        } elseif (isset($payload['skip_email'])) {
+            $val = strtolower((string)$payload['skip_email']);
+            $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+        }
 
         if (isset($payload['status']) && $payload['status'] === 'published') {
             // Get current post state
@@ -235,7 +265,7 @@ switch ($method) {
 
         if ($res['success']) {
             // Send email notification if this is first-time publish
-            if ($sendNotification) {
+            if ($sendNotification && !$skipEmail) {
                 $emailResult = sendNewPostNotification($db_conn, $id);
                 // Log email result but don't fail the update
                 if ($emailResult['success']) {
@@ -243,6 +273,8 @@ switch ($method) {
                 } else {
                     error_log("Post notification failed: " . ($emailResult['error'] ?? 'Unknown error'));
                 }
+            } elseif ($sendNotification && $skipEmail) {
+                error_log("Post published without sending emails (user opted out)");
             }
             echo json_encode(['success' => true]);
         } else {

@@ -11,7 +11,8 @@
   let pending = {
     resolve: null,
     modal: null,
-    resolved: false
+    resolved: false,
+    intent: 'email' // 'email' | 'skip'
   };
 
   /**
@@ -68,12 +69,20 @@
       };
       pending.modal = modal;
       pending.resolved = false;
+      pending.intent = 'email';
 
       const bsModal = new bootstrap.Modal(modal);
 
       // If user dismisses without inline confirm, treat as cancel
       const onHidden = () => {
         try {
+          // Dispatch a cancellation event so callers can re-enable UI controls
+          try {
+            const evt = new CustomEvent('publish-confirmation:cancelled', { detail: { reason: 'modal-hidden' } });
+            document.dispatchEvent(evt);
+          } catch (e) {
+            // ignore if CustomEvent not supported
+          }
           if (!pending.resolved && pending.resolve) {
             pending.resolved = true;
             pending.resolve(false);
@@ -83,6 +92,7 @@
           pending.resolve = null;
           pending.modal = null;
           pending.resolved = false;
+          pending.intent = 'email';
         }
       };
       modal.addEventListener('hidden.bs.modal', onHidden, { once: true });
@@ -98,7 +108,7 @@
    * @param {Function} publishAction - The actual publish function to call if confirmed
    * @returns {Promise<boolean>} - True if publish proceeded, false if cancelled
    */
-  async function confirmAndPublish(postId, publishAction) {
+  async function confirmAndPublish(postId, publishAction, publishNoEmailAction) {
     try {
       // Check if this is a first-time publish
       const status = await checkPublishStatus(postId);
@@ -110,9 +120,17 @@
       }
 
       // Show confirmation modal for first-time publish
-      const confirmed = await showPublishConfirmation(status.subscriberCount);
+      const decision = await showPublishConfirmation(status.subscriberCount);
 
-      if (confirmed) {
+      if (decision === true) {
+        await publishAction();
+        return true;
+      } else if (decision === 'skip') {
+        if (typeof publishNoEmailAction === 'function') {
+          await publishNoEmailAction();
+          return true;
+        }
+        // Fallback: proceed with main action if no alternative provided
         await publishAction();
         return true;
       }
@@ -150,6 +168,23 @@
       }
 
       // Cleanup lightweight state; resolved flag resets on next show
+      pending.resolve = null;
+      pending.modal = null;
+  },
+  inlineConfirmNoEmail: function() {
+      const modal = pending.modal || document.getElementById('publishConfirmModal');
+      const bsInstance = modal ? (bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal)) : null;
+
+      // Set intent and resolve
+      pending.intent = 'skip';
+      if (pending.resolve && !pending.resolved) {
+        pending.resolve('skip');
+      }
+
+      if (bsInstance) {
+        bsInstance.hide();
+      }
+
       pending.resolve = null;
       pending.modal = null;
     }

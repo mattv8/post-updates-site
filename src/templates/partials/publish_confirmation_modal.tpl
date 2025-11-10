@@ -24,6 +24,10 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-outline-warning" id="confirmPublishNoEmailBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineConfirmNoEmail && window.publishConfirmation.inlineConfirmNoEmail()">
+          <i class="bi bi-upload me-1"></i>
+          Just Publish
+        </button>
         <button type="button" class="btn btn-warning" id="confirmPublishBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineConfirm && window.publishConfirmation.inlineConfirm()">
           <i class="bi bi-send-fill me-1"></i>
           Publish &amp; Send Emails
