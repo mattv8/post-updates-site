@@ -953,6 +953,19 @@ document.addEventListener('DOMContentLoaded', function() {
         e.stopPropagation();
         editingPostId = null; // Clear editing ID for new post
 
+        // Reset autosave indicator for new unsaved post
+        const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+        if (statusEl) {
+          statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+          statusEl.className = 'editor-autosave-indicator';
+        }
+
+        // Clear any lingering auto-save interval defensively
+        if (postAutoSave) {
+          clearInterval(postAutoSave);
+          postAutoSave = null;
+        }
+
         // Manually open the modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
@@ -1276,10 +1289,11 @@ document.addEventListener('DOMContentLoaded', function() {
               }, 100);
             }
 
-            // Load gallery images
-            if (post.gallery_media_ids) {
+            // Load gallery images (prefer draft editing version to avoid stale published gallery)
+            const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
+            if (galleryData) {
               try {
-                const galleryIds = JSON.parse(post.gallery_media_ids);
+                const galleryIds = JSON.parse(galleryData);
                 if (Array.isArray(galleryIds) && galleryIds.length > 0) {
                   galleryMediaIds = [...galleryIds];
                   for (const mediaId of galleryIds) {
@@ -1293,8 +1307,14 @@ document.addEventListener('DOMContentLoaded', function() {
                   }
                 }
               } catch (e) {
-                console.error('Error parsing gallery_media_ids:', e);
+                console.error('Error parsing gallery media IDs:', e);
               }
+            }
+
+            // Hide Save Draft button for existing posts (draft button is only for brand new posts)
+            const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+            if (saveDraftBtn) {
+              saveDraftBtn.style.display = 'none';
             }
           }
 
@@ -1839,10 +1859,9 @@ document.addEventListener('DOMContentLoaded', function() {
           if (galleryUploadInput) galleryUploadInput.value = '';
         }
 
-        saveBtn.textContent = 'Publishing changes...';
-
-        const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
-        const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : postEditorContainer.querySelector('.post-status').value;
+        // Shared field extraction
+  const statusElToggle = postEditorContainer.querySelector('.post-status-toggle');
+  const statusVal = statusElToggle ? (statusElToggle.checked ? 'published' : 'draft') : undefined; // no visible select; buttons determine status
         const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
         const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
         const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
@@ -1851,7 +1870,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const payload = {
           title: postEditorContainer.querySelector('.post-title').value,
           body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-          status: statusVal,
+          // status set below depending on new vs edit
           hero_media_id: uploadedHeroId,
           hero_image_height: heroImageHeightValue,
           hero_crop_overlay: heroCropOverlayValue,
@@ -1860,44 +1879,60 @@ document.addEventListener('DOMContentLoaded', function() {
           gallery_media_ids: galleryMediaIds
         };
 
-        // Save to draft fields first
-        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingPostId, {
-          method: 'PUT',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        });
-
-        if (!draftSave.success) {
-          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          return;
-        }
-
-        // Use confirmation wrapper for publish
-        const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
-          const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, {
-            method: 'GET'
+        if (editingPostId) {
+          // Editing existing post: save draft then publish via confirmation
+          saveBtn.textContent = 'Publishing changes...';
+          const draftSave = await api('/api/admin/posts-draft.php?id=' + editingPostId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
           });
-
-          if (!publishResult.success) {
-            throw new Error(publishResult.error || 'Unknown error');
+          if (!draftSave.success) {
+            alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return;
           }
-        });
-
-        if (proceeded) {
+          const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, { method: 'GET' });
+            if (!publishResult.success) {
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+          });
+          if (proceeded) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+            if (typeof window.refreshPostsList === 'function') {
+              await window.refreshPostsList();
+            } else {
+              window.location.reload();
+            }
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }
+        } else {
+          // New post: create directly (no draft ID yet) – Save and Publish implies published
+          saveBtn.textContent = 'Publishing...';
+          payload.status = 'published';
+          const createRes = await api('/api/admin/posts.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+          });
+          if (!createRes.success) {
+            alert('Error creating post: ' + (createRes.error || 'Unknown error'));
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            return;
+          }
           const bsModal = bootstrap.Modal.getInstance(modal);
           if (bsModal) bsModal.hide();
-          // Refresh posts list without full page reload
           if (typeof window.refreshPostsList === 'function') {
             await window.refreshPostsList();
           } else {
             window.location.reload();
           }
-        } else {
-          // User cancelled
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
         }
       } catch (error) {
         console.error('Error saving post:', error);
@@ -1937,6 +1972,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (postAutoSave) {
         clearInterval(postAutoSave);
         postAutoSave = null;
+      }
+
+      // Reset autosave indicator for the next new post open
+      const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+      if (statusEl) {
+        statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+        statusEl.className = 'editor-autosave-indicator';
       }
     });
   })(); // End of IIFE

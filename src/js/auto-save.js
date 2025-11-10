@@ -55,7 +55,15 @@
     // Set initial status
     const statusElement = getStatusElement();
     if (statusElement) {
-      statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+      // Default message now instructs user to perform an initial save/publish for new resources.
+      // Callers editing existing posts/settings should override this BEFORE invoking setupAutoSave
+      // if they want to immediately show enabled. This prevents showing enabled on brand-new items
+      // without an ID (no endpoint to hit yet).
+      if (!statusElement.dataset.forceEnabled) {
+        statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+      } else {
+        statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+      }
       statusElement.className = 'editor-autosave-indicator';
     }
 

@@ -1119,7 +1119,7 @@
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,
         body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-        status: postEditorContainer.querySelector('.post-status').value,
+        // status will be set below depending on new vs edit branch
         hero_media_id: heroMediaId || null,
         hero_image_height: heroMediaId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null,
         hero_title_overlay: heroMediaId ? (postEditorContainer.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0) : 1,
@@ -1185,7 +1185,8 @@
           saveBtn.textContent = originalText;
         }
       } else {
-        // New posts: create directly (no draft needed yet)
+        // New posts: create directly (no draft needed yet); this button intent is publish
+        payload.status = 'published';
         const j = await api('/api/admin/posts.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
         if(j.success){
           loadPosts();
@@ -1706,17 +1707,7 @@
         saveDraftBtn.style.display = editingId ? 'none' : 'inline-block';
       }
 
-      // Hide Status dropdown when editing an existing post
-      if (editingId) {
-        const statusSelect = postEditorContainer.querySelector('.post-status');
-        const statusRow = statusSelect ? statusSelect.closest('.row') : null;
-        if (statusRow) statusRow.style.display = 'none';
-      } else {
-        // Show status dropdown for new posts
-        const statusSelect = postEditorContainer.querySelector('.post-status');
-        const statusRow = statusSelect ? statusSelect.closest('.row') : null;
-        if (statusRow) statusRow.style.display = '';
-      }
+      // Status control is always hidden; Save Draft / Save and Publish determine intent
 
       // Setup hero image selection handler BEFORE loading post data
       const heroSelect = postEditorContainer.querySelector('.post-hero-media');
@@ -2006,8 +1997,8 @@
               }
             }, 100);
 
-            // Load gallery images if exists (use draft)
-            const galleryData = post.gallery_media_ids_editing;
+            // Load gallery images if exists (prefer draft editing version)
+            const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
             if (galleryData) {
               try {
                 const galleryIds = JSON.parse(galleryData);
@@ -2028,12 +2019,24 @@
                 console.error('Error parsing gallery_media_ids:', e);
               }
             }
+
+            // Hide Save Draft button for existing posts
+            const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+            if (saveDraftBtn) {
+              saveDraftBtn.style.display = 'none';
+            }
           }
         });
       } else {
         // New post - clear the form
         postEditorContainer.querySelector('.post-title').value = '';
         postEditorContainer.querySelector('.post-status').value = 'draft';
+
+        // For new posts, show Save Draft button (ensure visible)
+        const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+        if (saveDraftBtn) {
+          saveDraftBtn.style.display = '';
+        }
         if (postBodyEditor) {
           window.clearQuillEditor(postBodyEditor);
         } else {
@@ -2095,6 +2098,13 @@
       if (postAutoSave) {
         clearInterval(postAutoSave);
         postAutoSave = null;
+      }
+
+      // Reset autosave indicator for next new post
+      const statusElement = document.getElementById('post-autosave-status');
+      if (statusElement) {
+        statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+        statusElement.className = 'editor-autosave-indicator';
       }
     });
 

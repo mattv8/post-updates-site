@@ -36,7 +36,8 @@
     <label class="form-label d-flex justify-content-between align-items-center">
       <span>Content</span>
       <small class="editor-autosave-indicator" id="post-autosave-status{if isset($editorId)}-{$editorId}{/if}">
-        <span class="text-muted">Auto-save enabled</span>
+        {* Default should instruct user to save draft first for new posts; JS will switch to enabled only after interval starts *}
+        <span class="text-muted">Save post to enable auto-save</span>
       </small>
     </label>
     <div class="form-control post-body"></div>
@@ -163,17 +164,14 @@
     </div>
   </div>
 
-  {if !isset($mode) || $mode != 'edit'}
-    <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label">Status</label>
-        <select class="form-select post-status">
-          <option value="draft">Draft</option>
-          <option value="published" selected>Published</option>
-        </select>
-      </div>
-    </div>
-  {/if}
+  {**
+    Status control is intentionally hidden from the UI.
+    The buttons control publish vs draft:
+      - "Save Draft" creates with status=draft
+      - "Save and Publish" creates/publishes with status=published
+    Keep a hidden field to satisfy existing JS that queries `.post-status` when present.
+  **}
+  <input type="hidden" class="post-status" value="draft" />
 
   <div class="mt-3 d-flex gap-2 justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
