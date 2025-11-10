@@ -996,6 +996,25 @@ function publishDraft($db_conn, $id)
     if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
+
+    // Refresh excerpt based on the now-published body_html to avoid stale excerpts
+    // This ensures email notifications and list views use up-to-date summaries
+    $res = mysqli_query($db_conn, "SELECT body_html FROM posts WHERE id = {$id} LIMIT 1");
+    if ($res) {
+        $row = mysqli_fetch_assoc($res);
+        if ($row && isset($row['body_html'])) {
+            $newExcerpt = generateExcerpt($row['body_html'], 250);
+            $stmt2 = mysqli_prepare($db_conn, 'UPDATE posts SET excerpt = ? WHERE id = ?');
+            if ($stmt2) {
+                mysqli_stmt_bind_param($stmt2, 'si', $newExcerpt, $id);
+                // If this update fails, don't fail the publish action; log and continue
+                if (!mysqli_stmt_execute($stmt2)) {
+                    error_log('Failed to refresh excerpt on publish for post ' . $id . ': ' . mysqli_error($db_conn));
+                }
+            }
+        }
+    }
+
     return ['success' => true];
 }
 
@@ -1620,8 +1639,8 @@ function sendNewPostNotification($db_conn, $postId)
         $smarty->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
         $smarty->assign('body_html', $bodyHtml);
     } else {
-        // Generic notification with link only
-        $excerpt = $post['excerpt'] ?: generateExcerpt($post['body_html'], 150);
+        // Always derive excerpt from the latest body_html to avoid stale saved excerpts
+        $excerpt = generateExcerpt($post['body_html'], 150);
 
         // Assign variables for excerpt email template
         $smarty->assign('author_name', $authorName);
