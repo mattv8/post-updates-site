@@ -290,9 +290,14 @@
     document.body.classList.add('overflow-hidden');
 
     // Scroll modal content to top to ensure hero image is visible
-    const overlayContent = overlay.querySelector('.post-overlay-content');
-    if (overlayContent) {
-      overlayContent.scrollTop = 0;
+    const overlayScroll = overlay.querySelector('.post-overlay-scroll');
+    if (overlayScroll) {
+      overlayScroll.scrollTop = 0;
+    } else {
+      const overlayContent = overlay.querySelector('.post-overlay-content');
+      if (overlayContent) {
+        overlayContent.scrollTop = 0;
+      }
     }
   }
 
