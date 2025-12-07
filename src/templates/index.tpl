@@ -68,7 +68,7 @@
   {else if $page|in_array:$public_pages and not $authenticated}
 
     {* Simple public navigation for unauthenticated users *}
-    <nav class="navbar navbar-light bg-light shadow-sm">
+    <nav class="navbar navbar-light bg-white shadow-sm">
       <div class="container d-flex align-items-center">
         <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public" href="?page=home">
           {if $settings.show_logo && $logo_url}
@@ -119,7 +119,7 @@
   {else if $page|in_array:$public_pages and $authenticated}
 
     {* Public page with authenticated menu *}
-    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
       <div class="container-fluid d-flex align-items-center">
         <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public-auth" href="?page=home">
           {if $settings.show_logo && $logo_url}
