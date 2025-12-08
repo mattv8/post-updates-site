@@ -24,6 +24,9 @@
       <button class="nav-link" id="tab-branding" data-bs-toggle="tab" data-bs-target="#pane-branding" type="button" role="tab">Branding</button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab">Analytics</button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">Settings</button>
     </li>
   </ul>
@@ -441,6 +444,42 @@
         <div class="alert alert-info">
           <i class="bi bi-info-circle"></i>
           <strong>Note:</strong> After uploading a new logo or favicon, you may need to refresh the page to see the changes in the site header.
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="pane-analytics" role="tabpanel">
+      <div class="mt-3">
+        <h5 class="mb-3">View & Impression Tracking</h5>
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="ignore_admin_tracking" />
+          <label class="form-check-label" for="ignore_admin_tracking">
+            <strong>Don't track admin views & impressions</strong>
+          </label>
+          <div class="form-text">When enabled, logged-in admin activity won't be counted in view/impression stats.</div>
+        </div>
+        <hr>
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="show_view_counts" />
+          <label class="form-check-label" for="show_view_counts">
+            <strong>Show view counts publicly</strong>
+          </label>
+          <div class="form-text">Display view counts (total and unique) on post cards and overlays.</div>
+        </div>
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="show_impression_counts" />
+          <label class="form-check-label" for="show_impression_counts">
+            <strong>Show impression counts publicly</strong>
+          </label>
+          <div class="form-text">Display impression counts (total and unique) on post cards and overlays.</div>
+        </div>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          <strong>How tracking works:</strong>
+          <ul class="mb-0 mt-2">
+            <li>A <strong>view</strong> requires some level of <em>active consumption</em>. In this case, a user must open a post for a view to be counted.</li>
+            <li>An <strong>impression</strong> is a <em>load event</em>. An impression is counted when the post appears on someone's screen, even if they don't actually look at it or interact with it.</li>
+          </ul>
         </div>
       </div>
     </div>

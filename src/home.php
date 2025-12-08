@@ -42,6 +42,15 @@ if (!isset($settings['show_mailing_list'])) {
 if (!isset($settings['mailing_list_html'])) {
     $settings['mailing_list_html'] = '<p>Subscribe to get notified when we post updates.</p>';
 }
+if (!isset($settings['show_view_counts'])) {
+    $settings['show_view_counts'] = 0;
+}
+if (!isset($settings['show_impression_counts'])) {
+    $settings['show_impression_counts'] = 0;
+}
+if (!isset($settings['ignore_admin_tracking'])) {
+    $settings['ignore_admin_tracking'] = 1;
+}
 $posts = getPublishedPosts($db_conn, 5, 0);
 
 // Precompute srcset for post hero images

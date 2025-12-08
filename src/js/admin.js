@@ -442,6 +442,24 @@
         console.warn('Could not load donation presets:', e);
       }
 
+      // Load public view count toggle
+      const showViewCountsElement = document.getElementById('show_view_counts');
+      if (showViewCountsElement) {
+        showViewCountsElement.checked = j.data.show_view_counts == 1;
+      }
+
+      // Load public impression count toggle
+      const showImpressionCountsElement = document.getElementById('show_impression_counts');
+      if (showImpressionCountsElement) {
+        showImpressionCountsElement.checked = j.data.show_impression_counts == 1;
+      }
+
+      // Load ignore admin tracking toggle
+      const ignoreAdminTrackingElement = document.getElementById('ignore_admin_tracking');
+      if (ignoreAdminTrackingElement) {
+        ignoreAdminTrackingElement.checked = j.data.ignore_admin_tracking == 1;
+      }
+
       // Load AI system prompt
       const aiPromptElement = document.getElementById('ai_system_prompt');
       if (aiPromptElement) {
@@ -744,6 +762,78 @@
         console.error('Error updating donate button visibility:', error);
         this.checked = !this.checked;
         showNotification('Error updating donate button visibility', 'error');
+      });
+    });
+  }
+
+  const showViewCountsCheckbox = document.getElementById('show_view_counts');
+  if (showViewCountsCheckbox) {
+    showViewCountsCheckbox.addEventListener('change', function() {
+      const payload = { show_view_counts: this.checked ? 1 : 0 };
+      api('/api/admin/settings.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(j => {
+        if (j.success) {
+          showNotification('Setting saved successfully', 'success');
+        } else {
+          console.error('Error updating view count visibility:', j.error);
+          this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update view count visibility'), 'error');
+        }
+      }).catch(error => {
+        console.error('Error updating view count visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating view count visibility', 'error');
+      });
+    });
+  }
+
+  const showImpressionCountsCheckbox = document.getElementById('show_impression_counts');
+  if (showImpressionCountsCheckbox) {
+    showImpressionCountsCheckbox.addEventListener('change', function() {
+      const payload = { show_impression_counts: this.checked ? 1 : 0 };
+      api('/api/admin/settings.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(j => {
+        if (j.success) {
+          showNotification('Setting saved successfully', 'success');
+        } else {
+          console.error('Error updating impression count visibility:', j.error);
+          this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update impression count visibility'), 'error');
+        }
+      }).catch(error => {
+        console.error('Error updating impression count visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating impression count visibility', 'error');
+      });
+    });
+  }
+
+  const ignoreAdminTrackingCheckbox = document.getElementById('ignore_admin_tracking');
+  if (ignoreAdminTrackingCheckbox) {
+    ignoreAdminTrackingCheckbox.addEventListener('change', function() {
+      const payload = { ignore_admin_tracking: this.checked ? 1 : 0 };
+      api('/api/admin/settings.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(j => {
+        if (j.success) {
+          showNotification('Setting saved successfully', 'success');
+        } else {
+          console.error('Error updating admin tracking setting:', j.error);
+          this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update admin tracking setting'), 'error');
+        }
+      }).catch(error => {
+        console.error('Error updating admin tracking setting:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating admin tracking setting', 'error');
       });
     });
   }

@@ -2,6 +2,42 @@
   function qs(sel, el=document) { return el.querySelector(sel); }
   function qsa(sel, el=document) { return Array.from(el.querySelectorAll(sel)); }
 
+  const viewSettings = window.POST_PORTAL_VIEW_SETTINGS || {};
+  const SHOW_VIEW_COUNTS = !!viewSettings.showViewCounts;
+  const SHOW_IMPRESSION_COUNTS = !!viewSettings.showImpressionCounts;
+  const IGNORE_ADMIN_TRACKING = !!viewSettings.ignoreAdminTracking;
+  const IS_AUTHENTICATED = !!viewSettings.isAuthenticated;
+
+  // Should we skip tracking for this user?
+  const SKIP_TRACKING = IS_AUTHENTICATED && IGNORE_ADMIN_TRACKING;
+
+  const LS_IMPRESSIONS_KEY = 'pp_seen_impressions_v1';
+  const LS_VIEWS_KEY = 'pp_seen_views_v1';
+
+  function loadSeenSet(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr.map(String));
+    } catch (e) {
+      console.warn('Failed to load set from storage', key, e);
+    }
+    return new Set();
+  }
+
+  function saveSeenSet(key, set) {
+    try {
+      localStorage.setItem(key, JSON.stringify(Array.from(set)));
+    } catch (e) {
+      console.warn('Failed to persist set to storage', key, e);
+    }
+  }
+
+  const seenImpressions = loadSeenSet(LS_IMPRESSIONS_KEY);
+  const seenViews = loadSeenSet(LS_VIEWS_KEY);
+  const pageImpressions = new Set();
+
   // Render helpers for lazy-loaded posts
   function formatTimelineDate(publishedAt) {
     if (!publishedAt) return '';
@@ -35,6 +71,8 @@
     const showTitleOverlay = (post.hero_title_overlay == 1) || (post.hero_title_overlay === undefined);
     const opacity = post.hero_overlay_opacity != null ? post.hero_overlay_opacity : 0.70;
     const title = escapeHtml(post.title || '');
+    const canSeeViews = SHOW_VIEW_COUNTS || isAuth;
+    const canSeeImpressions = SHOW_IMPRESSION_COUNTS || isAuth;
 
     const author = [post.author_first, post.author_last].filter(Boolean).join(' ').trim();
     const authorHtml = author ? `<p class="text-muted small mb-2"><em>By ${escapeHtml(author)}</em></p>` : '';
@@ -52,6 +90,19 @@
 
     const titleInBody = (!showTitleOverlay || !hasHero) ? `<h5 class="card-title">${title}</h5>` : '';
 
+    // Metrics badges - shown to left of admin buttons in footer
+    let metricsBadges = '';
+    if (canSeeViews || canSeeImpressions) {
+      let badges = '';
+      if (canSeeViews) {
+        badges += `<span class="badge rounded-pill bg-light text-dark border small">${post.view_count ?? 0} views (${post.unique_view_count ?? 0} unique)</span>`;
+      }
+      if (canSeeImpressions) {
+        badges += `<span class="badge rounded-pill bg-light text-dark border small">${post.impression_count ?? 0} impressions (${post.unique_impression_count ?? 0} unique)</span>`;
+      }
+      metricsBadges = `<div class="post-metrics-badges d-flex gap-1 flex-wrap justify-content-end">${badges}</div>`;
+    }
+
     const adminBtns = isAuth ? `
       <div class="btn-group" role="group">
         <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="${post.id}" title="Edit post">
@@ -62,6 +113,14 @@
         </button>
       </div>
     ` : '';
+
+    // "Click/Tap to read more" text - hide for admins
+    const readMoreHint = isAuth ? '<span></span>' : `
+      <small class="text-muted fst-italic">
+        <span class="d-none d-md-inline">Click to read more</span>
+        <span class="d-md-none">Tap to read more</span>
+      </small>
+    `;
 
     return `
       <div class="timeline-item" id="post-${post.id}" data-post-id="${post.id}">
@@ -78,11 +137,11 @@
               ${authorHtml}
               <div class="card-text post-preview-content">${post.body_html || ''}</div>
               <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted fst-italic">
-                  <span class="d-none d-md-inline">Click to read more</span>
-                  <span class="d-md-none">Tap to read more</span>
-                </small>
-                ${adminBtns}
+                ${readMoreHint}
+                <div class="d-flex align-items-center">
+                  ${metricsBadges}
+                  ${adminBtns}
+                </div>
               </div>
             </div>
           </div>
@@ -102,6 +161,9 @@
     const overlay = qs('#post-overlay');
     const overlayTitle = qs('#overlay-title');
     const body = qs('#overlay-body');
+    const metricsEl = qs('#overlay-metrics');
+    const viewBadge = qs('#overlay-view-badge');
+    const impressionBadge = qs('#overlay-impression-badge');
 
     // Add author information if available
     let authorHtml = '';
@@ -128,6 +190,29 @@
     if (editBtn) {
       editBtn.style.display = 'block';
       editBtn.setAttribute('data-post-id', post.id);
+    }
+
+    // Metrics badges (admins always see; public only if enabled per setting)
+    const canSeeViews = SHOW_VIEW_COUNTS || IS_AUTHENTICATED;
+    const canSeeImpressions = SHOW_IMPRESSION_COUNTS || IS_AUTHENTICATED;
+    if (metricsEl && viewBadge && impressionBadge) {
+      if (canSeeViews || canSeeImpressions) {
+        metricsEl.classList.remove('d-none');
+        if (canSeeViews) {
+          viewBadge.textContent = `${post.view_count ?? 0} views (${post.unique_view_count ?? 0} unique)`;
+          viewBadge.classList.remove('d-none');
+        } else {
+          viewBadge.classList.add('d-none');
+        }
+        if (canSeeImpressions) {
+          impressionBadge.textContent = `${post.impression_count ?? 0} impressions (${post.unique_impression_count ?? 0} unique)`;
+          impressionBadge.classList.remove('d-none');
+        } else {
+          impressionBadge.classList.add('d-none');
+        }
+      } else {
+        metricsEl.classList.add('d-none');
+      }
     }
 
     // Display hero image at the top (edge-to-edge)
@@ -288,6 +373,9 @@
 
     overlay.classList.remove('d-none');
     document.body.classList.add('overflow-hidden');
+
+    // Record a view (unique + total) when overlay opens
+    recordView(post.id);
 
     // Scroll modal content to top to ensure hero image is visible
     const overlayScroll = overlay.querySelector('.post-overlay-scroll');
@@ -719,6 +807,7 @@
         // Re-bind handlers for newly added cards and fix anchors
         bindCardHandlers(list);
         ensureAnchorsOpenNewTab(list);
+        observeTimelineItems(list);
 
         // Update offset
         const newOffset = offset + posts.length;
@@ -844,7 +933,87 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', bindEvents);
+  // ---- View/Impression tracking helpers ----
+  function postAnalyticsIncrement(payload) {
+    return fetch('/api/analytics.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(err => {
+      console.warn('Analytics post failed', err);
+    });
+  }
+
+  function recordImpression(postId) {
+    if (!postId || SKIP_TRACKING) return;
+    const idStr = String(postId);
+    const alreadyCounted = pageImpressions.has(idStr);
+    const unique = !seenImpressions.has(idStr);
+
+    if (alreadyCounted) return;
+    pageImpressions.add(idStr);
+    if (unique) {
+      seenImpressions.add(idStr);
+      saveSeenSet(LS_IMPRESSIONS_KEY, seenImpressions);
+    }
+
+    postAnalyticsIncrement({
+      post_id: postId,
+      impression: 1,
+      unique_impression: unique ? 1 : 0
+    });
+  }
+
+  function recordView(postId) {
+    if (!postId || SKIP_TRACKING) return;
+    const idStr = String(postId);
+    const unique = !seenViews.has(idStr);
+
+    if (unique) {
+      seenViews.add(idStr);
+      saveSeenSet(LS_VIEWS_KEY, seenViews);
+    }
+
+    postAnalyticsIncrement({
+      post_id: postId,
+      view: 1,
+      unique_view: unique ? 1 : 0
+    });
+  }
+
+  // Setup intersection observers for impressions
+  let impressionObserver = null;
+
+  function ensureImpressionObserver() {
+    if (impressionObserver) return impressionObserver;
+    impressionObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const item = entry.target;
+          const id = item.getAttribute('data-post-id');
+          if (id) {
+            recordImpression(id);
+          }
+          impressionObserver.unobserve(item);
+        }
+      });
+    }, { threshold: 0.5 });
+    return impressionObserver;
+  }
+
+  function observeTimelineItems(scope=document) {
+    const obs = ensureImpressionObserver();
+    scope.querySelectorAll('.timeline-item').forEach(item => obs.observe(item));
+  }
+
+  // Expose for other modules if needed
+  window.postPortalRecordView = recordView;
+  window.observeTimelineItems = observeTimelineItems;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    observeTimelineItems(document);
+  });
 })();
 
 // Utility to force anchors within a container to open in new tab securely

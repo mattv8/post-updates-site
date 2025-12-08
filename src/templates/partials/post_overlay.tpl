@@ -2,6 +2,11 @@
 <div id="post-overlay" class="post-overlay d-none">
   <div class="post-overlay-backdrop"></div>
   <div class="post-overlay-content card shadow">
+    {* Metrics badges - upper left *}
+    <div class="overlay-metrics-left d-none" id="overlay-metrics">
+      <span class="badge rounded-pill bg-light text-dark border fw-semibold shadow-sm" id="overlay-view-badge"></span>
+      <span class="badge rounded-pill bg-light text-dark border fw-semibold shadow-sm" id="overlay-impression-badge"></span>
+    </div>
     {* Action buttons stay pinned to the header while content scrolls *}
     <div class="overlay-actions">
       {if $is_authenticated|default:false}

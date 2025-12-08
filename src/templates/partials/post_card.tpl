@@ -1,6 +1,8 @@
 {* Post card partial - Timeline version *}
 {assign var=jpg_srcset value=$post.hero_srcset_jpg}
 {assign var=webp_srcset value=$post.hero_srcset_webp}
+{assign var=can_see_views value=($show_view_counts|default:0 || $is_authenticated|default:false)}
+{assign var=can_see_impressions value=($show_impression_counts|default:0 || $is_authenticated|default:false)}
 
 <div class="timeline-item" id="post-{$post.id}" data-post-id="{$post.id}">
   <div class="timeline-date">
@@ -43,20 +45,36 @@
         {/if}
         <div class="card-text post-preview-content">{$post.body_html nofilter}</div>
         <div class="d-flex justify-content-between align-items-center">
-          <small class="text-muted fst-italic">
-            <span class="d-none d-md-inline">Click to read more</span>
-            <span class="d-md-none">Tap to read more</span>
-          </small>
-          {if $is_authenticated|default:false}
-            <div class="btn-group" role="group">
-              <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="{$post.id}" title="Edit post">
-                <i class="bi bi-pencil"></i> Edit
-              </button>
-              <button class="btn btn-sm btn-outline-danger btn-delete-post-home" data-post-id="{$post.id}" title="Delete post">
-                <i class="bi bi-trash"></i> Delete
-              </button>
-            </div>
+          {if !$is_authenticated|default:false}
+            <small class="text-muted fst-italic">
+              <span class="d-none d-md-inline">Click to read more</span>
+              <span class="d-md-none">Tap to read more</span>
+            </small>
+          {else}
+            <span></span>
           {/if}
+          <div class="d-flex align-items-center gap-2">
+            {if $can_see_views || $can_see_impressions}
+              <div class="post-metrics-badges d-flex gap-1 flex-wrap justify-content-end">
+                {if $can_see_views}
+                  <span class="badge rounded-pill bg-light text-dark border small">{$post.view_count|default:0} views ({$post.unique_view_count|default:0} unique)</span>
+                {/if}
+                {if $can_see_impressions}
+                  <span class="badge rounded-pill bg-light text-dark border small">{$post.impression_count|default:0} impressions ({$post.unique_impression_count|default:0} unique)</span>
+                {/if}
+              </div>
+            {/if}
+            {if $is_authenticated|default:false}
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-secondary btn-edit-post-home" data-post-id="{$post.id}" title="Edit post">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-delete-post-home" data-post-id="{$post.id}" title="Delete post">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </div>

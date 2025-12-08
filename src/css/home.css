@@ -183,6 +183,11 @@
   line-height: 1.3;
 }
 
+/* View/impression badges on cards */
+.post-metrics-badges .badge {
+  backdrop-filter: blur(4px);
+}
+
 /* Mobile responsive for hero title overlay */
 @media (max-width: 768px) {
   /* Home page hero content */

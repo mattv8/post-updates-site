@@ -42,7 +42,7 @@
           <p>No updates yet.</p>
         {/if}
         {foreach $posts as $post}
-          {include file='templates/partials/post_card.tpl' post=$post}
+          {include file='templates/partials/post_card.tpl' post=$post show_view_counts=$settings.show_view_counts show_impression_counts=$settings.show_impression_counts}
         {/foreach}
       </div>
       <div id="posts-load-more" class="text-center mt-3">
@@ -180,6 +180,14 @@
   <script src="js/newsletter-signup.js"></script>
   <script src="js/publish-confirmation.js"></script>
   <script src="js/post-draft-handler.js"></script>
+  <script>
+    window.POST_PORTAL_VIEW_SETTINGS = {
+      showViewCounts: {$settings.show_view_counts|default:0},
+      showImpressionCounts: {$settings.show_impression_counts|default:0},
+      ignoreAdminTracking: {$settings.ignore_admin_tracking|default:1},
+      isAuthenticated: {if $is_authenticated|default:false}true{else}false{/if}
+    };
+  </script>
   <script src="js/home.js"></script>
 
 </div>
