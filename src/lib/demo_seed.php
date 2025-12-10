@@ -124,6 +124,43 @@ function seedMedia(mysqli $db, array $images, string $uploadsDir): array
     return $mediaIds;
 }
 
+function getPostAnalytics(mysqli $db): array
+{
+    $analytics = [];
+    $result = mysqli_query($db, 'SELECT title, view_count, unique_view_count, impression_count, unique_impression_count FROM posts');
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $analytics[$row['title']] = [
+                'view_count' => (int)$row['view_count'],
+                'unique_view_count' => (int)$row['unique_view_count'],
+                'impression_count' => (int)$row['impression_count'],
+                'unique_impression_count' => (int)$row['unique_impression_count'],
+            ];
+        }
+    }
+    return $analytics;
+}
+
+function restorePostAnalytics(mysqli $db, array $analytics): void
+{
+    if (empty($analytics)) {
+        return;
+    }
+    $stmt = mysqli_prepare($db, 'UPDATE posts SET view_count = ?, unique_view_count = ?, impression_count = ?, unique_impression_count = ? WHERE title = ?');
+    foreach ($analytics as $title => $counts) {
+        mysqli_stmt_bind_param(
+            $stmt,
+            'iiiis',
+            $counts['view_count'],
+            $counts['unique_view_count'],
+            $counts['impression_count'],
+            $counts['unique_impression_count'],
+            $title
+        );
+        mysqli_stmt_execute($stmt);
+    }
+}
+
 function resetTables(mysqli $db): void
 {
     mysqli_query($db, 'SET FOREIGN_KEY_CHECKS=0');
@@ -208,8 +245,8 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
         footer_layout = "double",
         footer_column1_html = ?,
         footer_column2_html = ?,
-        show_view_counts = 0,
-        show_impression_counts = 0,
+        show_view_counts = 1,
+        show_impression_counts = 1,
         ignore_admin_tracking = 1,
         ai_system_prompt = COALESCE(ai_system_prompt, ?),
         hero_html_draft = NULL,
@@ -218,7 +255,17 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
         mailing_list_html_draft = NULL,
         donation_instructions_html_draft = NULL,
         footer_column1_html_draft = NULL,
-        footer_column2_html_draft = NULL
+        footer_column2_html_draft = NULL,
+        smtp_host = NULL,
+        smtp_port = NULL,
+        smtp_username = NULL,
+        smtp_password = NULL,
+        smtp_secure = "none",
+        smtp_from_email = NULL,
+        smtp_from_name = NULL,
+        smtp_rate_limit = 20,
+        smtp_rate_period = 60,
+        smtp_batch_delay = 0.50
       WHERE id = 1');
 
     $defaultPrompt = DEFAULT_AI_SYSTEM_PROMPT;
@@ -352,6 +399,9 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
 try {
     $uploadsDir = $projectRoot . '/storage/uploads';
 
+    // Preserve post analytics before reset
+    $savedAnalytics = getPostAnalytics($db);
+
     resetTables($db);
     ensureSettingsRow($db);
     clearUploadsDirectory($uploadsDir);
@@ -391,6 +441,9 @@ try {
 
     $author = chooseAuthor($db);
     seedPosts($db, $mediaIds, $author);
+
+    // Restore analytics from before the reset
+    restorePostAnalytics($db, $savedAnalytics);
 
     fwrite(STDOUT, "Demo content seeded successfully.\n");
     exit(0);
