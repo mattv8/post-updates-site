@@ -225,7 +225,7 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
         cta_url = "#updates",
         donate_text_html = ?,
         donation_method = "link",
-        donation_link = "https://ko-fi.com/example",
+        donation_link = "https://ko-fi.com/mattv8",
         donation_qr_media_id = NULL,
         donation_instructions_html = ?,
         show_hero = 1,

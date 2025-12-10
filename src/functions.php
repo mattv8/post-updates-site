@@ -1176,6 +1176,14 @@ function getSettings($db_conn)
         $settings['smtp_password'] = decryptSmtpPassword($settings['smtp_password']);
     }
 
+    // Normalize donation_link to include protocol if missing
+    if ($settings && !empty($settings['donation_link'])) {
+        $link = $settings['donation_link'];
+        if (!preg_match('#^https?://#i', $link)) {
+            $settings['donation_link'] = 'https://' . $link;
+        }
+    }
+
     return $settings;
 }
 
@@ -1364,6 +1372,12 @@ function decryptSmtpPassword($encryptedPassword)
 
 function updateSettings($db_conn, $data)
 {
+    // In demo mode, prevent changing the donation link
+    $demoMode = filter_var(getenv('DEMO_MODE') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+    if ($demoMode && array_key_exists('donation_link', $data)) {
+        unset($data['donation_link']);
+    }
+
     $fields = ['site_title','hero_html','hero_media_id','site_bio_html','donation_settings_json','timezone','cta_text','cta_url','donate_text_html','donation_method','donation_link','donation_qr_media_id','donation_instructions_html','hero_overlay_opacity','hero_overlay_color','show_hero','show_about','show_donation','show_mailing_list','show_view_counts','show_impression_counts','ignore_admin_tracking','notify_subscribers_on_post','email_include_post_body','show_donate_button','ai_system_prompt','hero_height','show_footer','footer_layout','footer_media_id','footer_height','footer_overlay_opacity','footer_overlay_color','footer_column1_html','footer_column2_html','mailing_list_html','smtp_rate_limit','smtp_rate_period','smtp_batch_delay','smtp_host','smtp_port','smtp_secure','smtp_auth','smtp_username','smtp_password','smtp_from_email','smtp_from_name','show_logo'];
     $sets = [];
     $params = [];
