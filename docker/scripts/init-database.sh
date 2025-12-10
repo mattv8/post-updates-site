@@ -10,26 +10,11 @@ DB_PASSWORD="${MYSQL_PASSWORD:-postportal}"
 DB_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root}"
 ADMIN_PASSWORD="${DEFAULT_ADMIN_PASSWORD:-changeme_admin}"
 
-# Check if database is already initialized by checking if application database exists
-# Try with password first (for existing installations), then without (for fresh installs)
+# Check if database is already initialized by checking if application user can connect
+# The app user credentials are consistent across restarts (from .env), unlike root password which is randomly generated
 echo "==> Checking if database '${DB_NAME}' already exists..."
-DB_EXISTS=0
 
-# First try with root password (existing database)
-if mysql -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW DATABASES LIKE '${DB_NAME}'" 2>/dev/null | grep -q "${DB_NAME}"; then
-    DB_EXISTS=1
-    echo "==> Database exists (checked with root password)"
-fi
-
-# If that failed, try without password (fresh install with unix_socket)
-if [ "$DB_EXISTS" -eq 0 ]; then
-    if mysql -u root -e "SHOW DATABASES LIKE '${DB_NAME}'" 2>/dev/null | grep -q "${DB_NAME}"; then
-        DB_EXISTS=1
-        echo "==> Database exists (checked without password)"
-    fi
-fi
-
-if [ "$DB_EXISTS" -eq 1 ]; then
+if mysql -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SHOW DATABASES LIKE '${DB_NAME}'" 2>/dev/null | grep -q "${DB_NAME}"; then
     echo "==> Database already initialized (database '${DB_NAME}' exists), skipping init"
     exit 0
 fi
