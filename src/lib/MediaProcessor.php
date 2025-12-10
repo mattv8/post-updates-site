@@ -137,8 +137,11 @@ class MediaProcessor
                 }
             } else {
                 // Move uploaded file to originals directory
+                // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
                 if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    if (!copy($file['tmp_name'], $originalPath)) {
+                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    }
                 }
             }
 
@@ -497,8 +500,11 @@ class MediaProcessor
                 }
             } else {
                 // Move uploaded file to originals directory
+                // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
                 if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    if (!copy($file['tmp_name'], $originalPath)) {
+                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    }
                 }
             }
 
@@ -583,8 +589,11 @@ class MediaProcessor
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
                 }
             } else {
+                // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
                 if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    if (!copy($file['tmp_name'], $originalPath)) {
+                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
+                    }
                 }
             }
 

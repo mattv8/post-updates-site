@@ -153,15 +153,6 @@ Note: MySQL root password is auto-generated for security.
 ### OpenAI API
 - `OPENAI_API_KEY` - OpenAI API key for AI features (optional)
 
-### SMTP Email Configuration
-- `SMTP_HOST` - SMTP server hostname (required)
-- `SMTP_PORT` - SMTP port (default: `587`)
-- `SMTP_SECURE` - Encryption type: `tls`, `ssl`, or empty (default: `tls`)
-- `SMTP_AUTH` - Enable SMTP authentication (default: `true`)
-- `SMTP_USERNAME` - SMTP username (required if auth enabled)
-- `SMTP_PASSWORD` - SMTP password (required if auth enabled)
-- `SMTP_FROM_EMAIL` - From email address (required)
-
 ### reCAPTCHA (Optional)
 - `RECAPTCHA_SITE_KEY` - reCAPTCHA site key
 - `RECAPTCHA_SECRET_KEY` - reCAPTCHA secret key
@@ -218,12 +209,20 @@ Note: MySQL root password is auto-generated for security.
    ```
 
 4. **Start development stack:**
+
+   **Option A: Using VS Code tasks:**
+   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
+   - Select `Tasks: Run Task` → `Start Development Docker Stack`
+
+   **Option B: Manual command line (without VS Code):**
    ```bash
+   # From the project root directory, run the startup script
+   ./docker/scripts/dev-startup.sh
+
+   # Then start the Docker stack
    cd docker
    sudo docker compose -f docker-compose.dev.yml up --build
    ```
-
-   Or use the VS Code task: `Tasks: Run Task` → `Start Development Docker Stack`
 
 5. **Access development services:**
    - Public site: http://localhost:81
@@ -288,6 +287,23 @@ cd docker
 sudo docker compose -f docker-compose.dev.yml down -v
 sudo docker compose -f docker-compose.dev.yml up --build
 ```
+
+### Demo Mode
+
+**Environment variables:**
+- `DEMO_MODE` - Set to `true` to enable (default: `false`)
+- `DEMO_RESET_INTERVAL_SECONDS` - Reset interval in seconds (default: `43200` / 12 hours)
+
+**Manually run the seed script:**
+```bash
+# In development container
+sudo docker exec postportal-dev php /var/www/html/lib/demo_seed.php --force
+
+# In production container
+docker exec post-portal php /var/www/html/lib/demo_seed.php --force
+```
+
+The `--force` flag bypasses the `DEMO_MODE` check, allowing you to seed content without enabling the automatic reset loop.
 
 ## CI/CD
 

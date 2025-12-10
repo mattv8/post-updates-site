@@ -97,6 +97,12 @@ echo "==> Running database migrations..."
 export CONFIG_FILE=/var/www/html/config.local.php
 /docker-scripts/run-migrations.sh || echo "Warning: Some migrations may have failed"
 
+# Seed demo content (if enabled)
+if [ "${DEMO_MODE,,}" = "true" ]; then
+    echo "==> DEMO_MODE enabled: seeding demo content"
+    php /var/www/html/lib/demo_seed.php --force || echo "Warning: demo seed failed"
+fi
+
 # Update admin password if hash was generated during init
 if [ -f /tmp/admin_password_hash ]; then
     echo "==> Updating admin password from initial setup..."
@@ -123,6 +129,13 @@ else
 fi
 # Clean up PID tracking (no need to wait since we're using pkill)
 sleep 1
+
+# Start demo reset loop in background (12h by default)
+if [ "${DEMO_MODE,,}" = "true" ]; then
+    echo "==> DEMO_MODE: scheduling reset every ${DEMO_RESET_INTERVAL_SECONDS:-43200} seconds"
+    chmod +x /docker-scripts/demo-reset.sh || true
+    /docker-scripts/demo-reset.sh >/var/log/demo-reset.log 2>&1 &
+fi
 
 # Configure MariaDB to listen on all interfaces (for PHPMyAdmin and external connections)
 echo "==> Configuring MariaDB to listen on all interfaces..."

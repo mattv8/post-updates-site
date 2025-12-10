@@ -57,7 +57,6 @@ services:
       - mailpit-data:/data
     ports:
       - "${MAILPIT_PORT:-83}:8025"
-      - "1025:1025"
     networks:
       - dev-network
 
