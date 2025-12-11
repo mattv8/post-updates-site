@@ -490,6 +490,19 @@
           <label class="form-label">Site Title</label>
           <input type="text" id="site_title" class="form-control" />
         </div>
+
+        <hr class="my-4" />
+        <h6 class="mb-3">Section Visibility</h6>
+
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="show_footer" />
+          <label class="form-check-label" for="show_footer">
+            <strong>Show footer section on home page</strong>
+          </label>
+          <div class="form-text">Toggle visibility of the footer section at the bottom of the page</div>
+        </div>
+
+        <hr class="my-4" />
         <div class="mb-3">
           <label class="form-label">Donation Presets (comma-separated)</label>
           <input type="text" id="donation_presets" class="form-control" placeholder="10,25,50,100" />

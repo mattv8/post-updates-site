@@ -332,10 +332,12 @@
       const showHeroElement = document.getElementById('show_hero');
       const showAboutElement = document.getElementById('show_about');
       const showDonationElement = document.getElementById('show_donation');
+      const showFooterElement = document.getElementById('show_footer');
 
       if (showHeroElement) showHeroElement.checked = j.data.show_hero == 1;
       if (showAboutElement) showAboutElement.checked = j.data.show_about == 1;
       if (showDonationElement) showDonationElement.checked = j.data.show_donation == 1;
+      if (showFooterElement) showFooterElement.checked = j.data.show_footer == 1;
 
       // Load donate button toggle
       const showDonateButtonCheckbox = document.getElementById('show_donate_button');
@@ -369,11 +371,45 @@
       const ctaUrlElement = document.getElementById('cta_url');
       const heroOpacityElement = document.getElementById('hero_overlay_opacity');
       const heroColorElement = document.getElementById('hero_overlay_color');
+      const heroColorHexElement = document.getElementById('hero_overlay_color_hex');
+      const heroHeightElement = document.getElementById('hero_height');
 
       if (ctaTextElement) ctaTextElement.value = j.data.cta_text||'';
       if (ctaUrlElement) ctaUrlElement.value = j.data.cta_url||'';
-      if (heroOpacityElement) heroOpacityElement.value = j.data.hero_overlay_opacity||0.5;
-      if (heroColorElement) heroColorElement.value = j.data.hero_overlay_color||'#000000';
+
+      // Load hero overlay opacity and update preview
+      const heroOpacity = j.data.hero_overlay_opacity || 0.5;
+      if (heroOpacityElement) {
+        heroOpacityElement.value = heroOpacity;
+        // Update opacity value display
+        const opacityValueEl = document.querySelector('.hero-overlay-opacity-value');
+        if (opacityValueEl) opacityValueEl.textContent = parseFloat(heroOpacity).toFixed(2);
+        // Update overlay style
+        const overlayEl = document.querySelector('.hero-banner-overlay');
+        if (overlayEl) overlayEl.style.opacity = heroOpacity;
+      }
+
+      // Load hero overlay color and update preview
+      const heroColor = j.data.hero_overlay_color || '#000000';
+      if (heroColorElement) {
+        heroColorElement.value = heroColor;
+        if (heroColorHexElement) heroColorHexElement.value = heroColor;
+        // Update overlay style
+        const overlayEl = document.querySelector('.hero-banner-overlay');
+        if (overlayEl) overlayEl.style.backgroundColor = heroColor;
+      }
+
+      // Load hero height and update preview
+      const heroHeight = j.data.hero_height || 100;
+      if (heroHeightElement) {
+        heroHeightElement.value = heroHeight;
+        // Update height value display
+        const heightValueEl = document.querySelector('.hero-banner-height-value');
+        if (heightValueEl) heightValueEl.textContent = heroHeight;
+        // Update preview aspect ratio
+        const previewEl = document.querySelector('.hero-banner-preview');
+        if (previewEl) previewEl.style.paddingBottom = heroHeight + '%';
+      }
 
       // Load bio HTML into editor (use draft content)
       const bioHtml = j.data.site_bio_html_editing || '';
@@ -834,6 +870,30 @@
         console.error('Error updating admin tracking setting:', error);
         this.checked = !this.checked;
         showNotification('Error updating admin tracking setting', 'error');
+      });
+    });
+  }
+
+  const showFooterCheckbox = document.getElementById('show_footer');
+  if (showFooterCheckbox) {
+    showFooterCheckbox.addEventListener('change', function() {
+      const payload = { show_footer: this.checked ? 1 : 0 };
+      api('/api/admin/settings.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }).then(j => {
+        if (j.success) {
+          showNotification('Setting saved successfully', 'success');
+        } else {
+          console.error('Error updating footer visibility:', j.error);
+          this.checked = !this.checked;
+          showNotification('Error: ' + (j.error || 'Failed to update footer visibility'), 'error');
+        }
+      }).catch(error => {
+        console.error('Error updating footer visibility:', error);
+        this.checked = !this.checked;
+        showNotification('Error updating footer visibility', 'error');
       });
     });
   }
