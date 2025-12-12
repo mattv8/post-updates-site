@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Newsletter Unsubscribe API
  * Handles unsubscribe requests from email links
@@ -7,8 +10,8 @@ require_once(__DIR__ . '/../functions.php');
 ensureSession();
 
 // DB connect
-require(__DIR__ . '/../config.local.php');
-$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
+require(__DIR__ . '/../config.php');
+$db_conn = getDefaultDbConnection();
 if (!$db_conn) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Database connection failed']);
@@ -18,9 +21,8 @@ if (!$db_conn) {
 // Get site settings for consistent branding
 $settings = getSettings($db_conn);
 
-// Initialize Smarty
-require_once(__DIR__ . '/../framework/vendor/smarty4/libs/Smarty.class.php');
-$smarty = new Smarty();
+// Initialize Smarty via Composer autoload
+$smarty = new \Smarty\Smarty();
 $smarty->setTemplateDir(__DIR__ . '/../templates');
 $smarty->setCompileDir(__DIR__ . '/../cache');
 $smarty->setCacheDir(__DIR__ . '/../cache');
@@ -29,6 +31,8 @@ $smarty->setCacheDir(__DIR__ . '/../cache');
 $smarty->assign('settings', $settings);
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+try {
 
 // Handle GET request - show confirmation page
 if ($method === 'GET') {
@@ -157,3 +161,10 @@ http_response_code(405);
 header('Content-Type: application/json');
 echo json_encode(['success' => false, 'error' => 'Method not allowed']);
 exit;
+} catch (\Throwable $e) {
+    error_log('API error in unsubscribe.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    exit;
+}

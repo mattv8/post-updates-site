@@ -100,6 +100,47 @@
     }, 10000);
   }
 
+  // Fetch helper with timeout and safe JSON parsing to avoid hanging or HTML error pages breaking the UI
+  async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      const text = await response.text();
+
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        return {
+          ok: false,
+          status: response.status,
+          error: `Server returned an unexpected response (${response.status}).`,
+          raw: text
+        };
+      }
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data
+      };
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return {
+          ok: false,
+          status: 'timeout',
+          error: `Request timed out after ${timeoutMs / 1000} seconds`
+        };
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   // Format date for display
   function formatDate(dateString) {
     const date = new Date(dateString);
@@ -182,6 +223,7 @@
     const smtpSecureInput = document.getElementById('smtp_secure');
     const smtpAuthInput = document.getElementById('smtp_auth');
     const smtpUsernameInput = document.getElementById('smtp_username');
+    const smtpPasswordInput = document.getElementById('smtp_password');
     const smtpFromEmailInput = document.getElementById('smtp_from_email');
     const smtpFromNameInput = document.getElementById('smtp_from_name');
 
@@ -232,6 +274,11 @@
         }
         if (smtpUsernameInput && result.data.smtp_username) {
           smtpUsernameInput.value = result.data.smtp_username;
+        }
+        if (smtpPasswordInput) {
+          // Never render stored password; show placeholder to indicate existing value
+          smtpPasswordInput.value = '';
+          smtpPasswordInput.placeholder = result.data.smtp_password_set ? '[unchanged]' : '';
         }
         if (smtpFromEmailInput && result.data.smtp_from_email) {
           smtpFromEmailInput.value = result.data.smtp_from_email;
@@ -822,7 +869,7 @@
             const passwordField = document.getElementById('smtp_password');
             if (passwordField) {
               passwordField.value = '';
-              passwordField.placeholder = '(saved - leave blank to use saved password)';
+              passwordField.placeholder = '[unchanged]';
             }
           } else {
             showSMTPResult('error', 'Error saving SMTP configuration: ' + (result.error || 'Unknown error'));
@@ -849,7 +896,7 @@
         const smtpConfig = getSMTPConfigFromForm();
 
         try {
-          const response = await fetch('/api/admin/smtp-test.php', {
+          const apiResult = await fetchJsonWithTimeout('/api/admin/smtp-test.php', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -859,11 +906,19 @@
               action: 'connect',
               ...smtpConfig
             })
-          });
+          }, 12000);
 
-          const result = await response.json();
+          if (apiResult.error && !apiResult.data) {
+            showSMTPResult('error',
+              '<strong>Connection Failed</strong><br>' +
+              apiResult.error
+            );
+            return;
+          }
 
-          if (result.success) {
+          const result = apiResult.data;
+
+          if (result?.success) {
             showSMTPResult('success',
               '<strong>Connection Successful!</strong><br>' +
               'Host: ' + result.config.host + ':' + result.config.port + '<br>' +
@@ -871,10 +926,12 @@
               'Auth: ' + (result.config.auth ? 'Enabled' : 'Disabled')
             );
           } else {
+            const timedOut = apiResult.status === 'timeout';
             showSMTPResult('error',
               '<strong>Connection Failed</strong><br>' +
-              result.error +
-              (result.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '')
+              (timedOut ? 'Request timed out after 12 seconds.' : (result?.error || 'Unknown error')) +
+              (result?.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '') +
+              (!timedOut && apiResult.status && apiResult.status !== 200 ? '<br><small>Status: ' + apiResult.status + '</small>' : '')
             );
           }
         } catch (error) {
@@ -910,7 +967,7 @@
         const smtpConfig = getSMTPConfigFromForm();
 
         try {
-          const response = await fetch('/api/admin/smtp-test.php', {
+          const apiResult = await fetchJsonWithTimeout('/api/admin/smtp-test.php', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -921,21 +978,31 @@
               test_email: testEmail,
               ...smtpConfig
             })
-          });
+          }, 12000);
 
-          const result = await response.json();
+          if (apiResult.error && !apiResult.data) {
+            showSMTPResult('error',
+              '<strong>Failed to Send Test Email</strong><br>' +
+              apiResult.error
+            );
+            return;
+          }
 
-          if (result.success) {
+          const result = apiResult.data;
+
+          if (result?.success) {
             showSMTPResult('success',
               '<strong>Test Email Sent!</strong><br>' +
               result.message + '<br>' +
               '<small>Check the inbox for ' + testEmail + '</small>'
             );
           } else {
+            const timedOut = apiResult.status === 'timeout';
             showSMTPResult('error',
               '<strong>Failed to Send Test Email</strong><br>' +
-              result.error +
-              (result.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '')
+              (timedOut ? 'Request timed out after 12 seconds.' : (result?.error || 'Unknown error')) +
+              (result?.detailed_error ? '<br><small>' + result.detailed_error + '</small>' : '') +
+              (!timedOut && apiResult.status && apiResult.status !== 200 ? '<br><small>Status: ' + apiResult.status + '</small>' : '')
             );
           }
         } catch (error) {

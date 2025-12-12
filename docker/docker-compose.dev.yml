@@ -16,9 +16,8 @@ services:
     volumes:
       # Mount source code for live development
       - ../src:/var/www/html
-      # Mount framework from external location (overrides symlink)
-      - ${FRAMEWORK_PATH}/framework:/var/www/html/framework:ro
-      - ${FRAMEWORK_PATH}/index.php:/var/www/html/index.php:ro
+      # Mount vendor from host (run 'composer install' on host first)
+      - ../vendor:/var/www/html/vendor
       # Mount migrations for live development
       - ../migrations:/docker-migrations:ro
       # Database persistence

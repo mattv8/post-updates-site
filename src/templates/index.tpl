@@ -7,12 +7,19 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   {if $authenticated and $csrf_token}
-  <meta name="csrf-token" content="{$csrf_token}" />
+    <meta name="csrf-token" content="{$csrf_token}" />
   {/if}
 
-  <link rel="stylesheet" type="text/css" href="framework/vendor/bootstrap5/css/bootstrap.min.css" />
-  <link rel="stylesheet" type="text/css" href="framework/vendor/font-awesome/css/all.min.css" />
-  <link rel="stylesheet" type="text/css" href="framework/css/portal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  {* App styles *}
+  <link rel="stylesheet" type="text/css" href="/css/global.css" />
+  <link rel="stylesheet" type="text/css" href="/css/custom.css" />
+  <link rel="stylesheet" type="text/css" href="/css/home.css" />
+  <link rel="stylesheet" type="text/css" href="/css/post_overlay.css" />
+  <link rel="stylesheet" type="text/css" href="/css/donation-modal.css" />
 
   <script>
     "use strict";
@@ -23,14 +30,15 @@
     GLOBAL.config.currentUser = {if $currentUser}"{$currentUser|escape:'javascript'}"{else}null{/if};
   </script>
 
-  <script src="framework/vendor/jquery/js/jquery-3.6.1.min.js"></script>
-  <script src="framework/vendor/bootstrap5/js/bootstrap.bundle.min.js"></script>
-  <script src="framework/js/functions.js"></script>
+  {if $page eq 'login' and $js_config.recaptcha_key}
+    <script src="https://www.google.com/recaptcha/api.js?render={$js_config.recaptcha_key}"></script>
+  {/if}
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
   {* Custom header includes *}
-  {if file_exists("templates/header.tpl")}
-    {include file="templates/header.tpl"}
-  {/if}
+  {include file="templates/header.tpl"}
 
   {* Favicon - use dynamic favicon from branding settings or default *}
   {if $favicon_ico}
@@ -56,38 +64,26 @@
 
 <body>
 
-  {* Login page - use framework default *}
+  {* Login page *}
   {if $page eq 'login'}
-    {if file_exists("templates/login.tpl")}
-      {include file="templates/login.tpl"}
-    {else if file_exists("framework/tpl/login.tpl")}
-      {include file="framework/tpl/login.tpl"}
-    {/if}
+    {include file="templates/login.tpl"}
 
-  {* For public pages, use minimal layout *}
-  {else if $page|in_array:$public_pages and not $authenticated}
-
-    {* Simple public navigation for unauthenticated users *}
+  {* Public pages when unauthenticated *}
+  {elseif ($page eq 'home' or $page eq 'post') and not $authenticated}
     <nav class="navbar navbar-light bg-white shadow-sm">
       <div class="container d-flex align-items-center">
-        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public" href="?page=home">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" href="?page=home">
           {if $settings.show_logo && $logo_url}
             {if $logo_srcset_png && $logo_srcset_webp}
-              {* Custom uploaded logo with responsive variants *}
               <picture>
                 <source type="image/webp" srcset="{$logo_srcset_webp}" />
                 <img src="{$logo_url}" srcset="{$logo_srcset_png}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
               </picture>
             {else}
-              {* Default logo or simple image *}
               <img src="{$logo_url}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
             {/if}
           {/if}
-          {if $settings.site_title}
-            <span>{$settings.site_title|escape}</span>
-          {else}
-            <span>Post Portal</span>
-          {/if}
+          <span>{if $settings.site_title}{$settings.site_title|escape}{else}Post Portal{/if}</span>
         </a>
         <div>
           <a href="?page=login" class="btn btn-sm btn-outline-primary">Admin Login</a>
@@ -95,7 +91,6 @@
       </div>
     </nav>
 
-    {* Public page content *}
     {if $error or $page eq 'error'}
       <div class="container mt-4">
         <div class="alert alert-danger">
@@ -105,8 +100,6 @@
     {else}
       {if file_exists("templates/$page.tpl")}
         {include file="templates/$page.tpl"}
-      {else if file_exists("framework/tpl/$page.tpl")}
-        {include file="framework/tpl/$page.tpl"}
       {else}
         <div class="container mt-4">
           <div class="alert alert-danger">
@@ -116,29 +109,22 @@
       {/if}
     {/if}
 
-  {else if $page|in_array:$public_pages and $authenticated}
-
-    {* Public page with authenticated menu *}
+  {* Public pages while authenticated *}
+  {elseif ($page eq 'home' or $page eq 'post') and $authenticated}
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
       <div class="container-fluid d-flex align-items-center">
-        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" id="navbar-brand-public-auth" href="?page=home">
+        <a class="navbar-brand fw-bold fs-4 m-0 py-2 d-flex align-items-center" href="?page=home">
           {if $settings.show_logo && $logo_url}
             {if $logo_srcset_png && $logo_srcset_webp}
-              {* Custom uploaded logo with responsive variants *}
               <picture>
                 <source type="image/webp" srcset="{$logo_srcset_webp}" />
                 <img src="{$logo_url}" srcset="{$logo_srcset_png}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
               </picture>
             {else}
-              {* Default logo or simple image *}
               <img src="{$logo_url}" alt="Logo" style="max-height: 40px; width: auto;" class="me-2" />
             {/if}
           {/if}
-          {if $settings.site_title}
-            <span>{$settings.site_title|escape}</span>
-          {else}
-            <span>Post Portal</span>
-          {/if}
+          <span>{if $settings.site_title}{$settings.site_title|escape}{else}Post Portal{/if}</span>
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -148,9 +134,7 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link" href="?page=admin">
-                <i class="fa fa-fw fa-cog"></i> Admin Dashboard
-              </a>
+              <a class="nav-link" href="?page=admin"><i class="fa fa-fw fa-cog"></i> Admin Dashboard</a>
             </li>
             <li class="nav-item">
               <button class="nav-link btn btn-link" data-bs-toggle="modal" data-bs-target="#createPostModal">
@@ -158,16 +142,13 @@
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link btn btn-link" onclick="logoff()">
-                <i class="fa fa-fw fa-sign-out"></i> Logout
-              </button>
+              <button class="nav-link btn btn-link" onclick="logoff()"><i class="fa fa-fw fa-sign-out"></i> Logout</button>
             </li>
           </ul>
         </div>
       </div>
     </nav>
 
-    {* Public page content *}
     {if $error or $page eq 'error'}
       <div class="container mt-4">
         <div class="alert alert-danger">
@@ -177,8 +158,6 @@
     {else}
       {if file_exists("templates/$page.tpl")}
         {include file="templates/$page.tpl"}
-      {else if file_exists("framework/tpl/$page.tpl")}
-        {include file="framework/tpl/$page.tpl"}
       {else}
         <div class="container mt-4">
           <div class="alert alert-danger">
@@ -188,50 +167,31 @@
       {/if}
     {/if}
 
-    {* Include Create Post modal for authenticated users *}
     {include file='templates/modals/create_post.tpl'}
-
-    {* Cropper.js for image cropping *}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="/js/image-crop-manager.js"></script>
-    <script src="/js/post-modal.js"></script>  {else}
-    {* Authenticated/Admin layout - use framework structure *}
+    <script src="/js/post-modal.js"></script>
+
+  {* Authenticated/Admin layout *}
+  {else}
     <div class="container-fluid inset-3">
       <div class="panel panel-success {$page_bg_color_class}">
-
-        {if file_exists("templates/menu.tpl")}
-          {include file="templates/menu.tpl"}
-        {else}
-          {include file="framework/tpl/menu.tpl"}
-        {/if}
+        {include file="templates/menu.tpl"}
 
         <div class="container-fluid px-0" id="page-content">
           {if $error or $page eq 'error'}
-            <div class="alert alert-danger">
-              <i class="fa fa-fw fa-exclamation-circle"></i> {$error}
-            </div>
+            <div class="alert alert-danger"><i class="fa fa-fw fa-exclamation-circle"></i> {$error}</div>
+          {elseif file_exists("templates/$page.tpl")}
+            {include file="templates/$page.tpl"}
           {else}
-            {if file_exists("templates/$page.tpl")}
-              {include file="templates/$page.tpl"}
-            {else if file_exists("framework/tpl/$page.tpl")}
-              {include file="framework/tpl/$page.tpl"}
-            {else}
-              <div class="alert alert-danger">
-                <i class="fa fa-fw fa-exclamation-circle"></i> Page not found: {$page}
-              </div>
-            {/if}
+            <div class="alert alert-danger"><i class="fa fa-fw fa-exclamation-circle"></i> Page not found: {$page}</div>
           {/if}
         </div>
-
       </div>
     </div>
-
-    {* Include framework modals for nav buttons *}
-    {if file_exists("framework/tpl/modals/modal.navbuttons.tpl")}
-      {include file="framework/tpl/modals/modal.navbuttons.tpl"}
-    {/if}
   {/if}
 
+  <script src="/js/auth.js"></script>
 </body>
 </html>

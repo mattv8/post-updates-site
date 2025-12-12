@@ -50,7 +50,7 @@
           <div class="hero-banner-preview" style="display: block; height: 0; padding-bottom: 100%; position: relative; overflow: hidden;">
             <img src="" alt="Hero preview" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 0;" />
             <div class="hero-banner-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #000000; opacity: 0.5; pointer-events: none; z-index: 1;"></div>
-            <div class="hero-banner-text-preview hero-content" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.4); transform-origin: center; width: 250%; max-width: 2400px; color: white; z-index: 2; padding: 150px;">
+            <div class="hero-banner-text-preview hero-content" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); transform-origin: center; width: 200%; max-width: 2000px; color: white; z-index: 2; padding: 1rem 10rem 1rem 10rem;">
               <div class="hero-preview-content">Hero text will appear here...</div>
             </div>
             <button type="button" class="btn btn-danger btn-sm btn-remove-hero-banner position-absolute top-0 end-0 m-2"
@@ -91,7 +91,7 @@
           </label>
           <div class="d-flex align-items-center gap-2">
             <input type="color" class="form-control form-control-color" id="{$prefix}hero_overlay_color" value="#000000" title="Choose overlay color">
-            <input type="text" class="form-control form-control-sm" id="{$prefix}hero_overlay_color_hex" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" style="width: 100px;">
+            <input type="text" class="form-control form-control-sm" id="{$prefix}hero_overlay_color_hex" value="#000000" maxlength="7" style="width: 100px;">
           </div>
         </div>
 

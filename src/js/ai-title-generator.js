@@ -5,6 +5,36 @@
 (function() {
   'use strict';
 
+  // Lightweight toast helper for AI title errors (e.g., missing API key)
+  function showToast(message, type = 'danger') {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container position-fixed top-0 end-0 p-3';
+      container.style.zIndex = '9999';
+      document.body.appendChild(container);
+    }
+
+    const id = 'toast-' + Date.now();
+    const bgClass = 'bg-' + (type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'danger');
+    const textClass = type === 'warning' ? 'text-dark' : 'text-white';
+
+    container.insertAdjacentHTML('beforeend', `
+      <div id="${id}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header ${bgClass} ${textClass}">
+          <strong class="me-auto">${type === 'warning' ? 'Warning' : type === 'success' ? 'Success' : 'Error'}</strong>
+          <button type="button" class="btn-close ${textClass === 'text-white' ? 'btn-close-white' : ''}" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">${message}</div>
+      </div>
+    `);
+
+    const toastEl = document.getElementById(id);
+    const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+  }
+
   /**
    * Initialize AI title generation for a specific post editor container
    * @param {Element} container - The post editor container element
@@ -81,15 +111,19 @@
           }, 2000);
         } else {
           const errorMsg = data.error || 'Failed to generate title';
-          alert('Error: ' + errorMsg);
-          console.error('Title generation error:', data);
+          showToast(errorMsg, 'danger');
+
+          // Only log unexpected errors; missing key is already conveyed to the user
+          if (!errorMsg.includes('OpenAI API key not configured')) {
+            console.error('Title generation error:', data);
+          }
         }
 
         // Restore button
         generateBtn.innerHTML = originalHTML;
       } catch (error) {
         console.error('Error generating title:', error);
-        alert('An error occurred while generating the title. Please try again.');
+        showToast('An error occurred while generating the title. Please try again.', 'danger');
         generateBtn.innerHTML = '<i class="bi bi-sparkles me-1"></i>Create Title with AI';
       } finally {
         generateBtn.disabled = false;

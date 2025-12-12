@@ -1,310 +1,74 @@
 <?php
+
+declare(strict_types=1);
+
 /*
     Custom PHP Functions
 */
-require_once(__DIR__ . '/framework/conf/config.php');
-require_once(__DIR__ . '/framework/lib/functions.php');
 require_once(__DIR__ . '/vendor/autoload.php'); // Composer autoload
 
 // Default AI system prompt for title generation
 define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates concise, engaging titles for update posts. The title should be short (3-8 words), and capture the essence of the update. Return ONLY the title text, nothing else.');
 
 /**
- * Debug logging function that only logs when debug mode is enabled
- * @param string $message The message to log
- * @param string $prefix Optional prefix for the log message
+ * Get database connection.
+ *
+ * @param string $host Database host
+ * @param string $user Database user
+ * @param string $password Database password
+ * @param string $database Database name
+ * @return \mysqli|null Database connection or null on failure
  */
-function debug_log($message, $prefix = 'DEBUG') {
-    global $debug;
-    if ($debug === true) {
-        error_log("[$prefix] " . $message);
-    }
-}
-
-# Simple function to pretty-print out all the field names of a given PDF
-# Code loosely based off the following SetaPDF examples:
-#   https://demos.setasign.com/?p=%2Fdemo%2F3-FormFiller%2Fvarious%2F1-get-field-names-and-types
-#   https://demos.setasign.com/?p=%2Fdemo%2F3-FormFiller%2Fvarious%2F1.1-get-field-information
-function printPDFFieldNames(String $path)
+function getDbConnection(string $host, string $user, string $password, string $database): ?\mysqli
 {
-    $document = SetaPDF_Core_Document::loadByFilename($path);
-    $formFiller = new SetaPDF_FormFiller($document);
-    $fields = $formFiller->getFields(); // access the fields instance
-    $names = $fields->getNames(); // get all field names
-
-    echo "<h5 class=\"pt-5\">PDF Fields:</h5>";
-    echo "<table class=\"table table-striped table-hover\"><tr><th>Field Name</th><th>Field Type</th><th>Read Only</th><th>Required</th></tr>";
-
-    foreach ($names as $name) {
-        echo "<tr>";
-        echo "<td>" . htmlspecialchars($name) . "</td>"; // to get the field type, you need to access/create a field instance
-        $field = $fields->get($name); // to get the field type, you need to access/create a field instance
-        echo "<td>" . get_class($field) . "</td>";
-        echo "<td>" . ($field->isReadOnly() ? 'Yes' : 'No') . "</td>";
-        echo "<td>" . ($field->isRequired() ? 'Yes' : 'No') . "</td>";
-        echo "</tr>";
+    $conn = mysqli_connect($host, $user, $password, $database);
+    if (!$conn) {
+        error_log('Database connection failed: ' . mysqli_connect_error());
+        return null;
     }
-    echo "</table>";
-}
-
-# Simple function to pretty-print out all the field names from an associative array
-function printDatabaseFields(array $data)
-{
-    echo "<h5 class=\"pt-5\">Database Parameters:</h5>";
-    echo "<table class=\"table table-striped table-hover\"><tr><th>DB Key</th><th>Value</th></tr>";
-    foreach ($data as $key => $value) {
-        echo "<tr>";
-        echo "<td>" . $key . "</td>";
-        echo "<td>" . $value . "</td>";
-        echo "</tr>";
-    }
-    echo "</table>";
-}
-
-
-# Implode an array, filtering out empty fields
-function implodeNotEmpty($separator, $array)
-{
-
-    $string = implode($separator, array_filter($array, function ($value) {
-        return !empty($value);
-    }));
-
-    return $string;
-}
-
-
-# Simple functio so store and return GET params to an associative array
-function getParams($GET)
-{
-    $params = array();
-    foreach ($GET as $key => $value) {
-        $params[$key] = $value;
-    }
-    return $params;
-}
-
-
-/**
- * Fetches all entries for a given entry ID from the database.
- *
- * @param $db_conn mysqli The database connection object.
- * @param $entryId string The ID of the entry to fetch.
- *
- * @return array An array containing the fetched data, success status, and error message (if any).
- */
-function fetchAllEntries($db_conn, $entryId)
-{
-    $message = ''; // Initialize error message
-
-    // Build the query to fetch data from the Forms table
-    /**
-     * Note: here we modify the query to cast PassWeight to float. I'm not sure why this is required but I couldn't get the value
-     * to return as anything other than an integer without explicitly casting to decimal. This isn't a good long-term solution.
-     **/
-    $query = "SELECT *, CAST(Forms.PassWeight AS DECIMAL(10,2)) AS PassWeight FROM `Forms`
-    INNER JOIN `Event` ON Forms.EventId = Event.EventId
-    INNER JOIN `sites` ON Forms.SiteId = sites.SiteId
-    WHERE Forms.FormId='$entryId';";
-
-    // Query Forms table for the entry
-    $FormsData = mysqli_query($db_conn, $query);
-    if (!$FormsData || mysqli_num_rows($FormsData) != 1) {
-        $message = "Error fetching Forms record: " . mysqli_error($db_conn);
-        return array('data' => null, 'success' => false, 'msg' => $message); // Short circuit with failure return
-    }
-    $data = mysqli_fetch_assoc($FormsData);
-
-    // Fetch column comments for the Forms table and Event table
-    $formsComments = fetchColumnComments($db_conn, 'Forms', array_keys($data));
-    $eventComments = fetchColumnComments($db_conn, 'Event', array_keys($data));
-
-    // Merge the comments from both tables
-    $columnComments = array_merge($formsComments, $eventComments);
-
-    // Combine data with comments
-    $results = array();
-    foreach ($data as $key => $value) {
-        $results[$key] = array("value" => $value, "comment" => $columnComments[$key]);
-    }
-
-    return array('data' => $results, 'success' => true, 'msg' => $message);
-}
-
-
-/**
- * Fetches all attributes of an event based on its EventId from the database.
- *
- * This function retrieves all columns for a specific event identified by EventId
- * from the 'Event' table in the database and returns them as an associative array.
- *
- * @param mysqli $db_conn The MySQLi database connection object.
- * @param int $eventId The unique identifier of the event to fetch.
- * @return array An associative array containing event attributes on success,
- *               or an error message and query information on failure.
- */
-function fetchEventAttributes($db_conn, $eventId)
-{
-    $message = ''; // Initialize error message
-
-    // Build the query to fetch all columns from the Event table based on the EventId
-    $query = "SELECT * FROM `Event` WHERE EventId='" . $eventId . "';";
-
-    // Query the Event table for the entry
-    $eventData = mysqli_query($db_conn, $query);
-    if (!$eventData || mysqli_num_rows($eventData) != 1) {
-        $message = "Error fetching Event record: " . mysqli_error($db_conn);
-        return array('data' => null, 'success' => false, 'msg' => $message, 'query' => $query); // Short circuit with failure return
-    }
-    $data = mysqli_fetch_assoc($eventData);
-
-    // Retrieve the column names of the Event table
-    $columnQuery = "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = 'Event';";
-    $columnData = mysqli_query($db_conn, $columnQuery);
-    if (!$columnData) {
-        $message = "Error fetching column names for Event: " . mysqli_error($db_conn);
-        return array('data' => null, 'success' => false, 'msg' => $message, 'query' => $query); // Short circuit with failure return
-    }
-    $columns = array();
-    if (mysqli_num_rows($columnData) > 0) {
-        while ($row = mysqli_fetch_assoc($columnData)) {
-            $columns[] = array_values($row)[0];
-        }
-    }
-
-    $results = array();
-    foreach ($columns as $column) {
-        $results[$column] = array("value" => $data[$column]);
-    }
-
-    return array('data' => $results, 'success' => true, 'msg' => $message);
-}
-
-
-/**
- * Fetches comments for specific columns in a database table.
- *
- * @param mysqli $db_conn The database connection object.
- * @param string $table The name of the database table.
- * @param array|null $keys An array of column names for which comments should be fetched, or null to fetch comments for all columns.
- * @return array An associative array where column names are keys and comments are values.
- */
-function fetchColumnComments($db_conn, $table, $keys = null)
-{
-    $columns = ($keys === null) ? '*' : implode("','", $keys);
-
-    // Build the query
-    $query = "SELECT COLUMN_NAME, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_NAME = '$table'";
-    if ($keys !== null) {
-        $query .= " AND COLUMN_NAME IN ('$columns')";
-    }
-
-    // Query information schema for column comments
-    $result = mysqli_query($db_conn, $query);
-    $comments = array(); // Preallocate
-    if (mysqli_num_rows($result) > 0) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $column_name = $row['COLUMN_NAME'];
-            $column_comment = $row['COLUMN_COMMENT'];
-            $comments[$column_name] = $column_comment;
-        }
-    }
-
-    return $comments;
-}
-
-
-/**
- * Executes a SQL query using the provided database connection.
- *
- * @param mysqli $connection The database connection object.
- * @param string $query The SQL query to execute.
- * @return mysqli_result|false Returns the query result or false if execution fails.
- */
-function executeQuery($connection, $query)
-{
-    $result = mysqli_query($connection, $query);
-    if (!$result) {
-        return false; // Query execution failed
-    }
-    return $result;
+    return $conn;
 }
 
 /**
- * Handles query errors by sending a JSON response with an error message.
+ * App defaults in one place (no superglobals).
  *
- * @param mysqli $connection The database connection object.
- * @return void
+ * @return array{auth_type:string,default_page:string,default_logo:string,js_config:array<string,string>}
  */
-function handleQueryError($connection)
+function getAppDefaults(): array
 {
-    echo json_encode(array('success' => false, 'msg' => "Error with the query: " . mysqli_error($connection)));
-    return;
+    return [
+        'auth_type' => getenv('AUTH_TYPE') ?: 'sql',
+        'default_page' => 'home',
+        'default_logo' => '/images/default-logo.svg',
+        'js_config' => [
+            'recaptcha_key' => getenv('RECAPTCHA_SITE_KEY') ?: '',
+        ],
+    ];
 }
 
-
-function getAutoGeneratedColumns($db_conn, $tableName)
+/**
+ * Read database configuration from environment.
+ *
+ * @return array{host:string,user:string,password:string,database:string}
+ */
+function getDbConfig(): array
 {
-    $autoGeneratedColumns = [];
-
-    // Query to get the list of auto-generated columns
-    $autoGeneratedColumnsQuery = "SELECT COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = '$tableName'
-        AND (EXTRA LIKE '%AUTO_INCREMENT%' OR COLUMN_DEFAULT LIKE 'CURRENT_TIMESTAMP%');
-    ";
-
-
-    // Execute the query to fetch auto-generated columns
-    $autoGeneratedColumnsResult = mysqli_query($db_conn, $autoGeneratedColumnsQuery);
-
-    if ($autoGeneratedColumnsResult) {
-        // Fetch and store auto-generated column names
-        while ($row = mysqli_fetch_assoc($autoGeneratedColumnsResult)) {
-            $autoGeneratedColumns[] = $row['COLUMN_NAME'];
-        }
-
-        // Free the result set
-        mysqli_free_result($autoGeneratedColumnsResult);
-    }
-
-    return $autoGeneratedColumns;
+    return [
+        'host' => getenv('MYSQL_HOST') ?: 'localhost',
+        'database' => getenv('MYSQL_DATABASE') ?: 'postportal',
+        'user' => getenv('MYSQL_USER') ?: 'postportal',
+        'password' => getenv('MYSQL_PASSWORD') ?: 'postportal',
+    ];
 }
 
-
-
-function generate_ical($reservation)
+/**
+ * Convenience wrapper to open the default database connection.
+ */
+function getDefaultDbConnection(): ?\mysqli
 {
-    // Prepare calendar event details
-    $eventDate = new DateTime($reservation['EventDate'], new DateTimeZone('UTC'));
-    $eventDate->setTime(15, 0, 0);
-    $endTime = clone $eventDate;
-    $endTime->add(new DateInterval('PT8H'));
-    $dtstart = $eventDate->format('Ymd\THis\Z');
-    $dtend = $endTime->format('Ymd\THis\Z');
-
-    // Generate iCalendar (ICS) data
-    $ical_data = "BEGIN:VCALENDAR
-        VERSION:2.0
-        PRODID:-//Example Calendar//EN
-        CALSCALE:GREGORIAN
-        METHOD:PUBLISH
-        BEGIN:VEVENT
-        UID:" . $reservation['EventId'] . "@" . $reservation['SiteHTMLName'] . "
-        DTSTART:$dtstart
-        DTEND:$dtend
-        SUMMARY:Reservation for " . $reservation['child_name_first'] . " " . $reservation['child_name_last'] . " at " . $reservation['SiteName'] . "
-        DESCRIPTION:This is your reservation for " . $reservation['child_name_first'] . " " . $reservation['child_name_last'] . " at " . $reservation['SiteName'] . ".
-        LOCATION:" . $reservation['SiteName'] . "
-        END:VEVENT
-        END:VCALENDAR";
-
-    // Trim space at beginning of each line because vscode inserts them into the string.
-    $ical_data_clean = preg_replace('/^ +/m', '', $ical_data);
-
-    return $ical_data_clean;
+    $cfg = getDbConfig();
+    return getDbConnection($cfg['host'], $cfg['user'], $cfg['password'], $cfg['database']);
 }
-
 
 /**
  * Sends an email using Swift Mailer.
@@ -346,7 +110,7 @@ function sendEmail($smtpConfig, $fromEmail, $fromName, $toEmails, $subject, $htm
         $message->setFrom([$fromEmail => $fromName]);
 
         // Set recipient email(s) based on debug mode
-        require(__DIR__ . '/config.local.php');
+        require(__DIR__ . '/config.php');
         if ($email_debug && isset($debug_catchall_email)) {
             $toEmails = $debug_catchall_email; // Use debug catch-all email
         }
@@ -384,251 +148,6 @@ function sendEmail($smtpConfig, $fromEmail, $fromName, $toEmails, $subject, $htm
 
 
 /**
- * Format a date string from the provided data using one or more date keys.
- *
- * @param array        $data       The data array containing date information.
- * @param string|array $dateKeys   A single date key or an array of date keys to check in the data.
- * @param string       $format     The date format string (default: 'M j, Y @ g:ia').
- *
- * @return string  The formatted date string or an empty string if no valid date is found.
- */
-function formatDate($data, $dateKeys, $inFormat = 'Y-m-d H:i:s', $outFormat = 'M j, Y @ g:ia')
-{
-    $dateString = '';
-    $dateKeys = is_array($dateKeys) ? $dateKeys : [$dateKeys];
-
-    foreach ($dateKeys as $dateKey) {
-        if (isset($data[$dateKey])) {
-            $dateTime = date_create_from_format($inFormat, $data[$dateKey]);
-            $dateString = $dateTime instanceof DateTime ? $dateTime->format($outFormat) : '';
-            break; // Break out of the loop once a valid date is found
-        }
-    }
-
-    return $dateString;
-}
-
-
-/**
- * Calculates the age based on the given birthdate.
- *
- * @param string $birthdate The birthdate in the format 'YYYY-MM-DD'.
- * @return string The age formatted as 'X yr' or 'X mo'.
- */
-function calculateAge($birthdate)
-{
-    // Create a DateTime object for the birthdate
-    $birthdate = new DateTime($birthdate);
-
-    // Get the current date
-    $currentDate = new DateTime();
-
-    // Calculate the difference in years and months
-    $ageYears = $currentDate->diff($birthdate)->y;
-    $ageMonths = $currentDate->diff($birthdate)->m;
-
-    // Determine the format based on age
-    if ($ageYears < 1) {
-        return $ageMonths . ' mo'; // Convert age to months if less than 1 year
-    } else {
-        $formattedAge = floor($ageYears) . ' yr'; // Display age in years
-        $formattedAge .= $ageYears >= 2 ? 's' : ''; // Add 's' for plural if age is 2 or more
-        return $formattedAge;
-    }
-}
-
-
-/**
- * Generates a pseudo-random number based on a seed, which holds the result constant.
- *
- * @param int|string $seed The seed for the random number generator. Can be a number or a string.
- * @return Closure A function that, when called, generates a pseudo-random 8-bit value.
- */
-function seededPRNG($seed)
-{
-    // Ensure the seed is a positive integer
-    $seed = abs(crc32((string)$seed));
-
-    // Return a closure that generates a pseudo-random 8-bit value
-    return function () use (&$seed) {
-        $seed = floor($seed * 0x2FFFFFF) + 0x6D2B79F5; // Update the internal state with arbitrary constants
-        return ($seed >> 24) & 0xFF; // Extract the 8-bit portion of the state as the pseudo-random value
-    };
-}
-
-
-/**
- * Generates a hex color code based on a seed value.
- *
- * @param int|string $seed The seed for the color generation. Can be a number or a string.
- * @return string A hex color code in the format "#RRGGBB".
- */
-function seededHexColor($seed)
-{
-    // Helper Function(s)
-    $toHex = function ($value) {
-        return str_pad(dechex($value), 2, '0', STR_PAD_LEFT);
-    };
-
-    // Convert each component to hexadecimal
-    $redHex = $toHex(seededPRNG($seed)());
-    $greenHex = $toHex(seededPRNG($seed + 1)());
-    $blueHex = $toHex(seededPRNG($seed + 2)());
-
-    // Combine the hexadecimal components to form the final hex color code
-    return "#{$redHex}{$greenHex}{$blueHex}";
-}
-
-
-/**
- * Breaks a string into chunks at a specified character count,
- * ensuring that the split occurs at the nearest space character
- * before the specified count.
- *
- * @param string $string The input string to be split.
- * @param int $maxLength The maximum length of each chunk.
- * @return array An array containing the separated strings.
- */
-function breakStringAtSpace($string, $maxLength)
-{
-    $chunks = [];
-
-    // Check if the string length is greater than the maximum length
-    if (strlen($string) > $maxLength) {
-        // Find the last space character within the specified length
-        $lastSpaceIndex = strrpos(substr($string, 0, $maxLength), ' ');
-
-        // If a space was found, split the string at that index
-        if ($lastSpaceIndex !== false) {
-            $chunks[] = substr($string, 0, $lastSpaceIndex);
-            $chunks[] = substr($string, $lastSpaceIndex + 1);
-        } else {
-            // If no space was found, split the string at the specified length
-            $chunks[] = substr($string, 0, $maxLength);
-            $chunks[] = substr($string, $maxLength);
-        }
-    } else {
-        // If the string length is not greater than the maximum length, return the string as is
-        $chunks[] = $string;
-    }
-
-    return $chunks;
-}
-
-
-/**
- * Rotates an image if it is in landscape orientation.
- *
- * This function takes imageData as input, which is a binary string representing
- * an image, and the MIME type of the image. It checks if the image is in landscape
- * orientation and if the format is compatible (JPEG or PNG), and if so, rotates
- * it 90 degrees clockwise to make it portrait. The function returns the rotated
- * image data as a binary string. If the image format is not compatible or if the
- * image is not in landscape orientation, it returns the original image data.
- *
- * @param string $imageData The binary string representing the image data.
- * @param string $mimeType The MIME type of the image (e.g., 'image/jpeg', 'image/png').
- * @return string The rotated image data as a binary string, or the original image data if rotation is not needed or if the format is not compatible.
- */
-function rotateImagePortrait($imageData, $mimeType)
-{
-    // Create image resource from binary string
-    $source = imagecreatefromstring($imageData);
-
-    // Get image dimensions and determine if it's landscape
-    $width = imagesx($source);
-    $height = imagesy($source);
-    $isLandscape = $width > $height;
-
-    // Check if the image format is compatible (JPEG or PNG)
-    $compatibleFormats = ['image/jpeg', 'image/png'];
-    $isCompatible = in_array($mimeType, $compatibleFormats);
-
-    // Rotate the image if it's landscape and format is compatible
-    if ($isLandscape && $isCompatible) {
-        $rotated = imagerotate($source, 90, 0);
-        ob_start();
-        imagejpeg($rotated);
-        $imageData = ob_get_clean();
-        imagedestroy($rotated);
-    }
-
-    // Free up memory
-    imagedestroy($source);
-
-    // Return the rotated image data or original image data
-    return $imageData;
-}
-
-
-/**
- * Convert an image from one format to another using the Imagick extension.
- *
- * This function takes binary data of an image, its input format, and the desired
- * output format, and converts the image to the specified format using the Imagick extension.
- *
- * @param string $inputImage Binary data of the input image.
- * @param string $inputFormat The format of the input image (e.g., 'jpeg', 'png', 'gif').
- * @param string $outputFormat The desired format of the output image (e.g., 'jpeg', 'png', 'gif').
- * @return string|false Binary data of the converted image, or false on failure.
- * @throws ImagickException If there's an error during conversion.
- *
- * @example
- * ```php
- * // Convert a JPEG image to PNG format
- * $jpegData = file_get_contents('input.jpg');
- * $pngData = convertImageFormat($jpegData, 'jpeg', 'png');
- * file_put_contents('output.png', $pngData);
- * ```
- *
- * @example
- * ```php
- * // Convert a PNG image to JPEG format
- * $pngData = file_get_contents('input.png');
- * $jpegData = convertImageFormat($pngData, 'png', 'jpeg');
- * file_put_contents('output.jpg', $jpegData);
- * ```
- */
-function convertImageFormat($inputImage, $inputFormat, $outputFormat)
-{
-
-    // Check if the Imagick extension is loaded
-    if (!extension_loaded('imagick')) {
-        echo "Image Magick module not loaded in PHP.";
-        return false;
-    }
-
-    // Create a new Imagick instance
-    $imagick = new Imagick();
-
-    // Get the supported formats
-    $formats = $imagick->queryFormats();
-
-    if (!in_array(trim(strtoupper($outputFormat)), $formats)) {
-        echo "Image Convert Error: Image output format '$inputFormat' not supported.";
-        return false;
-    }
-
-    try {
-        // Read the input image
-        $imagick->readImageBlob($inputImage);
-
-        // Set the output format
-        $imagick->setImageFormat($outputFormat);
-
-        // Convert the image to the specified format and get the output as binary string
-        $outputImage = $imagick->getImageBlob();
-
-        return $outputImage;
-    } catch (ImagickException $e) {
-        // Handle the error
-        echo 'Image Convert Error: ',  $e->getMessage(), " (input format: $inputFormat, output format: $outputFormat)\n";
-        return false;
-    }
-}
-
-
-/**
  * Registers a function to be called when the script execution ends.
  *
  * This function allows you to register a custom shutdown function
@@ -659,29 +178,6 @@ register_shutdown_function(function () {
     }
 });
 
-/**
- * Recursively decodes HTML entities in the provided data array.
- *
- * This function iterates through each key-value pair in the input array.
- * If the value is an array, the function calls itself recursively to decode
- * any nested arrays. If the value is a string, it decodes HTML entities
- * to their corresponding characters.
- *
- * @param array $data The input data array with potential HTML entities.
- * @return array The data array with HTML entities decoded.
- */
-function decodeHtmlEntities($data)
-{
-    foreach ($data as $key => $value) {
-        if (is_array($value)) {
-            $data[$key] = decodeHtmlEntities($value);
-        } else {
-            $data[$key] = html_entity_decode($value, ENT_QUOTES, 'UTF-8');
-        }
-    }
-    return $data;
-}
-
 // ==============================
 // Post Portal Helper Functions
 // ==============================
@@ -694,7 +190,7 @@ function decodeHtmlEntities($data)
  * @param string $html HTML content to sanitize (can be empty)
  * @return string Sanitized HTML (empty string if input is empty)
  */
-function sanitizeHtml($html)
+function sanitizeHtml(string $html): string
 {
     // Allow a safe subset of tags (including both <em> and <i> for italic formatting)
     $allowed_tags = '<p><br><strong><b><em><i><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
@@ -836,7 +332,7 @@ function sanitizeHtml($html)
 /**
  * Generate a text excerpt from HTML
  */
-function generateExcerpt($html, $maxLength = 250)
+function generateExcerpt(string $html, int $maxLength = 250): string
 {
     $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8')));
     if (mb_strlen($text, 'UTF-8') <= $maxLength) {
@@ -854,14 +350,14 @@ function generateExcerpt($html, $maxLength = 250)
 /**
  * CSRF helpers
  */
-function ensureSession()
+function ensureSession(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
 }
 
-function generateCsrfToken()
+function generateCsrfToken(): string
 {
     ensureSession();
     if (empty($_SESSION['csrf_token'])) {
@@ -870,7 +366,7 @@ function generateCsrfToken()
     return $_SESSION['csrf_token'];
 }
 
-function validateCsrfToken($token)
+function validateCsrfToken(string $token): bool
 {
     ensureSession();
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], (string)$token);
@@ -879,7 +375,7 @@ function validateCsrfToken($token)
 /**
  * Posts - CRUD helpers
  */
-function createPost($db_conn, $data)
+function createPost(\mysqli $db_conn, array $data): array
 {
     $title = $data['title'] ?? null;
     $body_html = sanitizeHtml($data['body_html'] ?? '');
@@ -907,7 +403,7 @@ function createPost($db_conn, $data)
     return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
-function updatePost($db_conn, $id, $data)
+function updatePost(\mysqli $db_conn, int $id, array $data): array
 {
     $id = (int)$id;
     $title = $data['title'] ?? null;
@@ -925,7 +421,10 @@ function updatePost($db_conn, $id, $data)
     // Auto-set published_at when status changes to 'published'
     // Check current status and published_at from database
     if ($status === 'published') {
-        $current = mysqli_fetch_assoc(mysqli_query($db_conn, "SELECT status, published_at FROM posts WHERE id = {$id}"));
+        $stmt_check = mysqli_prepare($db_conn, "SELECT status, published_at FROM posts WHERE id = ?");
+        mysqli_stmt_bind_param($stmt_check, 'i', $id);
+        mysqli_stmt_execute($stmt_check);
+        $current = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_check));
         if ($current && is_null($current['published_at'])) {
             $published_at = date('Y-m-d H:i:s');
         }
@@ -964,7 +463,7 @@ function updatePost($db_conn, $id, $data)
     return ['success' => true];
 }
 
-function deletePost($db_conn, $id)
+function deletePost(\mysqli $db_conn, int $id): bool
 {
     $id = (int)$id;
     // Soft delete - set deleted_at timestamp instead of actually deleting
@@ -973,7 +472,7 @@ function deletePost($db_conn, $id)
     return mysqli_stmt_execute($stmt);
 }
 
-function publishDraft($db_conn, $id)
+function publishDraft(\mysqli $db_conn, int $id): array
 {
     // Copy all draft fields to published fields for posts
     $id = (int)$id;
@@ -999,7 +498,10 @@ function publishDraft($db_conn, $id)
 
     // Refresh excerpt based on the now-published body_html to avoid stale excerpts
     // This ensures email notifications and list views use up-to-date summaries
-    $res = mysqli_query($db_conn, "SELECT body_html FROM posts WHERE id = {$id} LIMIT 1");
+    $stmt_body = mysqli_prepare($db_conn, "SELECT body_html FROM posts WHERE id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt_body, 'i', $id);
+    mysqli_stmt_execute($stmt_body);
+    $res = mysqli_stmt_get_result($stmt_body);
     if ($res) {
         $row = mysqli_fetch_assoc($res);
         if ($row && isset($row['body_html'])) {
@@ -1056,7 +558,7 @@ function publishSettingsDraft($db_conn)
  * @param array|null $post Post data array
  * @return array|null Post data with decoded HTML entities
  */
-function decodePostHtmlEntities($post) {
+function decodePostHtmlEntities(?array $post): ?array {
     if (!$post) {
         return null;
     }
@@ -1073,20 +575,23 @@ function decodePostHtmlEntities($post) {
     return $post;
 }
 
-function getPost($db_conn, $id)
+function getPost(\mysqli $db_conn, int $id): ?array
 {
     $id = (int)$id;
     $sql = "SELECT p.*,
                    u.first AS author_first, u.last AS author_last, u.username AS author_username
             FROM posts p
             LEFT JOIN users u ON p.created_by_user_id = u.username
-            WHERE p.id = {$id} AND p.deleted_at IS NULL LIMIT 1";
-    $result = mysqli_query($db_conn, $sql);
+            WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1";
+    $stmt = mysqli_prepare($db_conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $post = $result ? mysqli_fetch_assoc($result) : null;
     return decodePostHtmlEntities($post);
 }
 
-function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
+function getPublishedPosts(\mysqli $db_conn, int $limit = 10, int $offset = 0): array
 {
     $limit = (int)$limit; $offset = (int)$offset;
     $sql = "SELECT p.*, m.variants_json AS hero_variants,
@@ -1096,8 +601,11 @@ function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
             LEFT JOIN users u ON p.created_by_user_id = u.username
             WHERE p.status = 'published' AND p.deleted_at IS NULL
             ORDER BY COALESCE(p.published_at, p.created_at) DESC
-            LIMIT {$limit} OFFSET {$offset}";
-    $res = mysqli_query($db_conn, $sql);
+            LIMIT ? OFFSET ?";
+    $stmt = mysqli_prepare($db_conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'ii', $limit, $offset);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
     $rows = [];
     if ($res) {
         while ($r = mysqli_fetch_assoc($res)) {
@@ -1133,29 +641,41 @@ function saveMediaRecord($db_conn, $data)
     return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
-function getMedia($db_conn, $id)
+function getMedia(\mysqli $db_conn, int $id): ?array
 {
     $id = (int)$id;
-    $res = mysqli_query($db_conn, "SELECT * FROM media WHERE id = {$id} LIMIT 1");
+    $stmt = mysqli_prepare($db_conn, "SELECT * FROM media WHERE id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
     return $res ? mysqli_fetch_assoc($res) : null;
 }
 
-function getAllMedia($db_conn, $limit = 50, $offset = 0, $search = null)
+function getAllMedia(\mysqli $db_conn, int $limit = 50, int $offset = 0, ?string $search = null): array
 {
     $limit = (int)$limit; $offset = (int)$offset;
-    $where = '';
+
     if ($search) {
-        $q = mysqli_real_escape_string($db_conn, $search);
-        $where = "WHERE original_filename LIKE '%{$q}%' OR alt_text LIKE '%{$q}%'";
+        $searchPattern = "%{$search}%";
+        $sql = "SELECT * FROM media WHERE original_filename LIKE ? OR alt_text LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $stmt = mysqli_prepare($db_conn, $sql);
+        mysqli_stmt_bind_param($stmt, 'ssii', $searchPattern, $searchPattern, $limit, $offset);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+    } else {
+        $sql = "SELECT * FROM media ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $stmt = mysqli_prepare($db_conn, $sql);
+        mysqli_stmt_bind_param($stmt, 'ii', $limit, $offset);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
     }
-    $sql = "SELECT * FROM media {$where} ORDER BY created_at DESC LIMIT {$limit} OFFSET {$offset}";
-    $res = mysqli_query($db_conn, $sql);
+
     $rows = [];
     if ($res) { while ($r = mysqli_fetch_assoc($res)) { $rows[] = $r; } }
     return $rows;
 }
 
-function updateMediaAltText($db_conn, $id, $altText)
+function updateMediaAltText(\mysqli $db_conn, int $id, string $altText): bool
 {
     $id = (int)$id;
     $stmt = mysqli_prepare($db_conn, 'UPDATE media SET alt_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
@@ -1166,7 +686,7 @@ function updateMediaAltText($db_conn, $id, $altText)
 /**
  * Settings helpers
  */
-function getSettings($db_conn)
+function getSettings(\mysqli $db_conn): ?array
 {
     $res = mysqli_query($db_conn, 'SELECT * FROM settings WHERE id = 1');
     $settings = $res ? mysqli_fetch_assoc($res) : null;
@@ -1191,13 +711,12 @@ function getSettings($db_conn)
  * Get logo URL (with retina support via srcset)
  * Returns array with logo_url and logo_srcset_png
  */
-function getLogoUrls($db_conn, $logo_media_id = null)
+function getLogoUrls($db_conn, $logo_media_id = null, ?string $defaultLogo = null)
 {
-    global $logo;
+    $default_logo = $defaultLogo ?? '/images/default-logo.svg';
 
     if (!$logo_media_id) {
         // Return default logo from config
-        $default_logo = $logo ?? '/images/default-logo.svg';
         return [
             'logo_url' => $default_logo,
             'logo_srcset_png' => '',
@@ -1208,7 +727,6 @@ function getLogoUrls($db_conn, $logo_media_id = null)
     $media = getMedia($db_conn, (int)$logo_media_id);
     if (!$media || empty($media['variants_json'])) {
         // Return default logo from config
-        $default_logo = $logo ?? '/images/default-logo.svg';
         return [
             'logo_url' => $default_logo,
             'logo_srcset_png' => '',
@@ -1228,7 +746,6 @@ function getLogoUrls($db_conn, $logo_media_id = null)
         }
     }
 
-    $default_logo = $logo ?? '/images/default-logo.svg';
     $logo_url = $logo200 ? ('/' . $logo200['path']) : $default_logo;
     $logo_srcset_png = MediaProcessor::generateSrcset($variants, 'png');
     $logo_srcset_webp = MediaProcessor::generateSrcset($variants, 'webp');
@@ -1417,7 +934,7 @@ function updateSettings($db_conn, $data)
 /**
  * Newsletter helpers
  */
-function getActiveSubscriberCount($db_conn)
+function getActiveSubscriberCount(\mysqli $db_conn): int
 {
     $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = 1');
     if ($result) {
@@ -1427,7 +944,7 @@ function getActiveSubscriberCount($db_conn)
     return 0;
 }
 
-function getTotalSubscriberCount($db_conn)
+function getTotalSubscriberCount(\mysqli $db_conn): int
 {
     $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers');
     if ($result) {
@@ -1444,13 +961,13 @@ function getTotalSubscriberCount($db_conn)
  * @param string $email The email address to generate a token for
  * @return string URL-safe base64 encoded token
  */
-function generateUnsubscribeToken($email)
+function generateUnsubscribeToken(string $email): string
 {
-    require(__DIR__ . '/config.local.php');
-
-    // Use a secret key from config or generate one
-    // For production, this should be in your config.local.php
-    $secret = defined('UNSUBSCRIBE_SECRET') ? UNSUBSCRIBE_SECRET : $db_password;
+    $secret = getenv('UNSUBSCRIBE_SECRET');
+    if ($secret === false || $secret === '') {
+        $cfg = getDbConfig();
+        $secret = $cfg['password'];
+    }
 
     // Create payload with email (no timestamp/expiration)
     $payload = json_encode(['email' => $email]);
@@ -1471,10 +988,8 @@ function generateUnsubscribeToken($email)
  * @param string $token The token to validate
  * @return string|false Email address if valid, false otherwise
  */
-function validateUnsubscribeToken($token)
+function validateUnsubscribeToken(string $token): string|false
 {
-    require(__DIR__ . '/config.local.php');
-
     try {
         // Make URL-safe base64 back to normal
         $token = strtr($token, '-_', '+/');
@@ -1494,7 +1009,11 @@ function validateUnsubscribeToken($token)
         list($payload, $signature) = $parts;
 
         // Verify signature
-        $secret = defined('UNSUBSCRIBE_SECRET') ? UNSUBSCRIBE_SECRET : $db_password;
+        $secret = getenv('UNSUBSCRIBE_SECRET');
+        if ($secret === false || $secret === '') {
+            $cfg = getDbConfig();
+            $secret = $cfg['password'];
+        }
         $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
         if (!hash_equals($expectedSignature, $signature)) {
@@ -1600,25 +1119,20 @@ function sendNewPostNotification($db_conn, $postId)
     // Link directly to post detail overlay: /?page=home&post_id=X
     $postUrl = "{$baseUrl}/?page=home&post_id={$postId}";
 
-    // Build HTML email body using Smarty templates
-    // Initialize Smarty if not already available
-    global $smarty;
-    if (!isset($smarty) || !$smarty) {
-        require_once(__DIR__ . '/framework/vendor/smarty4/libs/Smarty.class.php');
-        $smarty = new Smarty();
-        $smarty->setTemplateDir(__DIR__ . '/templates');
-        $smarty->setCompileDir(__DIR__ . '/cache');
-        $smarty->setCacheDir(__DIR__ . '/cache');
-        // Disable auto-escaping since we're handling HTML content
-        $smarty->escape_html = false;
-    }
+    // Build HTML email body using Smarty templates without relying on globals
+    $emailView = new \Smarty\Smarty();
+    $emailView->setTemplateDir(__DIR__ . '/templates');
+    $emailView->setCompileDir(__DIR__ . '/cache');
+    $emailView->setCacheDir(__DIR__ . '/cache');
+    // Disable auto-escaping since we're handling HTML content
+    $emailView->escape_html = false;
 
     $includePostBody = (bool)$settings['email_include_post_body'];
 
     // Prepare common template variables (non-personalized)
-    $smarty->assign('site_title', $siteTitle);
-    $smarty->assign('post_url', $postUrl);
-    $smarty->assign('base_url', $baseUrl);
+    $emailView->assign('site_title', $siteTitle);
+    $emailView->assign('post_url', $postUrl);
+    $emailView->assign('base_url', $baseUrl);
 
     // Prepare template variables based on email type
     if ($includePostBody) {
@@ -1648,19 +1162,19 @@ function sendNewPostNotification($db_conn, $postId)
         }
 
         // Assign variables for full email template
-        $smarty->assign('post_title', $postTitle);
-        $smarty->assign('hero_image_url', $heroImageUrl);
-        $smarty->assign('hero_image_height', $post['hero_image_height'] ?? 100);
-        $smarty->assign('hero_title_overlay', $post['hero_title_overlay'] ?? 1);
-        $smarty->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
-        $smarty->assign('body_html', $bodyHtml);
+        $emailView->assign('post_title', $postTitle);
+        $emailView->assign('hero_image_url', $heroImageUrl);
+        $emailView->assign('hero_image_height', $post['hero_image_height'] ?? 100);
+        $emailView->assign('hero_title_overlay', $post['hero_title_overlay'] ?? 1);
+        $emailView->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
+        $emailView->assign('body_html', $bodyHtml);
     } else {
         // Always derive excerpt from the latest body_html to avoid stale saved excerpts
         $excerpt = generateExcerpt($post['body_html'], 150);
 
         // Assign variables for excerpt email template
-        $smarty->assign('author_name', $authorName);
-        $smarty->assign('excerpt', $excerpt);
+        $emailView->assign('author_name', $authorName);
+        $emailView->assign('excerpt', $excerpt);
     }
 
     // Send emails individually to each subscriber with personalized unsubscribe link
@@ -1775,13 +1289,13 @@ function sendNewPostNotification($db_conn, $postId)
                 $unsubscribeUrl = "{$baseUrl}/api/unsubscribe.php?token={$unsubscribeToken}";
 
                 // Assign the personalized unsubscribe URL to template
-                $smarty->assign('unsubscribe_url', $unsubscribeUrl);
+                $emailView->assign('unsubscribe_url', $unsubscribeUrl);
 
                 // Render the email body with personalized unsubscribe link
                 if ($includePostBody) {
-                    $emailBody = $smarty->fetch('email_notification_full.tpl');
+                    $emailBody = $emailView->fetch('email_notification_full.tpl');
                 } else {
-                    $emailBody = $smarty->fetch('email_notification_excerpt.tpl');
+                    $emailBody = $emailView->fetch('email_notification_excerpt.tpl');
                 }
 
                 // Clear previous recipients

@@ -69,18 +69,11 @@ RUN mkdir -p /var/www/html \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage
 
-# Clone and bundle Smarty Portal Framework at build time
-ARG FRAMEWORK_BRANCH=main
-RUN cd /tmp \
-    && git clone --depth 1 --branch ${FRAMEWORK_BRANCH} https://github.com/mattv8/smarty-portal-framework.git \
-    && cp -r /tmp/smarty-portal-framework/framework /var/www/html/framework \
-    && cp /tmp/smarty-portal-framework/index.php /var/www/html/index.php \
-    && rm -rf /tmp/smarty-portal-framework \
-    && chown -R www-data:www-data /var/www/html/framework \
-    && chown www-data:www-data /var/www/html/index.php
-
 # Copy nginx configuration
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
+
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock /var/www/html/
 
 # Copy application source code
 COPY src/ /var/www/html/

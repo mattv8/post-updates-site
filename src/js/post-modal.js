@@ -157,7 +157,12 @@
       body: formData
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Upload failed: invalid response');
+    }
 
     if (data.success) {
       const heroSelect = modal.querySelector('.post-hero-media');
@@ -349,7 +354,12 @@
           body: formData
         });
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch (err) {
+          throw new Error(`Failed to upload ${file.name}: invalid response`);
+        }
 
         if (data.success) {
           // Add to gallery

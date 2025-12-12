@@ -1,60 +1,40 @@
 <?php
-require_once(__DIR__ . '/../functions.php');
-require(__DIR__ . '/../config.local.php');
 
-header('Content-Type: application/json');
+declare(strict_types=1);
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-    exit;
-}
+use PostPortal\Http\ApiHandler;
+use PostPortal\Http\ErrorResponse;
 
-$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
-if (!$db_conn) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'DB connection failed']);
-    exit;
-}
+require_once __DIR__ . '/bootstrap.php';
 
-$payload = json_decode(file_get_contents('php://input'), true) ?: [];
-$postId = isset($payload['post_id']) ? (int)$payload['post_id'] : 0;
+ApiHandler::handle(function (): void {
+    ['container' => $container] = bootstrapApi();
+    $postService = $container->getPostService();
 
-$impressionInc = !empty($payload['impression']) ? 1 : 0;
-$uniqueImpressionInc = !empty($payload['unique_impression']) ? 1 : 0;
-$viewInc = !empty($payload['view']) ? 1 : 0;
-$uniqueViewInc = !empty($payload['unique_view']) ? 1 : 0;
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        ErrorResponse::json(405, 'Method not allowed');
+    }
 
-if ($postId <= 0 || ($impressionInc + $uniqueImpressionInc + $viewInc + $uniqueViewInc) === 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Invalid payload']);
-    exit;
-}
+    $payload = readJsonInput();
+    $postId = isset($payload['post_id']) ? (int) $payload['post_id'] : 0;
 
-// Update counters atomically. Unique counters are client-evaluated; server trusts payload.
-$stmt = mysqli_prepare(
-    $db_conn,
-    'UPDATE posts SET impression_count = impression_count + ?, unique_impression_count = unique_impression_count + ?, view_count = view_count + ?, unique_view_count = unique_view_count + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = "published" AND deleted_at IS NULL'
-);
+    $impressionInc = !empty($payload['impression']) ? 1 : 0;
+    $uniqueImpressionInc = !empty($payload['unique_impression']) ? 1 : 0;
+    $viewInc = !empty($payload['view']) ? 1 : 0;
+    $uniqueViewInc = !empty($payload['unique_view']) ? 1 : 0;
 
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Failed to prepare statement']);
-    exit;
-}
+    if ($postId <= 0 || ($impressionInc + $uniqueImpressionInc + $viewInc + $uniqueViewInc) === 0) {
+        ErrorResponse::badRequest('Invalid payload');
+    }
 
-mysqli_stmt_bind_param($stmt, 'iiiii', $impressionInc, $uniqueImpressionInc, $viewInc, $uniqueViewInc, $postId);
+    $result = $postService->incrementMetrics($postId, $impressionInc, $uniqueImpressionInc, $viewInc, $uniqueViewInc);
+    if (!$result['success']) {
+        $message = $result['error'] ?? 'Failed to update metrics';
+        if ($message === 'Post not found or not published') {
+            ErrorResponse::notFound($message);
+        }
+        ErrorResponse::badRequest($message);
+    }
 
-if (!mysqli_stmt_execute($stmt)) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => mysqli_error($db_conn)]);
-    exit;
-}
-
-if (mysqli_stmt_affected_rows($stmt) === 0) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Post not found or not published']);
-    exit;
-}
-
-echo json_encode(['success' => true]);
+    ErrorResponse::success(['success' => true]);
+});

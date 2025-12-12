@@ -10,9 +10,6 @@
 docker-compose.yml.old
 docker/docker-compose.dev.yml
 
-# Framework files (bundled separately)
-src/index.php
-
 # Documentation
 README.md
 docs/
@@ -21,10 +18,6 @@ DEPLOYMENT.md
 # Logs and temporary files
 logs/
 *.log
-
-# Database files (will be created at runtime)
-*.sql
-migrations/
 
 # Development scripts
 scripts/
@@ -37,8 +30,14 @@ src/cache/*
 src/storage/uploads/*
 !src/storage/uploads/.gitkeep
 
-# Composer vendor (installed during build)
-# src/vendor/ - KEEP THIS, we need it in the image
+# Vendor folders (installed fresh during build)
+vendor/
+src/vendor/
+
+# Tests (not needed in production)
+tests/
+phpunit.xml
+phpstan.neon
 
 # Development-only files
 docker-compose.yml.old

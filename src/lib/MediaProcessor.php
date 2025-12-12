@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Media Processing Library
  * Handles image uploads, optimization, and responsive variant generation
@@ -37,6 +40,49 @@ class MediaProcessor
         $this->manager = new ImageManager(['driver' => 'gd']);
 
         $this->ensureDirectories();
+    }
+
+    /**
+     * Safely write file contents with contextual logging.
+     */
+    private function writeFile(string $path, string $data): void
+    {
+        if (@file_put_contents($path, $data) === false) {
+            error_log('Failed to write file: ' . $path);
+            throw new Exception('Failed to write file to disk');
+        }
+    }
+
+    /**
+     * Safely move an uploaded file, falling back to copy when needed.
+     */
+    private function moveUploadedFile(string $tmpPath, string $destination): void
+    {
+        if (@move_uploaded_file($tmpPath, $destination)) {
+            return;
+        }
+
+        if (@copy($tmpPath, $destination)) {
+            return;
+        }
+
+        error_log('Failed to move uploaded file to ' . $destination);
+        throw new Exception('Failed to persist uploaded file');
+    }
+
+    /**
+     * Delete a file if it exists, throwing when deletion fails.
+     */
+    private function unlinkIfExists(string $path): void
+    {
+        if (!file_exists($path)) {
+            return;
+        }
+
+        if (!@unlink($path)) {
+            error_log('Failed to delete file: ' . $path);
+            throw new Exception('Unable to delete file');
+        }
     }
 
     /**
@@ -112,9 +158,11 @@ class MediaProcessor
      */
     public function processUpload($file, $altText = '', $username = 'admin', $cropData = null)
     {
+        error_log('MediaProcessor: upload start for user ' . $username . ' file ' . ($file['name'] ?? 'unknown') . ' type ' . ($file['type'] ?? 'n/a') . ' size ' . ($file['size'] ?? 'n/a'));
         // Validate file upload
         $validation = $this->validateUpload($file);
         if (!$validation['success']) {
+            error_log('MediaProcessor: validation failed - ' . ($validation['error'] ?? 'unknown error'));
             return $validation;
         }
 
@@ -130,7 +178,7 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                     $file['type'] = 'image/jpeg';
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
@@ -138,11 +186,7 @@ class MediaProcessor
             } else {
                 // Move uploaded file to originals directory
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Apply crop if provided
@@ -200,12 +244,16 @@ class MediaProcessor
     {
         // Check for upload errors
         if ($file['error'] !== UPLOAD_ERR_OK) {
-            return ['success' => false, 'error' => 'File upload error: ' . $this->getUploadError($file['error'])];
+            $err = 'File upload error: ' . $this->getUploadError($file['error']);
+            error_log('MediaProcessor: ' . $err);
+            return ['success' => false, 'error' => $err];
         }
 
         // Check file size
         if ($file['size'] > $this->maxFileSize) {
-            return ['success' => false, 'error' => 'File size exceeds 20MB limit'];
+            $err = 'File size exceeds 20MB limit';
+            error_log('MediaProcessor: ' . $err);
+            return ['success' => false, 'error' => $err];
         }
 
         // Validate MIME type
@@ -214,18 +262,24 @@ class MediaProcessor
         finfo_close($finfo);
 
         if (!in_array($mimeType, $this->allowedFormats) && !in_array($file['type'], $this->allowedFormats)) {
-            return ['success' => false, 'error' => 'Invalid file format. Only JPG, PNG, HEIC, and WebP are allowed'];
+            $err = 'Invalid file format. Only JPG, PNG, HEIC, and WebP are allowed';
+            error_log('MediaProcessor: ' . $err . ' (mime: ' . $mimeType . ', type: ' . ($file['type'] ?? 'n/a') . ')');
+            return ['success' => false, 'error' => $err];
         }
 
         // Validate extension
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($extension, $this->allowedExtensions)) {
-            return ['success' => false, 'error' => 'Invalid file extension'];
+            $err = 'Invalid file extension';
+            error_log('MediaProcessor: ' . $err . ' (' . $extension . ')');
+            return ['success' => false, 'error' => $err];
         }
 
         // Check if file is actually an image
         if (!getimagesize($file['tmp_name']) && $extension !== 'heic') {
-            return ['success' => false, 'error' => 'File is not a valid image'];
+            $err = 'File is not a valid image';
+            error_log('MediaProcessor: ' . $err);
+            return ['success' => false, 'error' => $err];
         }
 
         return ['success' => true];
@@ -403,18 +457,14 @@ class MediaProcessor
         try {
             // Delete original
             $originalPath = $this->originalsDir . '/' . $filename;
-            if (file_exists($originalPath)) {
-                unlink($originalPath);
-            }
+            $this->unlinkIfExists($originalPath);
 
             // Delete variants
             $variants = json_decode($variantsJson, true);
             if (is_array($variants)) {
                 foreach ($variants as $variant) {
                     $variantPath = __DIR__ . '/../' . $variant['path'];
-                    if (file_exists($variantPath)) {
-                        unlink($variantPath);
-                    }
+                    $this->unlinkIfExists($variantPath);
                 }
             }
 
@@ -493,7 +543,7 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                     $file['type'] = 'image/jpeg';
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
@@ -501,11 +551,7 @@ class MediaProcessor
             } else {
                 // Move uploaded file to originals directory
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Load image for cropping
@@ -584,17 +630,13 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
                 }
             } else {
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Load image for cropping

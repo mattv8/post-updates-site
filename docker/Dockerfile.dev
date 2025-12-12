@@ -1,5 +1,5 @@
 # Post Update - Development Container
-# Lighter build without framework bundling (framework mounted at runtime)
+# Standalone build for live-reload development (app source is bind-mounted)
 FROM ubuntu:22.04
 
 # Prevent interactive prompts during build

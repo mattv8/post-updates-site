@@ -1,65 +1,33 @@
 <?php
-/**
- * Check if publishing a post will trigger email notifications
- * Returns: { isFirstPublish: boolean, subscriberCount: number }
- */
-header('Content-Type: application/json');
-require_once(__DIR__ . '/../../functions.php');
-ensureSession();
 
-if (empty($_SESSION['authenticated']) || empty($_SESSION['username'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
-    exit;
-}
+declare(strict_types=1);
 
-if (isset($_SESSION['isadmin']) && !$_SESSION['isadmin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Forbidden']);
-    exit;
-}
+use PostPortal\Http\ApiHandler;
+use PostPortal\Http\ErrorResponse;
 
-require(__DIR__ . '/../../config.local.php');
-$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
-if (!$db_conn) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'DB connection failed']);
-    exit;
-}
+require_once __DIR__ . '/../bootstrap.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+ApiHandler::handle(function (): void {
+    ['container' => $container] = bootstrapApi(requireAuth: true, requireAdmin: true);
 
-if ($method === 'GET') {
-    $postId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-    if (!$postId) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing post ID']);
-        exit;
+    $postId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+    if ($postId <= 0) {
+        ErrorResponse::badRequest('Missing post ID');
     }
 
-    // Get post to check if published_at is null
-    $post = getPost($db_conn, $postId);
+    $postService = $container->getPostService();
+    $newsletterService = $container->getNewsletterService();
 
-    if (!$post) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Post not found']);
-        exit;
+    $post = $postService->getPost($postId);
+    if ($post === null) {
+        ErrorResponse::notFound('Post not found');
     }
 
-    // Check if this would be a first-time publish
     $isFirstPublish = is_null($post['published_at']);
+    $subscriberCount = $newsletterService->getActiveSubscriberCount();
 
-    // Get active subscriber count
-    $subscriberCount = getActiveSubscriberCount($db_conn);
-
-    echo json_encode([
-        'success' => true,
+    ErrorResponse::success([
         'isFirstPublish' => $isFirstPublish,
-        'subscriberCount' => $subscriberCount
+        'subscriberCount' => $subscriberCount,
     ]);
-} else {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-}
-?>
+});

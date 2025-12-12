@@ -1,4 +1,4 @@
-(function(){
+(function () {
   const root = document.getElementById('adminApp');
   if (!root) return;
   const CSRF = root.getAttribute('data-csrf') || '';
@@ -62,6 +62,16 @@
   let donationInstructionsEditor = null;
   let postBodyEditor = null;
 
+  // Shared hero preview text updater (used by settings page hero preview)
+  function updateHeroTextPreview(html) {
+    const heroTextPreview = document.querySelector('.hero-preview-content');
+    if (!heroTextPreview) {
+      console.warn('Hero text preview element not found.');
+      return;
+    }
+    heroTextPreview.innerHTML = html && html.trim() ? html : 'Hero text will appear here...';
+  }
+
   // Helper to detect payment platform from link and return icon/name
   function detectPaymentPlatform(link) {
     if (!link) return { icon: 'bi-credit-card', color: 'text-secondary', name: 'Send payment:' };
@@ -111,7 +121,7 @@
     if (!linkContainer || !qrContainer) return;
 
     // Show/hide based on selected method
-    switch(selectedMethod) {
+    switch (selectedMethod) {
       case 'link':
         linkContainer.style.display = 'block';
         qrContainer.style.display = 'none';
@@ -253,6 +263,13 @@
       'donation_instructions_html': 'donation-instructions-autosave-status'
     };
 
+    const statusEl = document.getElementById(statusMap[fieldName]);
+    if (statusEl) {
+      statusEl.dataset.forceEnabled = '1';
+      statusEl.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+      statusEl.className = 'editor-autosave-indicator';
+    }
+
     if (!window.setupAutoSave) {
       console.error('window.setupAutoSave is not defined!');
       return null;
@@ -278,6 +295,14 @@
       return null;
     }
 
+    // Mark autosave as enabled for existing posts so the UI does not suggest an initial manual save
+    const statusEl = document.getElementById('post-autosave-status');
+    if (statusEl) {
+      statusEl.dataset.forceEnabled = '1';
+      statusEl.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+      statusEl.className = 'editor-autosave-indicator';
+    }
+
     return window.setupAutoSave(editor, {
       saveUrl: `/api/admin/posts-draft.php?id=${postId}`,
       method: 'PUT',
@@ -288,28 +313,28 @@
   }
 
   // Simple helper
-  const api = (url, opts={}) => {
-    opts.headers = Object.assign({'X-CSRF-Token': CSRF}, opts.headers||{});
+  const api = (url, opts = {}) => {
+    opts.headers = Object.assign({ 'X-CSRF-Token': CSRF }, opts.headers || {});
     return fetch(url, opts).then(r => r.json());
   };
 
   // Dashboard
-  function loadDashboard(){
+  function loadDashboard() {
     // Check if dashboard elements exist before loading
     const postsTotal = document.getElementById('postsTotal');
     if (!postsTotal) return; // Dashboard not present on this page
 
-    fetch('/api/admin/dashboard.php').then(r=>r.json()).then(j=>{
-      if(!j.success) return;
+    fetch('/api/admin/dashboard.php').then(r => r.json()).then(j => {
+      if (!j.success) return;
       postsTotal.innerText = j.data.posts_total;
       document.getElementById('postsPublished').innerText = j.data.posts_published;
       document.getElementById('mediaTotal').innerText = j.data.media_total;
       const ul = document.getElementById('recentPosts');
       if (ul) {
-        ul.innerHTML='';
-        j.data.recent_posts.forEach(p=>{
-          const li = document.createElement('li'); li.className='list-group-item';
-          li.textContent = `#${p.id} ${p.title||'(untitled)'} — ${p.published_at||p.created_at}`;
+        ul.innerHTML = '';
+        j.data.recent_posts.forEach(p => {
+          const li = document.createElement('li'); li.className = 'list-group-item';
+          li.textContent = `#${p.id} ${p.title || '(untitled)'} — ${p.published_at || p.created_at}`;
           ul.appendChild(li);
         });
       }
@@ -319,13 +344,13 @@
   }
 
   // Settings
-  function loadSettings(){
-    fetch('/api/admin/settings.php').then(r=>r.json()).then(j=>{
-      if(!j.success||!j.data) return;
+  function loadSettings() {
+    fetch('/api/admin/settings.php').then(r => r.json()).then(j => {
+      if (!j.success || !j.data) return;
 
       const siteTitleElement = document.getElementById('site_title');
       if (siteTitleElement) {
-        siteTitleElement.value = j.data.site_title||'';
+        siteTitleElement.value = j.data.site_title || '';
       }
 
       // Load visibility toggles
@@ -360,11 +385,13 @@
       const heroHtml = j.data.hero_html_editing || '';
       if (heroEditor) {
         window.setQuillHTML(heroEditor, heroHtml);
+        updateHeroTextPreview(heroHtml);
       } else {
         const heroHtmlElement = document.getElementById('hero_html');
         if (heroHtmlElement) {
           heroHtmlElement.value = heroHtml;
         }
+        updateHeroTextPreview(heroHtml);
       }
 
       const ctaTextElement = document.getElementById('cta_text');
@@ -374,8 +401,8 @@
       const heroColorHexElement = document.getElementById('hero_overlay_color_hex');
       const heroHeightElement = document.getElementById('hero_height');
 
-      if (ctaTextElement) ctaTextElement.value = j.data.cta_text||'';
-      if (ctaUrlElement) ctaUrlElement.value = j.data.cta_url||'';
+      if (ctaTextElement) ctaTextElement.value = j.data.cta_text || '';
+      if (ctaUrlElement) ctaUrlElement.value = j.data.cta_url || '';
 
       // Load hero overlay opacity and update preview
       const heroOpacity = j.data.hero_overlay_opacity || 0.5;
@@ -472,9 +499,9 @@
         const donationPresetsElement = document.getElementById('donation_presets');
         if (donationPresetsElement) {
           const ds = j.data.donation_settings_json ? JSON.parse(j.data.donation_settings_json) : {};
-          donationPresetsElement.value = (ds.preset_amounts||[]).join(',');
+          donationPresetsElement.value = (ds.preset_amounts || []).join(',');
         }
-      } catch(e) {
+      } catch (e) {
         console.warn('Could not load donation presets:', e);
       }
 
@@ -524,22 +551,21 @@
   }
 
   // Save hero/settings
-  document.getElementById('heroForm').addEventListener('submit', async function(e){
+  document.getElementById('heroForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const payload = {
-      show_hero: document.getElementById('show_hero').checked ? 1 : 0,
-      hero_media_id: document.getElementById('hero_media_id').value || null,
-      hero_html: heroEditor ? window.getQuillHTML(heroEditor) : document.getElementById('hero_html').value,
-      cta_text: document.getElementById('cta_text').value,
-      cta_url: document.getElementById('cta_url').value,
-      hero_overlay_opacity: document.getElementById('hero_overlay_opacity').value,
-      hero_overlay_color: document.getElementById('hero_overlay_color').value,
+      show_hero: document.getElementById('show_hero')?.checked ? 1 : 0,
+      hero_media_id: document.getElementById('hero_media_id')?.value || null,
+      hero_html: heroEditor ? window.getQuillHTML(heroEditor) : (document.getElementById('hero_html')?.value || ''),
+      hero_overlay_opacity: document.getElementById('hero_overlay_opacity')?.value || 0.5,
+      hero_overlay_color: document.getElementById('hero_overlay_color')?.value || '#000000',
+      hero_height: document.getElementById('hero_height')?.value || 100,
     };
 
     // Save to draft first
     const draftResult = await api('/api/admin/settings-draft.php', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -549,7 +575,7 @@
     }
 
     // Publish the draft
-    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+    const publishResult = await api('/api/admin/settings.php?action=publish', { method: 'GET' });
 
     if (!publishResult.success) {
       alert('Error publishing: ' + publishResult.error);
@@ -558,20 +584,19 @@
 
     // Save non-draft fields
     await api('/api/admin/settings.php', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         show_hero: payload.show_hero,
         hero_media_id: payload.hero_media_id,
-        cta_text: payload.cta_text,
-        cta_url: payload.cta_url,
         hero_overlay_opacity: payload.hero_overlay_opacity,
-        hero_overlay_color: payload.hero_overlay_color
+        hero_overlay_color: payload.hero_overlay_color,
+        hero_height: payload.hero_height
       })
     });
   });
 
-  document.getElementById('aboutForm').addEventListener('submit', async function(e){
+  document.getElementById('aboutForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const payload = {
       show_about: document.getElementById('show_about').checked ? 1 : 0,
@@ -580,8 +605,8 @@
 
     // Save to draft first
     const draftResult = await api('/api/admin/settings-draft.php', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -591,7 +616,7 @@
     }
 
     // Publish the draft
-    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+    const publishResult = await api('/api/admin/settings.php?action=publish', { method: 'GET' });
 
     if (!publishResult.success) {
       alert('Error publishing: ' + publishResult.error);
@@ -600,15 +625,15 @@
 
     // Save non-draft fields
     await api('/api/admin/settings.php', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         show_about: payload.show_about
       })
     });
   });
 
-  document.getElementById('donationForm').addEventListener('submit', async function(e){
+  document.getElementById('donationForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
     // Get selected donation method
@@ -630,8 +655,8 @@
 
     // Save to draft first
     const draftResult = await api('/api/admin/settings-draft.php', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -641,7 +666,7 @@
     }
 
     // Publish the draft
-    const publishResult = await api('/api/admin/settings.php?action=publish', {method:'GET'});
+    const publishResult = await api('/api/admin/settings.php?action=publish', { method: 'GET' });
 
     if (!publishResult.success) {
       alert('Error publishing: ' + publishResult.error);
@@ -650,8 +675,8 @@
 
     // Save non-draft fields
     await api('/api/admin/settings.php', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         show_donation: payload.show_donation,
         show_donate_button: payload.show_donate_button,
@@ -662,12 +687,12 @@
     });
   });
 
-  document.getElementById('settingsForm').addEventListener('submit', function(e){
+  document.getElementById('settingsForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    const presets = document.getElementById('donation_presets').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
+    const presets = document.getElementById('donation_presets').value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
     const payload = {
       site_title: document.getElementById('site_title').value,
-      donation_settings_json: JSON.stringify({preset_amounts: presets}),
+      donation_settings_json: JSON.stringify({ preset_amounts: presets }),
       ai_system_prompt: document.getElementById('ai_system_prompt').value
     };
 
@@ -678,7 +703,7 @@
       submitBtn.textContent = 'Saving...';
     }
 
-    api('/api/admin/settings.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}).then(j=>{
+    api('/api/admin/settings.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(j => {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
@@ -692,7 +717,7 @@
   // Reset AI prompt to default
   const resetAIPromptBtn = document.getElementById('btnResetAIPrompt');
   if (resetAIPromptBtn) {
-    resetAIPromptBtn.addEventListener('click', function(e){
+    resetAIPromptBtn.addEventListener('click', function (e) {
       e.preventDefault();
       const defaultAIPrompt = this.getAttribute('data-default-prompt') || '';
       if (confirm('Reset AI system prompt to default?')) {
@@ -704,11 +729,11 @@
   // Auto-save visibility toggles when changed
   const showHeroCheckbox = document.getElementById('show_hero');
   if (showHeroCheckbox) {
-    showHeroCheckbox.addEventListener('change', function() {
+    showHeroCheckbox.addEventListener('change', function () {
       const payload = { show_hero: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -729,11 +754,11 @@
 
   const showAboutCheckbox = document.getElementById('show_about');
   if (showAboutCheckbox) {
-    showAboutCheckbox.addEventListener('change', function() {
+    showAboutCheckbox.addEventListener('change', function () {
       const payload = { show_about: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -754,11 +779,11 @@
 
   const showDonationCheckbox = document.getElementById('show_donation');
   if (showDonationCheckbox) {
-    showDonationCheckbox.addEventListener('change', function() {
+    showDonationCheckbox.addEventListener('change', function () {
       const payload = { show_donation: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -779,11 +804,11 @@
 
   const showDonateButtonCheckbox = document.getElementById('show_donate_button');
   if (showDonateButtonCheckbox) {
-    showDonateButtonCheckbox.addEventListener('change', function() {
+    showDonateButtonCheckbox.addEventListener('change', function () {
       const payload = { show_donate_button: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -804,11 +829,11 @@
 
   const showViewCountsCheckbox = document.getElementById('show_view_counts');
   if (showViewCountsCheckbox) {
-    showViewCountsCheckbox.addEventListener('change', function() {
+    showViewCountsCheckbox.addEventListener('change', function () {
       const payload = { show_view_counts: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -828,11 +853,11 @@
 
   const showImpressionCountsCheckbox = document.getElementById('show_impression_counts');
   if (showImpressionCountsCheckbox) {
-    showImpressionCountsCheckbox.addEventListener('change', function() {
+    showImpressionCountsCheckbox.addEventListener('change', function () {
       const payload = { show_impression_counts: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -852,11 +877,11 @@
 
   const ignoreAdminTrackingCheckbox = document.getElementById('ignore_admin_tracking');
   if (ignoreAdminTrackingCheckbox) {
-    ignoreAdminTrackingCheckbox.addEventListener('change', function() {
+    ignoreAdminTrackingCheckbox.addEventListener('change', function () {
       const payload = { ignore_admin_tracking: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -876,11 +901,11 @@
 
   const showFooterCheckbox = document.getElementById('show_footer');
   if (showFooterCheckbox) {
-    showFooterCheckbox.addEventListener('change', function() {
+    showFooterCheckbox.addEventListener('change', function () {
       const payload = { show_footer: this.checked ? 1 : 0 };
       api('/api/admin/settings.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
@@ -1005,20 +1030,20 @@
     return uploadedIds;
   }
 
-  function loadPosts(){
-    fetch('/api/admin/posts.php').then(r=>r.json()).then(j=>{
-      if(!j.success) return;
-      postsList.innerHTML='';
+  function loadPosts() {
+    fetch('/api/admin/posts.php').then(r => r.json()).then(j => {
+      if (!j.success) return;
+      postsList.innerHTML = '';
 
       // Create responsive table wrapper
       const tableWrapper = document.createElement('div');
       tableWrapper.className = 'table-responsive';
 
       const table = document.createElement('table');
-      table.className='table table-striped';
+      table.className = 'table table-striped';
       table.innerHTML = '<thead><tr><th>ID</th><th>Title</th><th>Author</th><th>Published</th><th>Created</th><th>Actions</th></tr></thead>';
       const tbody = document.createElement('tbody');
-      (j.data||[]).forEach(p=>{
+      (j.data || []).forEach(p => {
         const tr = document.createElement('tr');
         const isPublished = p.status === 'published';
         const publishedDate = p.published_at ? new Date(p.published_at).toLocaleDateString() : '';
@@ -1062,7 +1087,7 @@
     });
   }
 
-  postsList.addEventListener('click', function(e){
+  postsList.addEventListener('click', function (e) {
     // Prevent toggle switches from triggering edit
     if (e.target.classList.contains('publish-toggle') || e.target.classList.contains('form-check-label')) {
       return;
@@ -1073,7 +1098,7 @@
 
     if (id && e.target.classList.contains('btn-edit-post')) {
       // Edit button clicked - store the ID, data will load when modal opens
-      editingId = parseInt(id,10);
+      editingId = parseInt(id, 10);
     }
 
     if (id && (e.target.classList.contains('btn-resend-email') || e.target.closest('.btn-resend-email'))) {
@@ -1122,7 +1147,7 @@
   });
 
   // Handle publish toggle switches
-  postsList.addEventListener('change', function(e){
+  postsList.addEventListener('change', function (e) {
     if (e.target.classList.contains('publish-toggle')) {
       const postId = e.target.getAttribute('data-id');
       const isPublished = e.target.checked;
@@ -1187,7 +1212,7 @@
 
         api('/api/admin/posts.php?id=' + postId, {
           method: 'PUT',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         }).then(j => {
           if (j.success) {
@@ -1210,7 +1235,7 @@
   // Confirm delete post button in modal
   const confirmDeletePostAdmin = document.getElementById('confirmDeletePostAdmin');
   if (confirmDeletePostAdmin) {
-    confirmDeletePostAdmin.addEventListener('click', function() {
+    confirmDeletePostAdmin.addEventListener('click', function () {
       const postId = this.getAttribute('data-post-id');
       if (!postId) return;
 
@@ -1218,7 +1243,7 @@
       this.disabled = true;
       this.textContent = 'Deleting...';
 
-      api('/api/admin/posts.php?id=' + postId, {method: 'DELETE'})
+      api('/api/admin/posts.php?id=' + postId, { method: 'DELETE' })
         .then(j => {
           if (j.success) {
             // Close modal
@@ -1242,7 +1267,7 @@
   }
 
   // When New Post button is clicked (modal opens via data-bs-toggle)
-  btnNewPost.addEventListener('click', function(){
+  btnNewPost.addEventListener('click', function () {
     editingId = null;
   });
 
@@ -1250,7 +1275,7 @@
   postEditorContainer.querySelector('.btn-cancel-post').setAttribute('data-bs-dismiss', 'modal');
 
   // Save button in post editor
-  postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function(){
+  postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function () {
     const saveBtn = this;
     const originalText = saveBtn.textContent;
 
@@ -1301,9 +1326,9 @@
         saveBtn.textContent = 'Publishing changes...';
 
         // Save current form values to draft fields
-        const draftSave = await api('/api/admin/posts-draft.php?id='+editingId, {
-          method:'PUT',
-          headers:{'Content-Type':'application/json'},
+        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
@@ -1318,7 +1343,7 @@
         const proceeded = await window.publishConfirmation.confirmAndPublish(
           editingId,
           async () => {
-            const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId, { method:'GET' });
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId, { method: 'GET' });
             if (!publishResult.success) {
               throw new Error(publishResult.error || 'Unknown error');
             }
@@ -1336,7 +1361,7 @@
           },
           async () => {
             // Publish without sending emails
-            const publishResult = await api('/api/admin/posts.php?action=publish&id='+editingId + '&skip_email=1', { method:'GET' });
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId + '&skip_email=1', { method: 'GET' });
             if (!publishResult.success) {
               throw new Error(publishResult.error || 'Unknown error');
             }
@@ -1359,7 +1384,7 @@
         saveBtn.textContent = 'Creating draft...';
         const createDraft = await api('/api/admin/posts.php', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, status: 'draft' })
         });
         if (!createDraft.success || !createDraft.id) {
@@ -1443,7 +1468,7 @@
   const mediaGrid = document.getElementById('mediaGrid');
 
   // Media crop manager for admin media tab
-  (function initAdminMediaCropper(){
+  (function initAdminMediaCropper() {
     if (typeof window.ImageCropManager === 'undefined') return;
 
     const fileInput = document.getElementById('mediaFile');
@@ -1494,7 +1519,7 @@
 
     // Prevent default submit if crop UI is active; allow fallback direct upload otherwise
     if (uploadForm) {
-      uploadForm.addEventListener('submit', function(e){
+      uploadForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const f = fileInput.files[0];
         if (!f) return alert('Choose a file');
@@ -1505,38 +1530,38 @@
         }
 
         // Fallback: direct upload without cropping
-        if (f.size > 20*1024*1024) return alert('Max 20MB');
+        if (f.size > 20 * 1024 * 1024) return alert('Max 20MB');
         const fd = new FormData();
         fd.append('file', f);
         fd.append('alt_text', altInput?.value || '');
-        fetch('/api/admin/media.php', {method:'POST', headers:{'X-CSRF-Token': CSRF}, body: fd})
-          .then(r=>r.json()).then(j=>{
+        fetch('/api/admin/media.php', { method: 'POST', headers: { 'X-CSRF-Token': CSRF }, body: fd })
+          .then(r => r.json()).then(j => {
             if (j.success) { loadMedia(); uploadForm.reset(); }
-            else alert(j.error||'Upload failed');
+            else alert(j.error || 'Upload failed');
           });
       });
     }
   })();
 
-  function loadMedia(){
-    fetch('/api/admin/media.php').then(r=>r.json()).then(j=>{
+  function loadMedia() {
+    fetch('/api/admin/media.php').then(r => r.json()).then(j => {
       mediaGrid.innerHTML = '';
-      (j.data||[]).forEach(m=>{
-        const col = document.createElement('div'); col.className='col';
-        const card = document.createElement('div'); card.className='card position-relative media-card';
-        const img = document.createElement('img'); img.className='card-img-top';
+      (j.data || []).forEach(m => {
+        const col = document.createElement('div'); col.className = 'col';
+        const card = document.createElement('div'); card.className = 'card position-relative media-card';
+        const img = document.createElement('img'); img.className = 'card-img-top';
         try {
-          const vars = JSON.parse(m.variants_json||'{}');
+          const vars = JSON.parse(m.variants_json || '{}');
           const variant400 = vars['400'];
           if (variant400 && variant400.jpg) {
             img.src = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
           } else {
             img.src = '/storage/uploads/originals/' + m.filename;
           }
-        } catch(e) {
+        } catch (e) {
           img.src = '/storage/uploads/originals/' + m.filename;
         }
-        const body = document.createElement('div'); body.className='card-body'; body.innerHTML = `<small>${m.original_filename}</small>`;
+        const body = document.createElement('div'); body.className = 'card-body'; body.innerHTML = `<small>${m.original_filename}</small>`;
 
         // Add trash icon button (hidden by default, shows on hover)
         const deleteBtn = document.createElement('button');
@@ -1549,15 +1574,15 @@
         deleteBtn.title = 'Delete image';
 
         // Show/hide delete button on hover
-        card.addEventListener('mouseenter', function() {
+        card.addEventListener('mouseenter', function () {
           deleteBtn.style.opacity = '1';
         });
-        card.addEventListener('mouseleave', function() {
+        card.addEventListener('mouseleave', function () {
           deleteBtn.style.opacity = '0';
         });
 
         // Handle delete click
-        deleteBtn.addEventListener('click', function(e) {
+        deleteBtn.addEventListener('click', function (e) {
           e.preventDefault();
           e.stopPropagation();
           handleMediaDelete(m.id, m.original_filename);
@@ -1632,14 +1657,12 @@
 
   // Handle media deletion with confirmation
   let pendingDeleteMediaId = null;
+  let pendingDeleteHasUsage = false;
 
   async function handleMediaDelete(mediaId, filename) {
     try {
       // First, check which posts use this media
       const response = await fetch(`/api/admin/media.php?check_usage=${mediaId}`);
-
-        // After loading values, refresh the preview
-        updateAdminDonationPreview();
       const data = await response.json();
 
       if (!data.success) {
@@ -1657,22 +1680,35 @@
       const warningEl = document.getElementById('mediaDeleteWarning');
       const noUsageEl = document.getElementById('mediaDeleteNoUsage');
       const affectedListEl = document.getElementById('mediaDeleteAffectedList');
+      const confirmBtn = document.getElementById('confirmMediaDelete');
 
       filenameEl.textContent = `Delete "${filename}"?`;
       affectedListEl.innerHTML = '';
 
-      if (affectedPosts.length > 0) {
+      pendingDeleteHasUsage = affectedPosts.length > 0;
+
+      if (pendingDeleteHasUsage) {
         warningEl.classList.remove('d-none');
         noUsageEl.classList.add('d-none');
 
         affectedPosts.forEach(post => {
           const li = document.createElement('li');
-          li.textContent = `${post.title} (${post.usage})`;
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = `${post.title} (${post.usage})`;
+          link.classList.add('media-usage-link');
+          link.dataset.postId = post.id;
+          li.appendChild(link);
           affectedListEl.appendChild(li);
         });
       } else {
         warningEl.classList.add('d-none');
         noUsageEl.classList.remove('d-none');
+      }
+
+      if (confirmBtn) {
+        confirmBtn.disabled = pendingDeleteHasUsage;
+        confirmBtn.textContent = pendingDeleteHasUsage ? 'Cannot delete while in use' : 'Delete Image';
       }
 
       // Show modal
@@ -1684,8 +1720,13 @@
   }
 
   // Handle confirm delete button in modal
-  document.getElementById('confirmMediaDelete').addEventListener('click', async function() {
+  document.getElementById('confirmMediaDelete').addEventListener('click', async function () {
     if (!pendingDeleteMediaId) return;
+
+    if (pendingDeleteHasUsage) {
+      showNotification('This image is still used in posts/settings. Remove those references before deleting.', 'warning');
+      return;
+    }
 
     try {
       const deleteResponse = await api(`/api/admin/media.php?id=${pendingDeleteMediaId}`, {
@@ -1706,6 +1747,7 @@
       console.error('Error deleting media:', error);
     } finally {
       pendingDeleteMediaId = null;
+      pendingDeleteHasUsage = false;
     }
   });
 
@@ -1714,6 +1756,25 @@
   loadSettings();
   loadPosts();
   loadMedia();
+
+  // Allow jumping into post editor from media-usage links
+  document.addEventListener('click', function (e) {
+    const usageLink = e.target.closest('.media-usage-link');
+    if (!usageLink) return;
+    e.preventDefault();
+
+    const postId = parseInt(usageLink.dataset.postId || '0', 10);
+    if (!postId) return;
+
+    editingId = postId;
+    const postModal = document.getElementById('postEditorModal');
+    if (postModal) {
+      const modalInstance = bootstrap.Modal.getOrCreateInstance(postModal);
+      modalInstance.show();
+    } else {
+      showNotification('Post editor modal is not available.', 'warning');
+    }
+  });
 
   // Restore last active tab from sessionStorage or default to Posts
   const lastActiveTab = sessionStorage.getItem('adminActiveTab') || '#pane-posts';
@@ -1732,7 +1793,7 @@
   // Save active tab to sessionStorage when changed
   const tabButtons = document.querySelectorAll('#adminTabs button[data-bs-toggle="tab"]');
   tabButtons.forEach(button => {
-    button.addEventListener('shown.bs.tab', function(e) {
+    button.addEventListener('shown.bs.tab', function (e) {
       const target = e.target.getAttribute('data-bs-target');
       sessionStorage.setItem('adminActiveTab', target);
     });
@@ -1749,12 +1810,19 @@
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'link'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           [{ 'align': [] }],
           ['blockquote', 'image'],
           ['clean']
         ]
       });
+
+      // Mirror hero content into the admin preview as the editor changes
+      if (heroEditor && typeof heroEditor.on === 'function') {
+        heroEditor.on('text-change', () => {
+          updateHeroTextPreview(window.getQuillHTML(heroEditor));
+        });
+      }
 
       // Set up auto-save
       heroAutoSave = setupSettingsAutoSave(heroEditor, 'hero_html');
@@ -1771,7 +1839,7 @@
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'link'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           [{ 'align': [] }],
           ['blockquote', 'image'],
           ['clean']
@@ -1793,7 +1861,7 @@
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'link'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           [{ 'align': [] }],
           ['blockquote', 'image'],
           ['clean']
@@ -1815,7 +1883,7 @@
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'link'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           [{ 'align': [] }],
           ['blockquote', 'image'],
           ['clean']
@@ -1877,7 +1945,7 @@
         toolbar: [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'link'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           [{ 'align': [] }],
           ['blockquote', 'image'],
           ['clean']
@@ -1886,13 +1954,19 @@
 
       // Initialize AI title generator with editor instance
       if (typeof window.initAITitleGenerator === 'function') {
+        const statusElement = document.getElementById('post-autosave-status');
+        if (statusElement) {
+          statusElement.dataset.forceEnabled = '1';
+          statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+          statusElement.className = 'editor-autosave-indicator';
+        }
         window.initAITitleGenerator(postEditorContainer, postBodyEditor);
       }
     }
 
     // Setup modal event handlers
     // Ensure editingId is set from the trigger element before the modal actually shows
-    postEditorModal.addEventListener('show.bs.modal', function(e) {
+    postEditorModal.addEventListener('show.bs.modal', function (e) {
       const trigger = e.relatedTarget;
       if (trigger) {
         // Edit existing post button carries data-id
@@ -1905,7 +1979,7 @@
       }
     });
 
-    postEditorModal.addEventListener('shown.bs.modal', function() {
+    postEditorModal.addEventListener('shown.bs.modal', function () {
       // Clear gallery preview first (for both new and edit)
       const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
       if (galleryPreview) {
@@ -1960,7 +2034,7 @@
         try {
           await api('/api/admin/posts-draft.php?id=' + editingId, {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
         } catch (e) {
@@ -1969,7 +2043,7 @@
       };
 
       if (heroSelect && !heroSelect.dataset.listenerAdded) {
-        heroSelect.addEventListener('change', function() {
+        heroSelect.addEventListener('change', function () {
           const heroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
           const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
 
@@ -2016,7 +2090,7 @@
       // Setup hero remove button
       const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
       if (heroRemoveBtn && !heroRemoveBtn.dataset.listenerAdded) {
-        heroRemoveBtn.addEventListener('click', function() {
+        heroRemoveBtn.addEventListener('click', function () {
           const heroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
 
           if (heroSelect) heroSelect.value = '';
@@ -2037,7 +2111,7 @@
       const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
       const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
       if (heroHeightSlider && heroHeightValue && !heroHeightSlider.dataset.listenerAdded) {
-        heroHeightSlider.addEventListener('input', function() {
+        heroHeightSlider.addEventListener('input', function () {
           const heightPercent = parseInt(this.value);
           heroHeightValue.textContent = heightPercent;
 
@@ -2093,7 +2167,7 @@
 
       // Setup event listeners for title overlay controls
       if (heroTitleOverlayToggle && !heroTitleOverlayToggle.dataset.listenerAdded) {
-        heroTitleOverlayToggle.addEventListener('change', function(){
+        heroTitleOverlayToggle.addEventListener('change', function () {
           updateHeroPreview();
           saveHeroDraft();
         });
@@ -2101,7 +2175,7 @@
       }
 
       if (heroOverlayOpacitySlider && !heroOverlayOpacitySlider.dataset.listenerAdded) {
-        heroOverlayOpacitySlider.addEventListener('input', function() {
+        heroOverlayOpacitySlider.addEventListener('input', function () {
           const opacity = parseFloat(this.value);
           if (overlayOpacityValue) {
             overlayOpacityValue.textContent = opacity.toFixed(2);
@@ -2117,229 +2191,229 @@
         postTitleInput.dataset.titleListenerAdded = 'true';
       }
 
-  // Function to load post data into editor
-  const loadPostIntoEditor = () => {
-    // Load post data if editing (editingId set in show.bs.modal)
-    if (editingId) {
-        fetch('/api/admin/posts.php?id=' + editingId).then(r=>r.json()).then(j=>{
-          if(j.success && j.data) {
-            const post = j.data;
+      // Function to load post data into editor
+      const loadPostIntoEditor = () => {
+        // Load post data if editing (editingId set in show.bs.modal)
+        if (editingId) {
+          fetch('/api/admin/posts.php?id=' + editingId).then(r => r.json()).then(j => {
+            if (j.success && j.data) {
+              const post = j.data;
 
 
-            // Use draft content for editing (falls back to published if no draft)
-            postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
+              // Use draft content for editing (falls back to published if no draft)
+              postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
 
-            // Set post body in editor (use draft content)
-            if (postBodyEditor) {
-              window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
+              // Set post body in editor (use draft content)
+              if (postBodyEditor) {
+                window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
 
-              // Set up auto-save for this post (saves to draft)
-              if (postAutoSave) {
-                if (typeof postAutoSave.cleanup === 'function') {
-                  postAutoSave.cleanup();
-                } else {
-                  clearInterval(postAutoSave);
-                }
-                postAutoSave = null;
-              }
-              postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
-            } else {
-              postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
-            }
-
-            // Set hero image if exists (use draft)
-            const heroMediaId = post.hero_media_id_editing;
-            if (heroMediaId) {
-              const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-              if (heroSelect) {
-                heroSelect.value = heroMediaId;
-                // Trigger change to show preview
-                heroSelect.dispatchEvent(new Event('change'));
-              }
-            } else {
-              // Clear hero if no image
-              const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-              const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
-              if (heroSelect) heroSelect.value = '';
-              if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
-            }
-
-            // Set hero height if exists (use draft)
-            const heroImageHeight = parseInt(post.hero_image_height_editing) || 100;
-            const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
-            const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
-            if (heroHeightSlider) {
-              heroHeightSlider.value = heroImageHeight;
-              if (heroHeightValue) heroHeightValue.textContent = heroImageHeight;
-
-              // Update preview padding-bottom to match loaded height
-              const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-              if (heroPreviewDiv) {
-                heroPreviewDiv.style.paddingBottom = heroImageHeight + '%';
-              }
-            }
-
-            // Set hero title overlay if exists (use draft)
-            const heroTitleOverlay = post.hero_title_overlay_editing !== undefined && post.hero_title_overlay_editing !== null
-              ? parseInt(post.hero_title_overlay_editing)
-              : 1;
-            const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
-            if (heroTitleOverlayToggle) {
-              heroTitleOverlayToggle.checked = heroTitleOverlay == 1;
-            }
-
-            // Set hero overlay opacity if exists (use draft)
-            const heroOverlayOpacity = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
-            const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
-            const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
-            if (heroOverlayOpacitySlider) {
-              heroOverlayOpacitySlider.value = heroOverlayOpacity;
-              if (overlayOpacityValue) overlayOpacityValue.textContent = heroOverlayOpacity.toFixed(2);
-            }
-
-            // Update hero preview with loaded values (wait for image to load first)
-            setTimeout(() => {
-              const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
-              const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
-              const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
-
-              if (heroPreviewImg && heroPreviewTitleOverlay) {
-                const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
-                const titleText = postEditorContainer.querySelector('.post-title')?.value || 'Post Title Preview';
-
-                // Show/hide opacity control based on title overlay toggle
-                if (heroOverlayOpacityControl) {
-                  heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
-                }
-
-                // Update image brightness
-                if (showTitleOverlay) {
-                  heroPreviewImg.style.filter = `brightness(${heroOverlayOpacity})`;
-                } else {
-                  heroPreviewImg.style.filter = 'none';
-                }
-
-                // Update title overlay visibility and text
-                if (showTitleOverlay) {
-                  heroPreviewTitleOverlay.style.display = 'block';
-                  const titleElement = heroPreviewTitleOverlay.querySelector('h5');
-                  if (titleElement) {
-                    titleElement.textContent = titleText || 'Post Title Preview';
+                // Set up auto-save for this post (saves to draft)
+                if (postAutoSave) {
+                  if (typeof postAutoSave.cleanup === 'function') {
+                    postAutoSave.cleanup();
+                  } else {
+                    clearInterval(postAutoSave);
                   }
-                } else {
-                  heroPreviewTitleOverlay.style.display = 'none';
+                  postAutoSave = null;
+                }
+                postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
+              } else {
+                postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
+              }
+
+              // Set hero image if exists (use draft)
+              const heroMediaId = post.hero_media_id_editing;
+              if (heroMediaId) {
+                const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+                if (heroSelect) {
+                  heroSelect.value = heroMediaId;
+                  // Trigger change to show preview
+                  heroSelect.dispatchEvent(new Event('change'));
+                }
+              } else {
+                // Clear hero if no image
+                const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+                const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+                if (heroSelect) heroSelect.value = '';
+                if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+              }
+
+              // Set hero height if exists (use draft)
+              const heroImageHeight = parseInt(post.hero_image_height_editing) || 100;
+              const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+              const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+              if (heroHeightSlider) {
+                heroHeightSlider.value = heroImageHeight;
+                if (heroHeightValue) heroHeightValue.textContent = heroImageHeight;
+
+                // Update preview padding-bottom to match loaded height
+                const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+                if (heroPreviewDiv) {
+                  heroPreviewDiv.style.paddingBottom = heroImageHeight + '%';
                 }
               }
-            }, 100);
 
-            // Load gallery images if exists (prefer draft editing version)
-            const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
-            if (galleryData) {
-              try {
-                const galleryIds = JSON.parse(galleryData);
-                if (Array.isArray(galleryIds) && galleryIds.length > 0) {
-                  galleryMediaIds = [...galleryIds];
-                  // Load each gallery image (use addGalleryItemPreview to avoid duplicates)
-                  for (const mediaId of galleryIds) {
-                    fetch(`/api/admin/media.php?id=${mediaId}`)
-                      .then(r => r.json())
-                      .then(data => {
-                        if (data.success && data.data) {
-                          addGalleryItemPreview(mediaId, data.data);
-                        }
-                      });
+              // Set hero title overlay if exists (use draft)
+              const heroTitleOverlay = post.hero_title_overlay_editing !== undefined && post.hero_title_overlay_editing !== null
+                ? parseInt(post.hero_title_overlay_editing)
+                : 1;
+              const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+              if (heroTitleOverlayToggle) {
+                heroTitleOverlayToggle.checked = heroTitleOverlay == 1;
+              }
+
+              // Set hero overlay opacity if exists (use draft)
+              const heroOverlayOpacity = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
+              const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+              const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+              if (heroOverlayOpacitySlider) {
+                heroOverlayOpacitySlider.value = heroOverlayOpacity;
+                if (overlayOpacityValue) overlayOpacityValue.textContent = heroOverlayOpacity.toFixed(2);
+              }
+
+              // Update hero preview with loaded values (wait for image to load first)
+              setTimeout(() => {
+                const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
+                const heroPreviewImg = heroPreview ? heroPreview.querySelector('img') : null;
+                const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
+
+                if (heroPreviewImg && heroPreviewTitleOverlay) {
+                  const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+                  const titleText = postEditorContainer.querySelector('.post-title')?.value || 'Post Title Preview';
+
+                  // Show/hide opacity control based on title overlay toggle
+                  if (heroOverlayOpacityControl) {
+                    heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+                  }
+
+                  // Update image brightness
+                  if (showTitleOverlay) {
+                    heroPreviewImg.style.filter = `brightness(${heroOverlayOpacity})`;
+                  } else {
+                    heroPreviewImg.style.filter = 'none';
+                  }
+
+                  // Update title overlay visibility and text
+                  if (showTitleOverlay) {
+                    heroPreviewTitleOverlay.style.display = 'block';
+                    const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+                    if (titleElement) {
+                      titleElement.textContent = titleText || 'Post Title Preview';
+                    }
+                  } else {
+                    heroPreviewTitleOverlay.style.display = 'none';
                   }
                 }
-              } catch (e) {
-                console.error('Error parsing gallery_media_ids:', e);
+              }, 100);
+
+              // Load gallery images if exists (prefer draft editing version)
+              const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
+              if (galleryData) {
+                try {
+                  const galleryIds = JSON.parse(galleryData);
+                  if (Array.isArray(galleryIds) && galleryIds.length > 0) {
+                    galleryMediaIds = [...galleryIds];
+                    // Load each gallery image (use addGalleryItemPreview to avoid duplicates)
+                    for (const mediaId of galleryIds) {
+                      fetch(`/api/admin/media.php?id=${mediaId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                          if (data.success && data.data) {
+                            addGalleryItemPreview(mediaId, data.data);
+                          }
+                        });
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error parsing gallery_media_ids:', e);
+                }
+              }
+
+              // Hide Save Draft button for existing posts
+              const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+              if (saveDraftBtn) {
+                saveDraftBtn.style.display = 'none';
               }
             }
-
-            // Hide Save Draft button for existing posts
-            const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-            if (saveDraftBtn) {
-              saveDraftBtn.style.display = 'none';
-            }
-          }
-        });
-      } else {
-        // New post - clear the form
-        postEditorContainer.querySelector('.post-title').value = '';
-
-        // For new posts, show Save Draft button (ensure visible)
-        const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-        if (saveDraftBtn) {
-          saveDraftBtn.style.display = '';
-        }
-        if (postBodyEditor) {
-          window.clearQuillEditor(postBodyEditor);
+          });
         } else {
-          postEditorContainer.querySelector('.post-body').value = '';
-        }
-        postEditorContainer.querySelector('.post-hero-media').value = '';
-        const clearHeroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
-        if (clearHeroPreviewContainer) clearHeroPreviewContainer.style.display = 'none';
+          // New post - clear the form
+          postEditorContainer.querySelector('.post-title').value = '';
 
-        // Reset hero height slider to default
-        const clearHeroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
-        const clearHeroHeightValue = postEditorContainer.querySelector('.hero-height-value');
-        if (clearHeroHeightSlider) clearHeroHeightSlider.value = 100;
-        if (clearHeroHeightValue) clearHeroHeightValue.textContent = '100';
-
-        // Reset title overlay controls to defaults
-        const clearHeroTitleOverlay = postEditorContainer.querySelector('.post-hero-title-overlay');
-        if (clearHeroTitleOverlay) clearHeroTitleOverlay.checked = true;
-
-        const clearHeroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
-        const clearOverlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
-        if (clearHeroOverlayOpacity) clearHeroOverlayOpacity.value = 0.70;
-        if (clearOverlayOpacityValue) clearOverlayOpacityValue.textContent = '0.70';
-
-        // Show upload controls and hide remove button for new posts
-        const clearHeroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
-        const clearHeroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
-        if (clearHeroUploadControls) clearHeroUploadControls.style.display = 'block';
-        if (clearHeroRemoveBtn) clearHeroRemoveBtn.style.opacity = '0';
-
-        // Clear auto-save for new posts (they don't have an ID yet)
-        if (postAutoSave) {
-          if (typeof postAutoSave.cleanup === 'function') {
-            postAutoSave.cleanup();
-          } else {
-            clearInterval(postAutoSave);
+          // For new posts, show Save Draft button (ensure visible)
+          const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+          if (saveDraftBtn) {
+            saveDraftBtn.style.display = '';
           }
-          postAutoSave = null;
+          if (postBodyEditor) {
+            window.clearQuillEditor(postBodyEditor);
+          } else {
+            postEditorContainer.querySelector('.post-body').value = '';
+          }
+          postEditorContainer.querySelector('.post-hero-media').value = '';
+          const clearHeroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+          if (clearHeroPreviewContainer) clearHeroPreviewContainer.style.display = 'none';
+
+          // Reset hero height slider to default
+          const clearHeroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+          const clearHeroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+          if (clearHeroHeightSlider) clearHeroHeightSlider.value = 100;
+          if (clearHeroHeightValue) clearHeroHeightValue.textContent = '100';
+
+          // Reset title overlay controls to defaults
+          const clearHeroTitleOverlay = postEditorContainer.querySelector('.post-hero-title-overlay');
+          if (clearHeroTitleOverlay) clearHeroTitleOverlay.checked = true;
+
+          const clearHeroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+          const clearOverlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+          if (clearHeroOverlayOpacity) clearHeroOverlayOpacity.value = 0.70;
+          if (clearOverlayOpacityValue) clearOverlayOpacityValue.textContent = '0.70';
+
+          // Show upload controls and hide remove button for new posts
+          const clearHeroUploadControls = postEditorContainer.querySelector('.hero-upload-controls');
+          const clearHeroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
+          if (clearHeroUploadControls) clearHeroUploadControls.style.display = 'block';
+          if (clearHeroRemoveBtn) clearHeroRemoveBtn.style.opacity = '0';
+
+          // Clear auto-save for new posts (they don't have an ID yet)
+          if (postAutoSave) {
+            if (typeof postAutoSave.cleanup === 'function') {
+              postAutoSave.cleanup();
+            } else {
+              clearInterval(postAutoSave);
+            }
+            postAutoSave = null;
+          }
+          const statusElement = document.getElementById('post-autosave-status');
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+            statusElement.className = 'editor-autosave-indicator';
+          }
         }
-        const statusElement = document.getElementById('post-autosave-status');
-        if (statusElement) {
-          statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
-          statusElement.className = 'editor-autosave-indicator';
+      };
+
+      // Call initial load
+      loadPostIntoEditor();
+
+      // Listen for refresh requests from cancellation handler
+      const refreshListener = () => {
+        // Check editingId at runtime (not captured in closure)
+        if (editingId) {
+          loadPostIntoEditor();
         }
-      }
-    };
+      };
+      document.addEventListener('post-editor:refresh-needed', refreshListener);
 
-    // Call initial load
-    loadPostIntoEditor();
-
-    // Listen for refresh requests from cancellation handler
-    const refreshListener = () => {
-      // Check editingId at runtime (not captured in closure)
-      if (editingId) {
-        loadPostIntoEditor();
-      }
-    };
-    document.addEventListener('post-editor:refresh-needed', refreshListener);
-
-    // Clean up listener when modal closes
-    postEditorModal.addEventListener('hidden.bs.modal', function cleanup() {
-      document.removeEventListener('post-editor:refresh-needed', refreshListener);
-      postEditorModal.removeEventListener('hidden.bs.modal', cleanup);
-    }, { once: true });
+      // Clean up listener when modal closes
+      postEditorModal.addEventListener('hidden.bs.modal', function cleanup() {
+        document.removeEventListener('post-editor:refresh-needed', refreshListener);
+        postEditorModal.removeEventListener('hidden.bs.modal', cleanup);
+      }, { once: true });
 
     });
 
     // Cleanup editor when modal is hidden
-    postEditorModal.addEventListener('hidden.bs.modal', function() {
+    postEditorModal.addEventListener('hidden.bs.modal', function () {
       // Clean up any leftover backdrops
       document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
       // Reset body classes that Bootstrap might have added
@@ -2384,7 +2458,7 @@
       // Initially hide the button
       galleryUploadBtn.style.display = 'none';
 
-      galleryUploadInput.addEventListener('change', function() {
+      galleryUploadInput.addEventListener('change', function () {
         const fileCount = this.files.length;
         if (fileCount === 0) {
           galleryUploadBtn.style.display = 'none';
@@ -2402,7 +2476,7 @@
 
     // Handle gallery upload
     if (galleryUploadBtn) {
-      galleryUploadBtn.addEventListener('click', async function() {
+      galleryUploadBtn.addEventListener('click', async function () {
         const files = Array.from(galleryUploadInput.files);
         if (!files.length) return;
 
@@ -2446,7 +2520,7 @@
       `;
 
       // Remove handler
-      item.querySelector('.btn-remove-gallery-item').addEventListener('click', function() {
+      item.querySelector('.btn-remove-gallery-item').addEventListener('click', function () {
         const idx = galleryMediaIds.indexOf(parseInt(mediaId));
         if (idx > -1) galleryMediaIds.splice(idx, 1);
         item.remove();
@@ -2486,7 +2560,7 @@
       `;
 
       // Remove handler
-      item.querySelector('.btn-remove-gallery-item').addEventListener('click', function() {
+      item.querySelector('.btn-remove-gallery-item').addEventListener('click', function () {
         const idx = galleryMediaIds.indexOf(parseInt(mediaId));
         if (idx > -1) galleryMediaIds.splice(idx, 1);
         item.remove();
@@ -2554,10 +2628,75 @@
     const heroBannerSelect = document.getElementById('hero_media_id');
     const heroBannerPreview = document.querySelector('.hero-banner-preview');
     const heroBannerPreviewImg = heroBannerPreview ? heroBannerPreview.querySelector('img') : null;
+    const heroBannerOverlay = document.querySelector('.hero-banner-overlay');
     const heroBannerRemoveBtn = document.querySelector('.btn-remove-hero-banner');
+    const heroTextPreview = document.querySelector('.hero-preview-content');
+    const heroHeightSlider = document.getElementById('hero_height');
+    const heroHeightValueEl = document.querySelector('.hero-banner-height-value');
+    const heroOpacitySlider = document.getElementById('hero_overlay_opacity');
+    const heroOpacityValueEl = document.querySelector('.hero-overlay-opacity-value');
+    const heroColorPicker = document.getElementById('hero_overlay_color');
+    const heroColorHex = document.getElementById('hero_overlay_color_hex');
+
+    // Keep preview aspect ratio in sync with slider (matches homepage padding-bottom%)
+    function updateHeroHeightPreview(val) {
+      if (heroHeightValueEl) heroHeightValueEl.textContent = val;
+      if (heroBannerPreview) heroBannerPreview.style.paddingBottom = val + '%';
+    }
+
+    function updateHeroOverlayOpacity(val) {
+      const num = parseFloat(val);
+      if (heroOpacityValueEl) heroOpacityValueEl.textContent = num.toFixed(2);
+      if (heroBannerOverlay) heroBannerOverlay.style.opacity = num;
+    }
+
+    function updateHeroOverlayColor(val) {
+      if (heroBannerOverlay) heroBannerOverlay.style.backgroundColor = val;
+      if (heroColorHex && heroColorHex !== document.activeElement) heroColorHex.value = val;
+      if (heroColorPicker && heroColorPicker !== document.activeElement) heroColorPicker.value = val;
+    }
+
+    if (heroHeightSlider) {
+      heroHeightSlider.addEventListener('input', function () {
+        updateHeroHeightPreview(this.value);
+      });
+      heroHeightSlider.addEventListener('change', function () {
+        updateHeroHeightPreview(this.value);
+      });
+    }
+
+
+      function updateHeroTextPreview(html) {
+        if (!heroTextPreview) return;
+        heroTextPreview.innerHTML = html && html.trim() ? html : 'Hero text will appear here...';
+      }
+    if (heroOpacitySlider) {
+      heroOpacitySlider.addEventListener('input', function () {
+        updateHeroOverlayOpacity(this.value);
+      });
+      heroOpacitySlider.addEventListener('change', function () {
+        updateHeroOverlayOpacity(this.value);
+      });
+    }
+
+    if (heroColorPicker) {
+      heroColorPicker.addEventListener('input', function () {
+        updateHeroOverlayColor(this.value);
+      });
+    }
+
+    if (heroColorHex) {
+      heroColorHex.addEventListener('input', function () {
+        const isValid = /^#[0-9A-Fa-f]{6}$/.test(this.value);
+        this.classList.toggle('is-invalid', !isValid && this.value.length > 0);
+        if (isValid) {
+          updateHeroOverlayColor(this.value);
+        }
+      });
+    }
 
     if (heroBannerSelect && heroBannerPreview) {
-      heroBannerSelect.addEventListener('change', function() {
+      heroBannerSelect.addEventListener('change', function () {
         if (this.value && heroBannerPreviewImg) {
           // Load media info to show preview
           fetch(`/api/admin/media.php?id=${this.value}`)
@@ -2583,8 +2722,15 @@
       });
     }
 
+    // Keep hero text preview in sync with editor (if present)
+    if (heroEditor && typeof heroEditor.on === 'function') {
+      heroEditor.on('text-change', () => {
+        updateHeroTextPreview(window.getQuillHTML(heroEditor));
+      });
+    }
+
     if (heroBannerRemoveBtn) {
-      heroBannerRemoveBtn.addEventListener('click', function() {
+      heroBannerRemoveBtn.addEventListener('click', function () {
         if (heroBannerSelect) heroBannerSelect.value = '';
         if (heroBannerPreview) heroBannerPreview.style.display = 'none';
         if (heroBannerPreviewImg) heroBannerPreviewImg.src = '';
@@ -2593,7 +2739,7 @@
   }, 500);
 
   // Clean up auto-save intervals when page unloads
-  window.addEventListener('beforeunload', function() {
+  window.addEventListener('beforeunload', function () {
     if (heroAutoSave) clearInterval(heroAutoSave);
     if (bioAutoSave) clearInterval(bioAutoSave);
     if (donateAutoSave) clearInterval(donateAutoSave);

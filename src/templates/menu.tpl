@@ -28,16 +28,34 @@
     {* Collapsable Menu Items *}
     <div class="container-fluid px-2 collapse navbar-collapse" id="navbarSupportedContent">
 
-      {if ($auth_type neq "none" and $authenticated) and $isadmin  and not $page|in_array:$public_pages}
+      {if ($auth_type neq "none" and $authenticated) and $isadmin  and not ($page eq 'home' or $page eq 'post')}
+        {assign var=nav_buttons value=[
+          'users' => [
+            'title' => 'Users',
+            'faclass' => 'user-plus',
+            'btn_color' => 'secondary',
+            'btn_type' => 'modal',
+            'modalId' => 'UserMgmtModal',
+            'modalFunction' => null,
+          ],
+          'home' => [
+            'title' => 'View Site',
+            'faclass' => 'house',
+            'btn_color' => 'success',
+            'btn_type' => 'page',
+            'url' => '/',
+          ],
+        ]}
+
         <div class="col d-grid gap-2 d-md-flex">
 
           {* Nav Buttons *}
           {foreach from=$nav_buttons item=button key=btn_name}
             {if $button.btn_type == 'modal'}
-              <button class="btn btn-{$button.btn_color} mb-1" id="{$btn_name}Button" onclick="openModal({$button.modalId},this,{$button.modalFunction})"><i class="fa fa-fw fa-{$button.faclass} me-1"></i>{$button.title|@ucfirst}</button>
-            {else if $button.btn_type == 'pageSmooth'}
+              <button class="btn btn-{$button.btn_color} mb-1" id="{$btn_name}Button" onclick="openModal('{$button.modalId}', this{if isset($button.modalFunction) && $button.modalFunction}, {$button.modalFunction}{/if})"><i class="fa fa-fw fa-{$button.faclass} me-1"></i>{$button.title|@ucfirst}</button>
+            {elseif $button.btn_type == 'pageSmooth'}
               <button class="btn btn-{$button.btn_color} mb-1" id="{$btn_name}Button" onclick="goToPage('{$btn_name}','page-content')"><i class="fa fa-fw fa-{$button.faclass} me-1"></i>{$button.title|@ucfirst}</button>
-            {else if $button.btn_type == 'page'}
+            {elseif $button.btn_type == 'page'}
               <button class="btn btn-{$button.btn_color} mb-1" id="{$btn_name}Button" onclick="window.location = '?page={$btn_name}'"><i class="fa fa-fw fa-{$button.faclass} me-1"></i>{$button.title|@ucfirst}</button>
             {/if}
           {/foreach}
@@ -46,7 +64,7 @@
       {/if}
 
       {* Logout/Login Button*}
-      {if $auth_type neq "none" and isset($authenticated) and $authenticated  and not $page|in_array:$public_pages}
+      {if $auth_type neq "none" and isset($authenticated) and $authenticated  and not ($page eq 'home' or $page eq 'post')}
         <div class="col d-grid gap-2 d-md-flex my-2 justify-content-lg-end">
           <button type="submit" class="btn btn-success" id="logoutButton" onclick="logoff()" title="Log off"><i class="fa fa-fw fa-sign-out"></i> {$msg_logout}</button>
         </div>
@@ -59,7 +77,7 @@
 </nav>{* END nav *}
 
 {* Welcome Banner *}
-{if ($auth_type neq "none" and $authenticated) and $page eq $default_page and not $page|in_array:$public_pages}
+{if ($auth_type neq "none" and $authenticated) and $page eq $default_page and not ($page eq 'home' or $page eq 'post')}
   <div class="container-fluid inset-1" id="welcome-banner">
     <div class="row alert alert-success" role="alert">
       <div class="col-auto me-auto my-1"><i class="fa fa-fw fa-info-circle"></i> Welcome, {$displayname}.</div>

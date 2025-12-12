@@ -1,132 +1,77 @@
 <?php
-/**
- * Settings Draft API
- * Handles auto-save operations to draft fields for settings
- * Draft content is saved here without affecting published content
- *
- * Supports empty HTML content for sections like about and donate
- * Users can erase default values to have no content displayed
- */
-header('Content-Type: application/json');
-require_once(__DIR__ . '/../../functions.php');
-ensureSession();
 
-// Auth check: require admin
-if (empty($_SESSION['authenticated']) || empty($_SESSION['username'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
-    exit;
-}
+declare(strict_types=1);
 
-if (isset($_SESSION['isadmin']) && !$_SESSION['isadmin']) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Forbidden']);
-    exit;
-}
+use PostPortal\Http\ApiHandler;
+use PostPortal\Http\ErrorResponse;
 
-// DB connect
-require(__DIR__ . '/../../config.local.php');
-$db_conn = getDbConnection($db_servername, $db_username, $db_password, $db_name);
-if (!$db_conn) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'DB connection failed']);
-    exit;
-}
+require_once __DIR__ . '/../bootstrap.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+ApiHandler::handle(function (): void {
+    ['container' => $container] = bootstrapApi(requireAuth: true, requireAdmin: true);
+    requireCsrfToken();
 
-function requireCsrf() {
-    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? '');
-    if (!validateCsrfToken($token)) {
-        http_response_code(419);
-        echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
-        exit;
+    $payload = readJsonInput();
+    $updates = [];
+
+    $boolFields = ['show_hero'];
+    $intFields = ['hero_media_id', 'hero_height'];
+    $floatFields = ['hero_overlay_opacity'];
+    $stringFields = ['hero_overlay_color'];
+
+    $htmlFields = [
+        'hero_html' => 'hero_html_draft',
+        'site_bio_html' => 'site_bio_html_draft',
+        'donate_text_html' => 'donate_text_html_draft',
+        'donation_instructions_html' => 'donation_instructions_html_draft',
+        'footer_column1_html' => 'footer_column1_html_draft',
+        'footer_column2_html' => 'footer_column2_html_draft',
+        'mailing_list_html' => 'mailing_list_html_draft',
+    ];
+
+    foreach ($htmlFields as $payloadKey => $dbKey) {
+        if (array_key_exists($payloadKey, $payload)) {
+            $updates[$dbKey] = sanitizeHtml((string) $payload[$payloadKey]);
+        }
     }
-}
 
-switch ($method) {
-    case 'PUT':
-        // Auto-save draft content for settings
-        requireCsrf();
-
-        $payload = json_decode(file_get_contents('php://input'), true) ?: [];
-
-        // Build dynamic update for draft fields
-        $fields = [];
-        $params = [];
-        $types = '';
-
-        // Map incoming fields to draft fields
-        if (isset($payload['hero_html'])) {
-            $fields[] = 'hero_html_draft = ?';
-            $params[] = sanitizeHtml($payload['hero_html']);
-            $types .= 's';
+    foreach ($boolFields as $key) {
+        if (array_key_exists($key, $payload)) {
+            $updates[$key] = (int) (bool) $payload[$key];
         }
+    }
 
-        if (isset($payload['site_bio_html'])) {
-            $fields[] = 'site_bio_html_draft = ?';
-            $params[] = sanitizeHtml($payload['site_bio_html']);
-            $types .= 's';
+    foreach ($intFields as $key) {
+        if (array_key_exists($key, $payload)) {
+            $value = $payload[$key];
+            $updates[$key] = ($value === '' || $value === null) ? null : (int) $value;
         }
+    }
 
-        if (isset($payload['donate_text_html'])) {
-            $fields[] = 'donate_text_html_draft = ?';
-            $params[] = sanitizeHtml($payload['donate_text_html']);
-            $types .= 's';
+    foreach ($floatFields as $key) {
+        if (array_key_exists($key, $payload)) {
+            $updates[$key] = (float) $payload[$key];
         }
+    }
 
-        if (isset($payload['donation_instructions_html'])) {
-            $fields[] = 'donation_instructions_html_draft = ?';
-            $params[] = sanitizeHtml($payload['donation_instructions_html']);
-            $types .= 's';
+    foreach ($stringFields as $key) {
+        if (array_key_exists($key, $payload)) {
+            $updates[$key] = (string) $payload[$key];
         }
+    }
 
-        if (isset($payload['footer_column1_html'])) {
-            $fields[] = 'footer_column1_html_draft = ?';
-            $params[] = sanitizeHtml($payload['footer_column1_html']);
-            $types .= 's';
-        }
+    if (empty($updates)) {
+        ErrorResponse::success(['message' => 'No fields to update']);
+    }
 
-        if (isset($payload['footer_column2_html'])) {
-            $fields[] = 'footer_column2_html_draft = ?';
-            $params[] = sanitizeHtml($payload['footer_column2_html']);
-            $types .= 's';
-        }
+    $updates['updated_at'] = date('Y-m-d H:i:s');
 
-        if (isset($payload['mailing_list_html'])) {
-            $fields[] = 'mailing_list_html_draft = ?';
-            $params[] = sanitizeHtml($payload['mailing_list_html']);
-            $types .= 's';
-        }
+    $settingsRepository = $container->getSettingsRepository();
+    $success = $settingsRepository->update($updates);
 
-        if (empty($fields)) {
-            echo json_encode(['success' => true, 'message' => 'No fields to update']);
-            break;
-        }
+    if (!$success) {
+        ErrorResponse::unprocessableEntity('Failed to save settings draft');
+    }
 
-        // Add updated_at
-        $sql = 'UPDATE settings SET ' . implode(', ', $fields) . ', updated_at = CURRENT_TIMESTAMP WHERE id = 1';
-
-        $stmt = mysqli_prepare($db_conn, $sql);
-        if (!$stmt) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Failed to prepare statement']);
-            break;
-        }
-
-        if (!empty($params)) {
-            mysqli_stmt_bind_param($stmt, $types, ...$params);
-        }
-
-        if (mysqli_stmt_execute($stmt)) {
-            echo json_encode(['success' => true]);
-        } else {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => mysqli_error($db_conn)]);
-        }
-        break;
-
-    default:
-        http_response_code(405);
-        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-}
+    ErrorResponse::success();
+});

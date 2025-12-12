@@ -1,15 +1,13 @@
 # Dependencies
 src/vendor/
+vendor/
 
 # Application directories
 src/cache/
+src/templates_c/
 logs/
 src/storage/uploads/*
 !src/storage/uploads/.gitkeep
-
-# Application files
-src/index.php
-src/framework
 
 # Config
 .env

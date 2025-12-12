@@ -37,6 +37,13 @@
       return null;
     }
 
+    const statusEl = statusElementId ? document.getElementById(statusElementId) : null;
+    if (statusEl) {
+      statusEl.dataset.forceEnabled = '1';
+      statusEl.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+      statusEl.className = 'editor-autosave-indicator';
+    }
+
     return window.setupAutoSave(editor, {
       saveUrl: '/api/admin/settings-draft.php',
       method: 'PUT',
@@ -777,7 +784,9 @@
       });
 
       colorHex.addEventListener('input', function() {
-        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        const isValid = /^#[0-9A-Fa-f]{6}$/.test(this.value);
+        this.classList.toggle('is-invalid', !isValid && this.value.length > 0);
+        if (isValid) {
           colorPicker.value = this.value;
           updateHeroBannerPreview();
         }

@@ -1,6 +1,6 @@
 (() => {
-  function qs(sel, el=document) { return el.querySelector(sel); }
-  function qsa(sel, el=document) { return Array.from(el.querySelectorAll(sel)); }
+  function qs(sel, el = document) { return el.querySelector(sel); }
+  function qsa(sel, el = document) { return Array.from(el.querySelectorAll(sel)); }
 
   const viewSettings = window.POST_PORTAL_VIEW_SETTINGS || {};
   const SHOW_VIEW_COUNTS = !!viewSettings.showViewCounts;
@@ -63,7 +63,7 @@
   }
 
   function escapeHtml(str) {
-    return (str || '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+    return (str || '').replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s]));
   }
 
   function renderPostCard(post, isAuth) {
@@ -495,7 +495,7 @@
   }
 
   // Attach handlers to timeline cards within a container (idempotent via data-bound)
-  function bindCardHandlers(container=document) {
+  function bindCardHandlers(container = document) {
     // Clickable post cards
     qsa('.post-card', container).forEach(card => {
       if (card.dataset.bound === '1') return;
@@ -1001,7 +1001,7 @@
     return impressionObserver;
   }
 
-  function observeTimelineItems(scope=document) {
+  function observeTimelineItems(scope = document) {
     const obs = ensureImpressionObserver();
     scope.querySelectorAll('.timeline-item').forEach(item => obs.observe(item));
   }
@@ -1030,11 +1030,11 @@ function ensureAnchorsOpenNewTab(container) {
 
 // Post editor functionality (only for authenticated users)
 // Wait for DOM to load before checking for modal
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const postEditorModal = document.getElementById('postEditorModal');
 
   if (postEditorModal) {
-    (function() {
+    (function () {
       const modal = postEditorModal;
       const postEditorContainer = modal.querySelector('.modal-body');
       const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -1067,6 +1067,14 @@ document.addEventListener('DOMContentLoaded', function() {
           return null;
         }
 
+        // Signal that auto-save is already enabled for existing posts
+        const statusEl = document.getElementById('post-autosave-status-home-edit');
+        if (statusEl) {
+          statusEl.dataset.forceEnabled = '1';
+          statusEl.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+          statusEl.className = 'editor-autosave-indicator';
+        }
+
         return window.setupAutoSave(editor, {
           saveUrl: `/api/admin/posts-draft.php?id=${postId}`,
           method: 'PUT',
@@ -1077,13 +1085,13 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // Helper API function
-      const api = (url, opts={}) => {
-        opts.headers = Object.assign({'X-CSRF-Token': CSRF}, opts.headers||{});
+      const api = (url, opts = {}) => {
+        opts.headers = Object.assign({ 'X-CSRF-Token': CSRF }, opts.headers || {});
         return fetch(url, opts).then(r => r.json());
       };
 
       // Handle edit button clicks on post cards (use capture to run before card click)
-      document.addEventListener('click', function(e) {
+      document.addEventListener('click', function (e) {
         const editBtn = e.target.closest('.btn-edit-post-home');
         if (editBtn) {
           e.preventDefault();
@@ -1109,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Handle edit button in overlay
       const overlayEditBtn = document.querySelector('#overlay-edit');
       if (overlayEditBtn) {
-        overlayEditBtn.addEventListener('click', function() {
+        overlayEditBtn.addEventListener('click', function () {
           const postId = overlayEditBtn.getAttribute('data-post-id');
           if (postId) {
             // Hide the overlay first
@@ -1135,22 +1143,986 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-    // Handle Create Post button click
-    const createPostBtn = document.getElementById('btnCreatePost');
-    if (createPostBtn) {
-      createPostBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // Prevent default Bootstrap modal opening
-        e.stopPropagation();
-        editingPostId = null; // Clear editing ID for new post
+      // Handle Create Post button click
+      const createPostBtn = document.getElementById('btnCreatePost');
+      if (createPostBtn) {
+        createPostBtn.addEventListener('click', function (e) {
+          e.preventDefault(); // Prevent default Bootstrap modal opening
+          e.stopPropagation();
+          editingPostId = null; // Clear editing ID for new post
 
-        // Reset autosave indicator for new unsaved post
-        const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
-        if (statusEl) {
-          statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
-          statusEl.className = 'editor-autosave-indicator';
+          // Reset autosave indicator for new unsaved post
+          const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+          if (statusEl) {
+            statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+            statusEl.className = 'editor-autosave-indicator';
+          }
+
+          // Clear any lingering auto-save interval defensively
+          if (postAutoSave) {
+            if (typeof postAutoSave.cleanup === 'function') {
+              postAutoSave.cleanup();
+            } else {
+              clearInterval(postAutoSave);
+            }
+            postAutoSave = null;
+          }
+
+          // Manually open the modal
+          const bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+        });
+      }
+
+      // Initialize Quill editor when modal is first shown
+      let editorInitialized = false;
+      modal.addEventListener('shown.bs.modal', function () {
+        // Initialize crop manager for hero image if not already done
+        if (typeof window.initPostEditorCrop === 'function' && !modal._postCropManager) {
+          modal._postCropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
         }
 
-        // Clear any lingering auto-save interval defensively
+        // Reset auto-save indicator immediately for new posts
+        // This prevents stale "Draft saved" messages from previous edits
+        if (!editingPostId) {
+          const statusElement = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+          if (statusElement) {
+            statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+            statusElement.className = 'editor-autosave-indicator';
+          }
+        }
+
+        // Show/hide Save Draft button based on whether we're editing or creating
+        // Show for NEW posts (no editingPostId), hide for editing existing posts
+        const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+        if (saveDraftBtn) {
+          saveDraftBtn.style.display = editingPostId ? 'none' : 'inline-block';
+        }
+
+        // Initialize editor if not already done
+        if (!editorInitialized && window.initQuillEditor) {
+          // IMPORTANT: Make sure the post-editor-content is visible before initializing Quill
+          // Quill needs to measure the container, and this fails if it's hidden
+          const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+          const contentEl = postEditorContainer.querySelector('.post-editor-content');
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (contentEl) contentEl.style.display = 'block';
+
+          const postBodyTextarea = postEditorContainer.querySelector('.post-body');
+          postBodyEditor = window.initQuillEditor(postBodyTextarea, {
+            placeholder: 'Write your post content here...',
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'link'],
+              [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['blockquote', 'image'],
+              ['clean']
+            ]
+          });
+
+          editorInitialized = true;
+          // Initialize AI title generator with editor instance
+          if (typeof window.initAITitleGenerator === 'function') {
+            window.initAITitleGenerator(postEditorContainer, postBodyEditor);
+          }
+          // Load post data if editing, otherwise clear form for new post
+          if (editingPostId) {
+            loadPostData();
+          } else {
+            clearPostForm();
+          }
+        } else if (editorInitialized) {
+          // Editor already initialized, load data if editing or clear for new post
+          if (editingPostId) {
+            loadPostData();
+          } else {
+            clearPostForm();
+          }
+        }
+      });
+
+      // Clear post form for new post
+      function clearPostForm() {
+        // Hide loading, show content
+        const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+        const contentEl = postEditorContainer.querySelector('.post-editor-content');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'block';
+
+        // Clear form fields
+        postEditorContainer.querySelector('.post-title').value = '';
+
+        // Clear editor
+        if (postBodyEditor) {
+          window.clearQuillEditor(postBodyEditor);
+        } else {
+          postEditorContainer.querySelector('.post-body').value = '';
+        }
+
+        // Clear hero image
+        const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+        const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+        if (heroSelect) heroSelect.value = '';
+        if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+
+        // Reset hero settings
+        const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+        const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+        if (heroHeightSlider) {
+          heroHeightSlider.value = 100;
+          const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+          if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
+        }
+        if (heroHeightValue) heroHeightValue.textContent = '100';
+
+        // Clear gallery
+        const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
+        if (galleryPreview) {
+          galleryPreview.innerHTML = '';
+          galleryPreview.classList.add('empty');
+        }
+        galleryMediaIds = [];
+
+        // Clear auto-save
+        if (postAutoSave) {
+          if (typeof postAutoSave.cleanup === 'function') {
+            postAutoSave.cleanup();
+          } else {
+            clearInterval(postAutoSave);
+          }
+          postAutoSave = null;
+        }
+      }
+
+      // Load post data function
+      function loadPostData() {
+        if (!editingPostId) return;
+
+        // Show loading spinner while fetching data
+        const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
+        const contentEl = postEditorContainer.querySelector('.post-editor-content');
+        if (loadingEl) loadingEl.style.display = 'block';
+        if (contentEl) contentEl.style.display = 'none';
+
+        // Clear gallery preview
+        const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
+        if (galleryPreview) {
+          galleryPreview.innerHTML = '';
+          galleryPreview.classList.add('empty');
+        }
+        galleryMediaIds = [];
+
+        fetch('/api/admin/posts.php?id=' + editingPostId)
+          .then(r => r.json())
+          .then(j => {
+            if (j.success && j.data) {
+              const post = j.data;
+
+              // Use draft content for editing (falls back to published if no draft)
+              postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
+
+              if (postBodyEditor) {
+                // Load draft content into editor
+                window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
+
+                // Set up auto-save for this post (saves to draft)
+                // Only enable autosave if we have a valid post ID
+                if (postAutoSave) {
+                  if (typeof postAutoSave.cleanup === 'function') {
+                    postAutoSave.cleanup();
+                  } else {
+                    clearInterval(postAutoSave);
+                  }
+                  postAutoSave = null;
+                }
+                if (editingPostId) {
+                  const statusElement = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+                  if (statusElement) {
+                    statusElement.dataset.forceEnabled = '1';
+                    statusElement.innerHTML = '<span class="text-muted">Auto-save enabled</span>';
+                    statusElement.className = 'editor-autosave-indicator';
+                  }
+                  postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
+                }
+              } else {
+                postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
+              }
+
+              // Set hero image (use draft)
+              const heroMediaId = post.hero_media_id_editing;
+              if (heroMediaId) {
+                const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+                const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
+                if (heroSelect) {
+                  heroSelect.value = heroMediaId;
+                  heroSelect.dispatchEvent(new Event('change'));
+                }
+                // Set hero height and show control (use draft)
+                const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+                const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+                const heroCropToggle = postEditorContainer.querySelector('.post-hero-crop-overlay');
+                const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+                const heightToSet = post.hero_image_height_editing || 100;
+                if (heroHeightSlider) {
+                  heroHeightSlider.value = heightToSet;
+                  if (heroHeightValue) {
+                    heroHeightValue.textContent = heightToSet;
+                  }
+                  // Set preview padding-bottom to match actual display
+                  if (heroPreviewDiv) {
+                    heroPreviewDiv.style.paddingBottom = heightToSet + '%';
+                  }
+                }
+                // Set crop overlay toggle (use draft)
+                if (heroCropToggle) {
+                  heroCropToggle.checked = (post.hero_crop_overlay_editing == 1);
+                }
+                // Set title overlay toggle (use draft)
+                const heroTitleToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+                if (heroTitleToggle) {
+                  const draftValue = post.hero_title_overlay_editing;
+                  heroTitleToggle.checked = draftValue == 1 || draftValue === null || draftValue === undefined;
+                }
+                // Set overlay opacity slider (use draft)
+                const heroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+                const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+                if (heroOverlayOpacity) {
+                  const opacityToSet = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
+                  heroOverlayOpacity.value = opacityToSet;
+                  if (overlayOpacityValue) {
+                    overlayOpacityValue.textContent = opacityToSet.toFixed(2);
+                  }
+                }
+                // Show height control when there's a hero image
+                if (heroHeightControl) {
+                  heroHeightControl.style.display = 'block';
+                }
+
+                // Update preview after loading all settings
+                setTimeout(() => {
+                  if (typeof updateHeroPreview === 'function') {
+                    updateHeroPreview();
+                  }
+                }, 100);
+              }
+
+              // Load gallery images (prefer draft editing version to avoid stale published gallery)
+              const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
+              if (galleryData) {
+                try {
+                  const galleryIds = JSON.parse(galleryData);
+                  if (Array.isArray(galleryIds) && galleryIds.length > 0) {
+                    galleryMediaIds = [...galleryIds];
+                    for (const mediaId of galleryIds) {
+                      fetch(`/api/admin/media.php?id=${mediaId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                          if (data.success && data.data) {
+                            addGalleryItemPreview(mediaId, data.data);
+                          }
+                        });
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error parsing gallery media IDs:', e);
+                }
+              }
+
+              // Hide Save Draft button for existing posts (draft button is only for brand new posts)
+              const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+              if (saveDraftBtn) {
+                saveDraftBtn.style.display = 'none';
+              }
+            }
+
+            // Hide loading, show content
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (contentEl) contentEl.style.display = 'block';
+          })
+          .catch(err => {
+            console.error('Error loading post:', err);
+            // Hide loading, show content even on error
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (contentEl) contentEl.style.display = 'block';
+          });
+      }
+
+      // Load media library for hero dropdown
+      fetch('/api/admin/media.php')
+        .then(r => r.json())
+        .then(j => {
+          if (j.success && j.data) {
+            const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+            j.data.forEach(m => {
+              const option = document.createElement('option');
+              option.value = m.id;
+              option.textContent = m.original_filename + ' (' + m.width + 'x' + m.height + ')';
+              heroSelect.appendChild(option);
+            });
+          }
+        });
+
+      // Hero image selection handler
+      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+      const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
+      const heroPreview = postEditorContainer.querySelector('.hero-preview');
+      const heroPreviewImg = heroPreview?.querySelector('img');
+      const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
+      const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
+      const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
+      const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
+      const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
+      const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
+      const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
+      const postTitleInput = postEditorContainer.querySelector('.post-title');
+      const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
+
+      // Save just the hero-related fields to draft for existing posts
+      const saveHeroDraft = async () => {
+        if (!editingPostId) return; // Only auto-save for existing posts
+        const payload = {
+          hero_media_id: heroSelect?.value || null,
+          hero_image_height: heroSelect?.value ? parseInt(heroHeightSlider?.value || 100) : null,
+          hero_crop_overlay: heroSelect?.value ? (postEditorContainer.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0) : 0,
+          hero_title_overlay: heroSelect?.value ? (heroTitleOverlayToggle?.checked ? 1 : 0) : 1,
+          hero_overlay_opacity: heroSelect?.value ? parseFloat(heroOverlayOpacitySlider?.value || 0.70) : 0.70
+        };
+        try {
+          await api('/api/admin/posts-draft.php?id=' + editingPostId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (e) {
+          console.warn('Auto-save hero draft failed:', e);
+        }
+      };
+
+      // Function to update preview based on settings
+      const updateHeroPreview = () => {
+        if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
+
+        const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
+        const opacity = parseFloat(heroOverlayOpacitySlider?.value || 0.70);
+        const titleText = postTitleInput?.value || 'Post Title Preview';
+
+        // Show/hide opacity control based on title overlay toggle
+        if (heroOverlayOpacityControl) {
+          heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
+        }
+
+        // Update image brightness
+        if (showTitleOverlay) {
+          heroPreviewImg.style.filter = `brightness(${opacity})`;
+        } else {
+          heroPreviewImg.style.filter = 'none';
+        }
+
+        // Update title overlay visibility and text
+        if (showTitleOverlay) {
+          heroPreviewTitleOverlay.style.display = 'block';
+          const titleElement = heroPreviewTitleOverlay.querySelector('h5');
+          if (titleElement) {
+            titleElement.textContent = titleText || 'Post Title Preview';
+          }
+        } else {
+          heroPreviewTitleOverlay.style.display = 'none';
+        }
+      };
+
+      // Expose for cross-file calls (used by crop init upload flow)
+      // Accepts optional container arg but uses current closure variables
+      window.updatePostHeroPreview = function () {
+        updateHeroPreview();
+      };
+
+      if (heroSelect) {
+        heroSelect.addEventListener('change', function () {
+          if (this.value && heroPreviewImg) {
+            fetch(`/api/admin/media.php?id=${this.value}`)
+              .then(r => r.json())
+              .then(data => {
+                if (data.success && data.data) {
+                  let previewUrl = '';
+                  try {
+                    const variants = JSON.parse(data.data.variants_json || '[]');
+                    if (Array.isArray(variants)) {
+                      // Prefer 400w jpg, fall back to any 400w, then 800w
+                      let v = variants.find(v => v.width === 400 && v.format === 'jpg')
+                        || variants.find(v => v.width === 400)
+                        || variants.find(v => v.width === 800);
+                      if (v && v.path) {
+                        const m = v.path.match(/\/storage\/uploads\/.+$/);
+                        previewUrl = m ? m[0] : v.path;
+                      }
+                    } else {
+                      // Legacy object shape: { "400": { jpg: "..." } }
+                      const variant400 = variants['400'];
+                      if (variant400?.jpg) {
+                        previewUrl = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
+                      }
+                    }
+                  } catch (e) {
+                    // Ignore parse issues; will fallback below
+                  }
+
+                  if (!previewUrl) {
+                    previewUrl = '/storage/uploads/originals/' + data.data.filename;
+                  }
+
+                  heroPreviewImg.src = previewUrl;
+                  heroPreviewImg.alt = data.data.alt_text || '';
+                  if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
+
+                  // Set initial preview padding-bottom based on current slider value
+                  const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+                  const currentHeight = parseInt(heroHeightSlider?.value || 100);
+                  if (heroPreviewDiv) {
+                    heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+                  }
+
+                  // Update preview with current settings
+                  updateHeroPreview();
+
+                  // Auto-save hero selection to draft for existing posts
+                  saveHeroDraft();
+                }
+              });
+          } else {
+            if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+            // Save cleared hero selection
+            saveHeroDraft();
+          }
+        });
+      }
+
+      // Hero height slider handler - update preview dynamically
+      if (heroHeightSlider && heroHeightValue) {
+        const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+        heroHeightSlider.addEventListener('input', function () {
+          const heightPercent = parseInt(this.value);
+          heroHeightValue.textContent = heightPercent;
+          // Update padding-bottom to match actual display
+          if (heroPreviewDiv) {
+            heroPreviewDiv.style.paddingBottom = heightPercent + '%';
+          }
+          // Auto-save
+          saveHeroDraft();
+        });
+      }
+
+      // Opacity slider and overlay toggle handlers
+      if (heroOverlayOpacitySlider && overlayOpacityValue) {
+        heroOverlayOpacitySlider.addEventListener('input', function () {
+          const opacity = parseFloat(this.value);
+          overlayOpacityValue.textContent = opacity.toFixed(2);
+          updateHeroPreview();
+          saveHeroDraft();
+        });
+      }
+
+      // Title overlay toggle handler
+      if (heroTitleOverlayToggle) {
+        heroTitleOverlayToggle.addEventListener('change', function () {
+          updateHeroPreview();
+          saveHeroDraft();
+        });
+      }
+
+      // Update preview when title changes
+      if (postTitleInput) {
+        postTitleInput.addEventListener('input', updateHeroPreview);
+      }
+
+      // Show trash icon on hover
+      const heroPreviewWrapper = postEditorContainer.querySelector('.hero-preview-wrapper');
+      if (heroPreviewWrapper) {
+        heroPreviewWrapper.addEventListener('mouseenter', function () {
+          const removeBtn = this.querySelector('.btn-remove-hero');
+          if (removeBtn) removeBtn.style.opacity = '1';
+        });
+        heroPreviewWrapper.addEventListener('mouseleave', function () {
+          const removeBtn = this.querySelector('.btn-remove-hero');
+          if (removeBtn) removeBtn.style.opacity = '0';
+        });
+      }
+
+      // Hero remove button
+      const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
+      if (heroRemoveBtn) {
+        heroRemoveBtn.addEventListener('click', function () {
+          if (heroSelect) heroSelect.value = '';
+          if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
+          if (heroPreviewImg) heroPreviewImg.src = '';
+          if (heroHeightSlider) {
+            heroHeightSlider.value = 100;
+            // Reset preview padding-bottom
+            const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+            if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
+          }
+          if (heroHeightValue) heroHeightValue.textContent = '100';
+        });
+      }
+
+      // Hero upload handlers
+      const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
+      const heroUploadBtn = postEditorContainer.querySelector('.btn-upload-hero');
+
+      // Show upload button when file is selected
+      if (heroUploadInput) {
+        heroUploadInput.addEventListener('change', function () {
+          if (heroUploadBtn) {
+            heroUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
+          }
+        });
+      }
+
+      // Handle hero upload
+      if (heroUploadBtn) {
+        heroUploadBtn.addEventListener('click', async function () {
+          const file = heroUploadInput?.files[0];
+          if (!file) return;
+
+          // Validate file size (20MB)
+          if (file.size > 20 * 1024 * 1024) {
+            alert('File size must be less than 20MB');
+            return;
+          }
+
+          // Validate file type
+          const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+          if (!validTypes.includes(file.type)) {
+            alert('Invalid file type. Please use JPG, PNG, WebP, or HEIC');
+            return;
+          }
+
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('alt_text', '');
+
+          try {
+            heroUploadBtn.disabled = true;
+            const originalText = heroUploadBtn.textContent;
+            heroUploadBtn.textContent = 'Uploading...';
+
+            const response = await fetch('/api/admin/media.php', {
+              method: 'POST',
+              headers: {
+                'X-CSRF-Token': csrfToken
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Add to select dropdown
+              const option = document.createElement('option');
+              option.value = data.id;
+              option.textContent = file.name;
+              option.selected = true;
+              heroSelect.appendChild(option);
+
+              // Show preview
+              const variants = JSON.parse(data.data?.variants_json || '{}');
+              const variant400 = variants['400'];
+              const previewUrl = variant400?.jpg
+                ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
+                : '/storage/uploads/originals/' + data.data?.filename;
+              if (heroPreviewImg) {
+                heroPreviewImg.src = previewUrl;
+              }
+              if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
+
+              // Set initial preview padding-bottom based on current slider value
+              const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
+              const currentHeight = parseInt(heroHeightSlider?.value || 100);
+              if (heroPreviewDiv) {
+                heroPreviewDiv.style.paddingBottom = currentHeight + '%';
+              }
+
+              // Clear file input
+              heroUploadInput.value = '';
+              heroUploadBtn.style.display = 'none';
+            } else {
+              alert('Upload failed: ' + (data.error || 'Unknown error'));
+            }
+
+            heroUploadBtn.disabled = false;
+            heroUploadBtn.textContent = originalText;
+          } catch (error) {
+            console.error('Error uploading hero image:', error);
+            alert('An error occurred during upload');
+            heroUploadBtn.disabled = false;
+          }
+        });
+      }
+
+      // Gallery preview functions
+      function addGalleryItemPreview(mediaId, mediaData) {
+        const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
+        if (!galleryPreview) return;
+
+        galleryPreview.classList.remove('empty');
+
+        const variants = JSON.parse(mediaData?.variants_json || '{}');
+        const variant400 = variants['400'];
+        const thumbUrl = variant400?.jpg
+          ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
+          : '/storage/uploads/originals/' + mediaData?.filename;
+
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        item.dataset.mediaId = mediaId;
+        item.innerHTML = `
+        <img src="${thumbUrl}" alt="${mediaData?.alt_text || ''}" />
+        <button type="button" class="btn btn-danger btn-sm btn-remove-gallery-item">&times;</button>
+      `;
+
+        item.querySelector('.btn-remove-gallery-item').addEventListener('click', function () {
+          const idx = galleryMediaIds.indexOf(parseInt(mediaId));
+          if (idx > -1) galleryMediaIds.splice(idx, 1);
+          item.remove();
+          if (!galleryPreview.children.length) {
+            galleryPreview.classList.add('empty');
+          }
+        });
+
+        galleryPreview.appendChild(item);
+      }
+
+      // Gallery upload handlers
+      const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
+      const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
+
+      // Show upload button when files are selected
+      if (galleryUploadInput) {
+        galleryUploadInput.addEventListener('change', function () {
+          if (galleryUploadBtn) {
+            galleryUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
+          }
+        });
+      }
+
+      // Handle gallery upload
+      if (galleryUploadBtn) {
+        galleryUploadBtn.addEventListener('click', async function () {
+          const files = Array.from(galleryUploadInput?.files || []);
+          if (!files.length) return;
+
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+          try {
+            galleryUploadBtn.disabled = true;
+            const originalText = galleryUploadBtn.textContent;
+            galleryUploadBtn.textContent = `Uploading ${files.length} file(s)...`;
+
+            for (const file of files) {
+              // Validate each file
+              if (file.size > 20 * 1024 * 1024) {
+                alert(`${file.name} is too large (max 20MB)`);
+                continue;
+              }
+
+              const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+              if (!validTypes.includes(file.type)) {
+                alert(`${file.name} has invalid type`);
+                continue;
+              }
+
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('alt_text', '');
+
+              const response = await fetch('/api/admin/media.php', {
+                method: 'POST',
+                headers: {
+                  'X-CSRF-Token': csrfToken
+                },
+                body: formData
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                // Add to gallery
+                galleryMediaIds.push(data.id);
+                addGalleryItemPreview(data.id, data.data);
+              } else {
+                alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
+              }
+            }
+
+            // Clear file input
+            galleryUploadInput.value = '';
+            galleryUploadBtn.style.display = 'none';
+            galleryUploadBtn.disabled = false;
+            galleryUploadBtn.textContent = originalText;
+          } catch (error) {
+            console.error('Error uploading gallery images:', error);
+            alert('An error occurred during upload');
+            galleryUploadBtn.disabled = false;
+          }
+        });
+      }
+
+      // Save button handler (Save and Publish)
+      postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function () {
+        const saveBtn = this;
+        const originalText = saveBtn.textContent;
+
+        try {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+
+          // Check if there's a pending hero image file to upload
+          const heroFile = heroUploadInput?.files[0];
+          let uploadedHeroId = postEditorContainer.querySelector('.post-hero-media').value || null;
+
+          if (heroFile && !uploadedHeroId) {
+            saveBtn.textContent = 'Uploading hero image...';
+
+            // Validate file
+            if (heroFile.size > 20 * 1024 * 1024) {
+              alert('Hero image file size must be less than 20MB');
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              return;
+            }
+
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+            if (!validTypes.includes(heroFile.type)) {
+              alert('Invalid hero image type. Please use JPG, PNG, WebP, or HEIC');
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              return;
+            }
+
+            // Upload hero image
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const formData = new FormData();
+            formData.append('file', heroFile);
+            formData.append('alt_text', '');
+
+            const response = await fetch('/api/admin/media.php', {
+              method: 'POST',
+              headers: {
+                'X-CSRF-Token': csrfToken
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              uploadedHeroId = data.id;
+            } else {
+              alert('Hero image upload failed: ' + (data.error || 'Unknown error'));
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              return;
+            }
+          }
+
+          // Check if there are pending gallery files to upload
+          const galleryFiles = Array.from(galleryUploadInput?.files || []);
+          if (galleryFiles.length > 0) {
+            saveBtn.textContent = `Uploading ${galleryFiles.length} gallery image(s)...`;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+            for (const file of galleryFiles) {
+              // Validate each file
+              if (file.size > 20 * 1024 * 1024) {
+                alert(`${file.name} is too large (max 20MB)`);
+                continue;
+              }
+
+              const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+              if (!validTypes.includes(file.type)) {
+                alert(`${file.name} has invalid type`);
+                continue;
+              }
+
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('alt_text', '');
+
+              const response = await fetch('/api/admin/media.php', {
+                method: 'POST',
+                headers: {
+                  'X-CSRF-Token': csrfToken
+                },
+                body: formData
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                galleryMediaIds.push(data.id);
+              } else {
+                alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
+              }
+            }
+
+            // Clear gallery input after upload
+            if (galleryUploadInput) galleryUploadInput.value = '';
+          }
+
+          // Shared field extraction
+          const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
+          const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
+          const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
+          const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
+
+          const payload = {
+            title: postEditorContainer.querySelector('.post-title').value,
+            body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
+            // status set below depending on new vs edit
+            hero_media_id: uploadedHeroId,
+            hero_image_height: heroImageHeightValue,
+            hero_crop_overlay: heroCropOverlayValue,
+            hero_title_overlay: heroTitleOverlayValue,
+            hero_overlay_opacity: heroOverlayOpacityValue,
+            gallery_media_ids: galleryMediaIds
+          };
+
+          if (editingPostId) {
+            // Editing existing post: save draft then publish via confirmation
+            saveBtn.textContent = 'Publishing changes...';
+            const draftSave = await api('/api/admin/posts-draft.php?id=' + editingPostId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (!draftSave.success) {
+              alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              return;
+            }
+            const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
+              const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, { method: 'GET' });
+              if (!publishResult.success) {
+                throw new Error(publishResult.error || 'Unknown error');
+              }
+            });
+            if (proceeded) {
+              const bsModal = bootstrap.Modal.getInstance(modal);
+              if (bsModal) bsModal.hide();
+              if (typeof window.refreshPostsList === 'function') {
+                await window.refreshPostsList();
+              } else {
+                window.location.reload();
+              }
+            } else {
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+            }
+          } else {
+            // New post: ALWAYS confirm before publishing.
+            // 1) Create as draft to obtain an ID
+            saveBtn.textContent = 'Creating draft...';
+            const createDraftRes = await api('/api/admin/posts.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payload, status: 'draft' })
+            });
+            if (!createDraftRes.success || !createDraftRes.id) {
+              alert('Error creating draft: ' + (createDraftRes.error || 'Unknown error'));
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              return;
+            }
+            const newId = createDraftRes.id;
+
+            // Set up edit state now that we have an ID (enable autosave, etc.)
+            editingPostId = newId;
+            if (postBodyEditor) {
+              if (postAutoSave) {
+                if (typeof postAutoSave.cleanup === 'function') {
+                  postAutoSave.cleanup();
+                } else {
+                  clearInterval(postAutoSave);
+                }
+              }
+              postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
+            }
+            const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
+            if (saveDraftBtn) saveDraftBtn.style.display = 'none';
+
+            // 2) Ask for confirmation and publish on proceed
+            saveBtn.textContent = 'Confirming publish...';
+            const proceeded = await window.publishConfirmation.confirmAndPublish(
+              newId,
+              async () => {
+                const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId, { method: 'GET' });
+                if (!publishResult.success) {
+                  throw new Error(publishResult.error || 'Unknown error');
+                }
+              },
+              async () => {
+                // Publish without sending emails: use skip_email flag on publish endpoint
+                const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
+                if (!publishResult.success) {
+                  throw new Error(publishResult.error || 'Unknown error');
+                }
+              }
+            );
+
+            if (proceeded) {
+              const bsModal = bootstrap.Modal.getInstance(modal);
+              if (bsModal) bsModal.hide();
+              if (typeof window.refreshPostsList === 'function') {
+                await window.refreshPostsList();
+              } else {
+                window.location.reload();
+              }
+            } else {
+              // User cancelled: keep as draft and remain in editor
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              // Emit cancel event for any other listeners
+              document.dispatchEvent(new CustomEvent('publish-confirmation:button-restored', { detail: { postId: newId } }));
+            }
+          }
+        } catch (error) {
+          console.error('Error saving post:', error);
+          alert('An error occurred while saving the post');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      });
+
+      // Save Draft button handler (save draft and close without publishing/email)
+      // Use shared handler from post-draft-handler.js
+      if (typeof window.setupSaveDraftHandler === 'function') {
+        window.setupSaveDraftHandler({
+          modal: modal,
+          postEditorContainer: postEditorContainer,
+          getPostBodyEditor: () => postBodyEditor,
+          getEditingId: () => editingPostId,
+          getGalleryMediaIds: () => galleryMediaIds,
+          refreshPostsList: window.refreshPostsList,
+          api: api
+        });
+      }
+
+      // Cancel button handler
+      postEditorContainer.querySelector('.btn-cancel-post').addEventListener('click', function () {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) bsModal.hide();
+      });
+
+      // Clean up on modal hide
+      modal.addEventListener('hidden.bs.modal', function () {
+        editingPostId = null;
+        galleryMediaIds = [];
+
+        // Clear post auto-save interval
         if (postAutoSave) {
           if (typeof postAutoSave.cleanup === 'function') {
             postAutoSave.cleanup();
@@ -1160,971 +2132,13 @@ document.addEventListener('DOMContentLoaded', function() {
           postAutoSave = null;
         }
 
-        // Manually open the modal
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-      });
-    }
-
-    // Initialize Quill editor when modal is first shown
-    let editorInitialized = false;
-    modal.addEventListener('shown.bs.modal', function() {
-      // Initialize crop manager for hero image if not already done
-      if (typeof window.initPostEditorCrop === 'function' && !modal._postCropManager) {
-        modal._postCropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
-      }
-
-      // Reset auto-save indicator immediately for new posts
-      // This prevents stale "Draft saved" messages from previous edits
-      if (!editingPostId) {
-        const statusElement = postEditorContainer.querySelector('#post-autosave-status-home-edit');
-        if (statusElement) {
-          statusElement.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
-          statusElement.className = 'editor-autosave-indicator';
-        }
-      }
-
-      // Show/hide Save Draft button based on whether we're editing or creating
-      // Show for NEW posts (no editingPostId), hide for editing existing posts
-      const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-      if (saveDraftBtn) {
-        saveDraftBtn.style.display = editingPostId ? 'none' : 'inline-block';
-      }
-
-      // Initialize editor if not already done
-      if (!editorInitialized && window.initQuillEditor) {
-        // IMPORTANT: Make sure the post-editor-content is visible before initializing Quill
-        // Quill needs to measure the container, and this fails if it's hidden
-        const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
-        const contentEl = postEditorContainer.querySelector('.post-editor-content');
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (contentEl) contentEl.style.display = 'block';
-
-        const postBodyTextarea = postEditorContainer.querySelector('.post-body');
-        postBodyEditor = window.initQuillEditor(postBodyTextarea, {
-          placeholder: 'Write your post content here...',
-          toolbar: [
-            [{ 'header': [1, 2, 3, false] }],
-            ['bold', 'italic', 'underline', 'link'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'align': [] }],
-            ['blockquote', 'image'],
-            ['clean']
-          ]
-        });
-
-        editorInitialized = true;
-        // Initialize AI title generator with editor instance
-        if (typeof window.initAITitleGenerator === 'function') {
-          window.initAITitleGenerator(postEditorContainer, postBodyEditor);
-        }
-        // Load post data if editing, otherwise clear form for new post
-        if (editingPostId) {
-          loadPostData();
-        } else {
-          clearPostForm();
-        }
-      } else if (editorInitialized) {
-        // Editor already initialized, load data if editing or clear for new post
-        if (editingPostId) {
-          loadPostData();
-        } else {
-          clearPostForm();
-        }
-      }
-    });
-
-    // Clear post form for new post
-    function clearPostForm() {
-      // Hide loading, show content
-      const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
-      const contentEl = postEditorContainer.querySelector('.post-editor-content');
-      if (loadingEl) loadingEl.style.display = 'none';
-      if (contentEl) contentEl.style.display = 'block';
-
-      // Clear form fields
-      postEditorContainer.querySelector('.post-title').value = '';
-
-      // Clear editor
-      if (postBodyEditor) {
-        window.clearQuillEditor(postBodyEditor);
-      } else {
-        postEditorContainer.querySelector('.post-body').value = '';
-      }
-
-      // Clear hero image
-      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-      const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
-      if (heroSelect) heroSelect.value = '';
-      if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
-
-      // Reset hero settings
-      const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
-      const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
-      if (heroHeightSlider) {
-        heroHeightSlider.value = 100;
-        const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-        if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
-      }
-      if (heroHeightValue) heroHeightValue.textContent = '100';
-
-      // Clear gallery
-      const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
-      if (galleryPreview) {
-        galleryPreview.innerHTML = '';
-        galleryPreview.classList.add('empty');
-      }
-      galleryMediaIds = [];
-
-      // Clear auto-save
-      if (postAutoSave) {
-        if (typeof postAutoSave.cleanup === 'function') {
-          postAutoSave.cleanup();
-        } else {
-          clearInterval(postAutoSave);
-        }
-        postAutoSave = null;
-      }
-    }
-
-    // Load post data function
-    function loadPostData() {
-      if (!editingPostId) return;
-
-      // Show loading spinner while fetching data
-      const loadingEl = postEditorContainer.querySelector('.post-editor-loading');
-      const contentEl = postEditorContainer.querySelector('.post-editor-content');
-      if (loadingEl) loadingEl.style.display = 'block';
-      if (contentEl) contentEl.style.display = 'none';
-
-      // Clear gallery preview
-      const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
-      if (galleryPreview) {
-        galleryPreview.innerHTML = '';
-        galleryPreview.classList.add('empty');
-      }
-      galleryMediaIds = [];
-
-      fetch('/api/admin/posts.php?id=' + editingPostId)
-        .then(r => r.json())
-        .then(j => {
-          if (j.success && j.data) {
-            const post = j.data;
-
-            // Use draft content for editing (falls back to published if no draft)
-            postEditorContainer.querySelector('.post-title').value = post.title_editing || '';
-
-            if (postBodyEditor) {
-              // Load draft content into editor
-              window.setQuillHTML(postBodyEditor, post.body_html_editing || '');
-
-              // Set up auto-save for this post (saves to draft)
-              // Only enable autosave if we have a valid post ID
-              if (postAutoSave) {
-                if (typeof postAutoSave.cleanup === 'function') {
-                  postAutoSave.cleanup();
-                } else {
-                  clearInterval(postAutoSave);
-                }
-                postAutoSave = null;
-              }
-              if (editingPostId) {
-                postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
-              }
-            } else {
-              postEditorContainer.querySelector('.post-body').value = post.body_html_editing || '';
-            }
-
-            // Set hero image (use draft)
-            const heroMediaId = post.hero_media_id_editing;
-            if (heroMediaId) {
-              const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-              const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
-              if (heroSelect) {
-                heroSelect.value = heroMediaId;
-                heroSelect.dispatchEvent(new Event('change'));
-              }
-              // Set hero height and show control (use draft)
-              const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
-              const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
-              const heroCropToggle = postEditorContainer.querySelector('.post-hero-crop-overlay');
-              const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-              const heightToSet = post.hero_image_height_editing || 100;
-              if (heroHeightSlider) {
-                heroHeightSlider.value = heightToSet;
-                if (heroHeightValue) {
-                  heroHeightValue.textContent = heightToSet;
-                }
-                // Set preview padding-bottom to match actual display
-                if (heroPreviewDiv) {
-                  heroPreviewDiv.style.paddingBottom = heightToSet + '%';
-                }
-              }
-              // Set crop overlay toggle (use draft)
-              if (heroCropToggle) {
-                heroCropToggle.checked = (post.hero_crop_overlay_editing == 1);
-              }
-              // Set title overlay toggle (use draft)
-              const heroTitleToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
-              if (heroTitleToggle) {
-                const draftValue = post.hero_title_overlay_editing;
-                heroTitleToggle.checked = draftValue == 1 || draftValue === null || draftValue === undefined;
-              }
-              // Set overlay opacity slider (use draft)
-              const heroOverlayOpacity = postEditorContainer.querySelector('.post-hero-overlay-opacity');
-              const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
-              if (heroOverlayOpacity) {
-                const opacityToSet = parseFloat(post.hero_overlay_opacity_editing) || 0.70;
-                heroOverlayOpacity.value = opacityToSet;
-                if (overlayOpacityValue) {
-                  overlayOpacityValue.textContent = opacityToSet.toFixed(2);
-                }
-              }
-              // Show height control when there's a hero image
-              if (heroHeightControl) {
-                heroHeightControl.style.display = 'block';
-              }
-
-              // Update preview after loading all settings
-              setTimeout(() => {
-                if (typeof updateHeroPreview === 'function') {
-                  updateHeroPreview();
-                }
-              }, 100);
-            }
-
-            // Load gallery images (prefer draft editing version to avoid stale published gallery)
-            const galleryData = post.gallery_media_ids_editing || post.gallery_media_ids;
-            if (galleryData) {
-              try {
-                const galleryIds = JSON.parse(galleryData);
-                if (Array.isArray(galleryIds) && galleryIds.length > 0) {
-                  galleryMediaIds = [...galleryIds];
-                  for (const mediaId of galleryIds) {
-                    fetch(`/api/admin/media.php?id=${mediaId}`)
-                      .then(r => r.json())
-                      .then(data => {
-                        if (data.success && data.data) {
-                          addGalleryItemPreview(mediaId, data.data);
-                        }
-                      });
-                  }
-                }
-              } catch (e) {
-                console.error('Error parsing gallery media IDs:', e);
-              }
-            }
-
-            // Hide Save Draft button for existing posts (draft button is only for brand new posts)
-            const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-            if (saveDraftBtn) {
-              saveDraftBtn.style.display = 'none';
-            }
-          }
-
-          // Hide loading, show content
-          if (loadingEl) loadingEl.style.display = 'none';
-          if (contentEl) contentEl.style.display = 'block';
-        })
-        .catch(err => {
-          console.error('Error loading post:', err);
-          // Hide loading, show content even on error
-          if (loadingEl) loadingEl.style.display = 'none';
-          if (contentEl) contentEl.style.display = 'block';
-        });
-    }
-
-    // Load media library for hero dropdown
-    fetch('/api/admin/media.php')
-      .then(r => r.json())
-      .then(j => {
-        if (j.success && j.data) {
-          const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-          j.data.forEach(m => {
-            const option = document.createElement('option');
-            option.value = m.id;
-            option.textContent = m.original_filename + ' (' + m.width + 'x' + m.height + ')';
-            heroSelect.appendChild(option);
-          });
+        // Reset autosave indicator for the next new post open
+        const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
+        if (statusEl) {
+          statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
+          statusEl.className = 'editor-autosave-indicator';
         }
       });
-
-    // Hero image selection handler
-    const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-    const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
-    const heroPreview = postEditorContainer.querySelector('.hero-preview');
-    const heroPreviewImg = heroPreview?.querySelector('img');
-    const heroHeightControl = postEditorContainer.querySelector('.hero-height-control');
-    const heroHeightSlider = postEditorContainer.querySelector('.post-hero-height');
-    const heroHeightValue = postEditorContainer.querySelector('.hero-height-value');
-    const heroOverlayOpacitySlider = postEditorContainer.querySelector('.post-hero-overlay-opacity');
-    const overlayOpacityValue = postEditorContainer.querySelector('.overlay-opacity-value');
-    const heroPreviewTitleOverlay = postEditorContainer.querySelector('.hero-preview-title-overlay');
-    const heroTitleOverlayToggle = postEditorContainer.querySelector('.post-hero-title-overlay');
-    const postTitleInput = postEditorContainer.querySelector('.post-title');
-    const heroOverlayOpacityControl = postEditorContainer.querySelector('.hero-overlay-opacity-control');
-
-    // Save just the hero-related fields to draft for existing posts
-    const saveHeroDraft = async () => {
-      if (!editingPostId) return; // Only auto-save for existing posts
-      const payload = {
-        hero_media_id: heroSelect?.value || null,
-        hero_image_height: heroSelect?.value ? parseInt(heroHeightSlider?.value || 100) : null,
-        hero_crop_overlay: heroSelect?.value ? (postEditorContainer.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0) : 0,
-        hero_title_overlay: heroSelect?.value ? (heroTitleOverlayToggle?.checked ? 1 : 0) : 1,
-        hero_overlay_opacity: heroSelect?.value ? parseFloat(heroOverlayOpacitySlider?.value || 0.70) : 0.70
-      };
-      try {
-        await api('/api/admin/posts-draft.php?id=' + editingPostId, {
-          method: 'PUT',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        });
-      } catch (e) {
-        console.warn('Auto-save hero draft failed:', e);
-      }
-    };
-
-    // Function to update preview based on settings
-    const updateHeroPreview = () => {
-      if (!heroPreviewImg || !heroPreviewTitleOverlay) return;
-
-      const showTitleOverlay = heroTitleOverlayToggle?.checked ?? true;
-      const opacity = parseFloat(heroOverlayOpacitySlider?.value || 0.70);
-      const titleText = postTitleInput?.value || 'Post Title Preview';
-
-      // Show/hide opacity control based on title overlay toggle
-      if (heroOverlayOpacityControl) {
-        heroOverlayOpacityControl.style.display = showTitleOverlay ? 'block' : 'none';
-      }
-
-      // Update image brightness
-      if (showTitleOverlay) {
-        heroPreviewImg.style.filter = `brightness(${opacity})`;
-      } else {
-        heroPreviewImg.style.filter = 'none';
-      }
-
-      // Update title overlay visibility and text
-      if (showTitleOverlay) {
-        heroPreviewTitleOverlay.style.display = 'block';
-        const titleElement = heroPreviewTitleOverlay.querySelector('h5');
-        if (titleElement) {
-          titleElement.textContent = titleText || 'Post Title Preview';
-        }
-      } else {
-        heroPreviewTitleOverlay.style.display = 'none';
-      }
-    };
-
-    // Expose for cross-file calls (used by crop init upload flow)
-    // Accepts optional container arg but uses current closure variables
-    window.updatePostHeroPreview = function() {
-      updateHeroPreview();
-    };
-
-    if (heroSelect) {
-      heroSelect.addEventListener('change', function() {
-        if (this.value && heroPreviewImg) {
-          fetch(`/api/admin/media.php?id=${this.value}`)
-            .then(r => r.json())
-            .then(data => {
-              if (data.success && data.data) {
-                let previewUrl = '';
-                try {
-                  const variants = JSON.parse(data.data.variants_json || '[]');
-                  if (Array.isArray(variants)) {
-                    // Prefer 400w jpg, fall back to any 400w, then 800w
-                    let v = variants.find(v => v.width === 400 && v.format === 'jpg')
-                         || variants.find(v => v.width === 400)
-                         || variants.find(v => v.width === 800);
-                    if (v && v.path) {
-                      const m = v.path.match(/\/storage\/uploads\/.+$/);
-                      previewUrl = m ? m[0] : v.path;
-                    }
-                  } else {
-                    // Legacy object shape: { "400": { jpg: "..." } }
-                    const variant400 = variants['400'];
-                    if (variant400?.jpg) {
-                      previewUrl = '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop();
-                    }
-                  }
-                } catch (e) {
-                  // Ignore parse issues; will fallback below
-                }
-
-                if (!previewUrl) {
-                  previewUrl = '/storage/uploads/originals/' + data.data.filename;
-                }
-
-                heroPreviewImg.src = previewUrl;
-                heroPreviewImg.alt = data.data.alt_text || '';
-                if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
-
-                // Set initial preview padding-bottom based on current slider value
-                const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-                const currentHeight = parseInt(heroHeightSlider?.value || 100);
-                if (heroPreviewDiv) {
-                  heroPreviewDiv.style.paddingBottom = currentHeight + '%';
-                }
-
-                // Update preview with current settings
-                updateHeroPreview();
-
-                // Auto-save hero selection to draft for existing posts
-                saveHeroDraft();
-              }
-            });
-        } else {
-          if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
-          // Save cleared hero selection
-          saveHeroDraft();
-        }
-      });
-    }
-
-    // Hero height slider handler - update preview dynamically
-    if (heroHeightSlider && heroHeightValue) {
-      const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-      heroHeightSlider.addEventListener('input', function() {
-        const heightPercent = parseInt(this.value);
-        heroHeightValue.textContent = heightPercent;
-        // Update padding-bottom to match actual display
-        if (heroPreviewDiv) {
-          heroPreviewDiv.style.paddingBottom = heightPercent + '%';
-        }
-        // Auto-save
-        saveHeroDraft();
-      });
-    }
-
-    // Opacity slider and overlay toggle handlers
-    if (heroOverlayOpacitySlider && overlayOpacityValue) {
-      heroOverlayOpacitySlider.addEventListener('input', function() {
-        const opacity = parseFloat(this.value);
-        overlayOpacityValue.textContent = opacity.toFixed(2);
-        updateHeroPreview();
-        saveHeroDraft();
-      });
-    }
-
-    // Title overlay toggle handler
-    if (heroTitleOverlayToggle) {
-      heroTitleOverlayToggle.addEventListener('change', function() {
-        updateHeroPreview();
-        saveHeroDraft();
-      });
-    }
-
-    // Update preview when title changes
-    if (postTitleInput) {
-      postTitleInput.addEventListener('input', updateHeroPreview);
-    }
-
-    // Show trash icon on hover
-    const heroPreviewWrapper = postEditorContainer.querySelector('.hero-preview-wrapper');
-    if (heroPreviewWrapper) {
-      heroPreviewWrapper.addEventListener('mouseenter', function() {
-        const removeBtn = this.querySelector('.btn-remove-hero');
-        if (removeBtn) removeBtn.style.opacity = '1';
-      });
-      heroPreviewWrapper.addEventListener('mouseleave', function() {
-        const removeBtn = this.querySelector('.btn-remove-hero');
-        if (removeBtn) removeBtn.style.opacity = '0';
-      });
-    }
-
-    // Hero remove button
-    const heroRemoveBtn = postEditorContainer.querySelector('.btn-remove-hero');
-    if (heroRemoveBtn) {
-      heroRemoveBtn.addEventListener('click', function() {
-        if (heroSelect) heroSelect.value = '';
-        if (heroPreviewContainer) heroPreviewContainer.style.display = 'none';
-        if (heroPreviewImg) heroPreviewImg.src = '';
-        if (heroHeightSlider) {
-          heroHeightSlider.value = 100;
-          // Reset preview padding-bottom
-          const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-          if (heroPreviewDiv) heroPreviewDiv.style.paddingBottom = '100%';
-        }
-        if (heroHeightValue) heroHeightValue.textContent = '100';
-      });
-    }
-
-    // Hero upload handlers
-    const heroUploadInput = postEditorContainer.querySelector('.hero-upload-input');
-    const heroUploadBtn = postEditorContainer.querySelector('.btn-upload-hero');
-
-    // Show upload button when file is selected
-    if (heroUploadInput) {
-      heroUploadInput.addEventListener('change', function() {
-        if (heroUploadBtn) {
-          heroUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
-        }
-      });
-    }
-
-    // Handle hero upload
-    if (heroUploadBtn) {
-      heroUploadBtn.addEventListener('click', async function() {
-        const file = heroUploadInput?.files[0];
-        if (!file) return;
-
-        // Validate file size (20MB)
-        if (file.size > 20 * 1024 * 1024) {
-          alert('File size must be less than 20MB');
-          return;
-        }
-
-        // Validate file type
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-        if (!validTypes.includes(file.type)) {
-          alert('Invalid file type. Please use JPG, PNG, WebP, or HEIC');
-          return;
-        }
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('alt_text', '');
-
-        try {
-          heroUploadBtn.disabled = true;
-          const originalText = heroUploadBtn.textContent;
-          heroUploadBtn.textContent = 'Uploading...';
-
-          const response = await fetch('/api/admin/media.php', {
-            method: 'POST',
-            headers: {
-              'X-CSRF-Token': csrfToken
-            },
-            body: formData
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            // Add to select dropdown
-            const option = document.createElement('option');
-            option.value = data.id;
-            option.textContent = file.name;
-            option.selected = true;
-            heroSelect.appendChild(option);
-
-            // Show preview
-            const variants = JSON.parse(data.data?.variants_json || '{}');
-            const variant400 = variants['400'];
-            const previewUrl = variant400?.jpg
-              ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
-              : '/storage/uploads/originals/' + data.data?.filename;
-            if (heroPreviewImg) {
-              heroPreviewImg.src = previewUrl;
-            }
-            if (heroPreviewContainer) heroPreviewContainer.style.display = 'block';
-
-            // Set initial preview padding-bottom based on current slider value
-            const heroPreviewDiv = postEditorContainer.querySelector('.hero-preview');
-            const currentHeight = parseInt(heroHeightSlider?.value || 100);
-            if (heroPreviewDiv) {
-              heroPreviewDiv.style.paddingBottom = currentHeight + '%';
-            }
-
-            // Clear file input
-            heroUploadInput.value = '';
-            heroUploadBtn.style.display = 'none';
-          } else {
-            alert('Upload failed: ' + (data.error || 'Unknown error'));
-          }
-
-          heroUploadBtn.disabled = false;
-          heroUploadBtn.textContent = originalText;
-        } catch (error) {
-          console.error('Error uploading hero image:', error);
-          alert('An error occurred during upload');
-          heroUploadBtn.disabled = false;
-        }
-      });
-    }
-
-    // Gallery preview functions
-    function addGalleryItemPreview(mediaId, mediaData) {
-      const galleryPreview = postEditorContainer.querySelector('#galleryPreview');
-      if (!galleryPreview) return;
-
-      galleryPreview.classList.remove('empty');
-
-      const variants = JSON.parse(mediaData?.variants_json || '{}');
-      const variant400 = variants['400'];
-      const thumbUrl = variant400?.jpg
-        ? '/storage/uploads/variants/400/' + variant400.jpg.split('/').pop()
-        : '/storage/uploads/originals/' + mediaData?.filename;
-
-      const item = document.createElement('div');
-      item.className = 'gallery-item';
-      item.dataset.mediaId = mediaId;
-      item.innerHTML = `
-        <img src="${thumbUrl}" alt="${mediaData?.alt_text || ''}" />
-        <button type="button" class="btn btn-danger btn-sm btn-remove-gallery-item">&times;</button>
-      `;
-
-      item.querySelector('.btn-remove-gallery-item').addEventListener('click', function() {
-        const idx = galleryMediaIds.indexOf(parseInt(mediaId));
-        if (idx > -1) galleryMediaIds.splice(idx, 1);
-        item.remove();
-        if (!galleryPreview.children.length) {
-          galleryPreview.classList.add('empty');
-        }
-      });
-
-      galleryPreview.appendChild(item);
-    }
-
-    // Gallery upload handlers
-    const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
-    const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
-
-    // Show upload button when files are selected
-    if (galleryUploadInput) {
-      galleryUploadInput.addEventListener('change', function() {
-        if (galleryUploadBtn) {
-          galleryUploadBtn.style.display = this.files.length ? 'inline-block' : 'none';
-        }
-      });
-    }
-
-    // Handle gallery upload
-    if (galleryUploadBtn) {
-      galleryUploadBtn.addEventListener('click', async function() {
-        const files = Array.from(galleryUploadInput?.files || []);
-        if (!files.length) return;
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-
-        try {
-          galleryUploadBtn.disabled = true;
-          const originalText = galleryUploadBtn.textContent;
-          galleryUploadBtn.textContent = `Uploading ${files.length} file(s)...`;
-
-          for (const file of files) {
-            // Validate each file
-            if (file.size > 20 * 1024 * 1024) {
-              alert(`${file.name} is too large (max 20MB)`);
-              continue;
-            }
-
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-            if (!validTypes.includes(file.type)) {
-              alert(`${file.name} has invalid type`);
-              continue;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('alt_text', '');
-
-            const response = await fetch('/api/admin/media.php', {
-              method: 'POST',
-              headers: {
-                'X-CSRF-Token': csrfToken
-              },
-              body: formData
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-              // Add to gallery
-              galleryMediaIds.push(data.id);
-              addGalleryItemPreview(data.id, data.data);
-            } else {
-              alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
-            }
-          }
-
-          // Clear file input
-          galleryUploadInput.value = '';
-          galleryUploadBtn.style.display = 'none';
-          galleryUploadBtn.disabled = false;
-          galleryUploadBtn.textContent = originalText;
-        } catch (error) {
-          console.error('Error uploading gallery images:', error);
-          alert('An error occurred during upload');
-          galleryUploadBtn.disabled = false;
-        }
-      });
-    }
-
-  // Save button handler (Save and Publish)
-    postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function() {
-      const saveBtn = this;
-      const originalText = saveBtn.textContent;
-
-      try {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-
-        // Check if there's a pending hero image file to upload
-        const heroFile = heroUploadInput?.files[0];
-        let uploadedHeroId = postEditorContainer.querySelector('.post-hero-media').value || null;
-
-        if (heroFile && !uploadedHeroId) {
-          saveBtn.textContent = 'Uploading hero image...';
-
-          // Validate file
-          if (heroFile.size > 20 * 1024 * 1024) {
-            alert('Hero image file size must be less than 20MB');
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            return;
-          }
-
-          const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-          if (!validTypes.includes(heroFile.type)) {
-            alert('Invalid hero image type. Please use JPG, PNG, WebP, or HEIC');
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            return;
-          }
-
-          // Upload hero image
-          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-          const formData = new FormData();
-          formData.append('file', heroFile);
-          formData.append('alt_text', '');
-
-          const response = await fetch('/api/admin/media.php', {
-            method: 'POST',
-            headers: {
-              'X-CSRF-Token': csrfToken
-            },
-            body: formData
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            uploadedHeroId = data.id;
-          } else {
-            alert('Hero image upload failed: ' + (data.error || 'Unknown error'));
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            return;
-          }
-        }
-
-        // Check if there are pending gallery files to upload
-        const galleryFiles = Array.from(galleryUploadInput?.files || []);
-        if (galleryFiles.length > 0) {
-          saveBtn.textContent = `Uploading ${galleryFiles.length} gallery image(s)...`;
-
-          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-
-          for (const file of galleryFiles) {
-            // Validate each file
-            if (file.size > 20 * 1024 * 1024) {
-              alert(`${file.name} is too large (max 20MB)`);
-              continue;
-            }
-
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-            if (!validTypes.includes(file.type)) {
-              alert(`${file.name} has invalid type`);
-              continue;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('alt_text', '');
-
-            const response = await fetch('/api/admin/media.php', {
-              method: 'POST',
-              headers: {
-                'X-CSRF-Token': csrfToken
-              },
-              body: formData
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-              galleryMediaIds.push(data.id);
-            } else {
-              alert(`Failed to upload ${file.name}: ` + (data.error || 'Unknown error'));
-            }
-          }
-
-          // Clear gallery input after upload
-          if (galleryUploadInput) galleryUploadInput.value = '';
-        }
-
-        // Shared field extraction
-        const heroImageHeightValue = uploadedHeroId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null;
-        const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
-        const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
-        const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
-
-        const payload = {
-          title: postEditorContainer.querySelector('.post-title').value,
-          body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-          // status set below depending on new vs edit
-          hero_media_id: uploadedHeroId,
-          hero_image_height: heroImageHeightValue,
-          hero_crop_overlay: heroCropOverlayValue,
-          hero_title_overlay: heroTitleOverlayValue,
-          hero_overlay_opacity: heroOverlayOpacityValue,
-          gallery_media_ids: galleryMediaIds
-        };
-
-        if (editingPostId) {
-          // Editing existing post: save draft then publish via confirmation
-          saveBtn.textContent = 'Publishing changes...';
-          const draftSave = await api('/api/admin/posts-draft.php?id=' + editingPostId, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-          });
-          if (!draftSave.success) {
-            alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            return;
-          }
-          const proceeded = await window.publishConfirmation.confirmAndPublish(editingPostId, async () => {
-            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingPostId, { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-          });
-          if (proceeded) {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) bsModal.hide();
-            if (typeof window.refreshPostsList === 'function') {
-              await window.refreshPostsList();
-            } else {
-              window.location.reload();
-            }
-          } else {
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-          }
-        } else {
-          // New post: ALWAYS confirm before publishing.
-          // 1) Create as draft to obtain an ID
-          saveBtn.textContent = 'Creating draft...';
-          const createDraftRes = await api('/api/admin/posts.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ...payload, status: 'draft' })
-          });
-          if (!createDraftRes.success || !createDraftRes.id) {
-            alert('Error creating draft: ' + (createDraftRes.error || 'Unknown error'));
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            return;
-          }
-          const newId = createDraftRes.id;
-
-          // Set up edit state now that we have an ID (enable autosave, etc.)
-          editingPostId = newId;
-          if (postBodyEditor) {
-            if (postAutoSave) {
-              if (typeof postAutoSave.cleanup === 'function') {
-                postAutoSave.cleanup();
-              } else {
-                clearInterval(postAutoSave);
-              }
-            }
-            postAutoSave = setupPostAutoSave(postBodyEditor, editingPostId);
-          }
-          const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-          if (saveDraftBtn) saveDraftBtn.style.display = 'none';
-
-          // 2) Ask for confirmation and publish on proceed
-          saveBtn.textContent = 'Confirming publish...';
-          const proceeded = await window.publishConfirmation.confirmAndPublish(
-            newId,
-            async () => {
-              const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId, { method: 'GET' });
-              if (!publishResult.success) {
-                throw new Error(publishResult.error || 'Unknown error');
-              }
-            },
-            async () => {
-              // Publish without sending emails: use skip_email flag on publish endpoint
-              const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
-              if (!publishResult.success) {
-                throw new Error(publishResult.error || 'Unknown error');
-              }
-            }
-          );
-
-          if (proceeded) {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) bsModal.hide();
-            if (typeof window.refreshPostsList === 'function') {
-              await window.refreshPostsList();
-            } else {
-              window.location.reload();
-            }
-          } else {
-            // User cancelled: keep as draft and remain in editor
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            // Emit cancel event for any other listeners
-            document.dispatchEvent(new CustomEvent('publish-confirmation:button-restored', { detail: { postId: newId } }));
-          }
-        }
-      } catch (error) {
-        console.error('Error saving post:', error);
-        alert('An error occurred while saving the post');
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-      }
-    });
-
-    // Save Draft button handler (save draft and close without publishing/email)
-    // Use shared handler from post-draft-handler.js
-    if (typeof window.setupSaveDraftHandler === 'function') {
-      window.setupSaveDraftHandler({
-        modal: modal,
-        postEditorContainer: postEditorContainer,
-        getPostBodyEditor: () => postBodyEditor,
-        getEditingId: () => editingPostId,
-        getGalleryMediaIds: () => galleryMediaIds,
-        refreshPostsList: window.refreshPostsList,
-        api: api
-      });
-    }
-
-    // Cancel button handler
-    postEditorContainer.querySelector('.btn-cancel-post').addEventListener('click', function() {
-      const bsModal = bootstrap.Modal.getInstance(modal);
-      if (bsModal) bsModal.hide();
-    });
-
-    // Clean up on modal hide
-    modal.addEventListener('hidden.bs.modal', function() {
-      editingPostId = null;
-      galleryMediaIds = [];
-
-      // Clear post auto-save interval
-      if (postAutoSave) {
-        if (typeof postAutoSave.cleanup === 'function') {
-          postAutoSave.cleanup();
-        } else {
-          clearInterval(postAutoSave);
-        }
-        postAutoSave = null;
-      }
-
-      // Reset autosave indicator for the next new post open
-      const statusEl = postEditorContainer.querySelector('#post-autosave-status-home-edit');
-      if (statusEl) {
-        statusEl.innerHTML = '<span class="text-muted">Save post to enable auto-save</span>';
-        statusEl.className = 'editor-autosave-indicator';
-      }
-    });
-  })(); // End of IIFE
+    })(); // End of IIFE
   } // End of if (postEditorModal)
 }); // End of DOMContentLoaded for post editor

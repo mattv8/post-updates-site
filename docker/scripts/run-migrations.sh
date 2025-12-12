@@ -8,7 +8,7 @@ set -e  # Exit on any error
 
 # Configuration
 MIGRATION_DIR="${MIGRATION_DIR:-/docker-migrations}"
-CONFIG_FILE="${CONFIG_FILE:-/var/www/html/config.local.php}"
+CONFIG_FILE="${CONFIG_FILE:-/var/www/html/config.php}"
 FORCE_RESET="${FORCE_RESET:-false}"
 ACCEPT_DATA_LOSS="${ACCEPT_DATA_LOSS:-false}"
 DRY_RUN="${DRY_RUN:-false}"
@@ -49,7 +49,7 @@ show_usage() {
     echo ""
     echo "Environment Variables:"
     echo "  MIGRATION_DIR         Directory containing migration files (default: ./database)"
-    echo "  CONFIG_FILE           Configuration file path (default: ./config.local.php)"
+    echo "  CONFIG_FILE           Configuration file path (default: ./config.php)"
 }
 
 # Parse command line arguments
