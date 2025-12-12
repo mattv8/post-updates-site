@@ -1,4 +1,4 @@
-<div class="container py-4" id="adminApp" data-csrf="{$csrf_token}">
+<div class="container py-4" id="adminApp" data-csrf="{$csrf_token}" data-debug="{if $debug|default:false}1{else}0{/if}">
   <h1 class="mb-4">Site Admin</h1>
 
   <ul class="nav nav-tabs" id="adminTabs" role="tablist">
@@ -157,6 +157,15 @@
 
           <div class="tab-pane fade" id="subpane-email-settings" role="tabpanel">
             <h6 class="mb-3">SMTP Configuration</h6>
+            {if $debug|default:false}
+              <div class="form-check form-switch mb-3" id="smtpMailpitToggleRow">
+                <input class="form-check-input" type="checkbox" id="smtp_mailpit_toggle">
+                <label class="form-check-label" for="smtp_mailpit_toggle">
+                  Use Mailpit (dev override)
+                </label>
+                <div class="text-muted small">When enabled, SMTP settings are forced to Mailpit (host: mailpit, port: 1025, no auth).</div>
+              </div>
+            {/if}
             <div class="row mb-4">
               <div class="col-md-6">
                 <div class="mb-3">
@@ -652,6 +661,26 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" id="confirmDeletePostAdmin">Delete Post</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{* Resend Email Confirmation Modal *}
+<div class="modal fade" id="resendEmailModal" tabindex="-1" aria-labelledby="resendEmailModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="resendEmailModalLabel">Resend to All Subscribers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to resend email notifications for this post to <strong>all active subscribers</strong>?</p>
+        <p class="text-muted small mb-0">This sends to everyone again, including subscribers who already received the previous notification.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmResendEmail">Resend to All</button>
       </div>
     </div>
   </div>

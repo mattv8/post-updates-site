@@ -10,6 +10,20 @@
   let currentReactivateId = null;
   let showArchived = false;
 
+  const adminAppEl = document.getElementById('adminApp');
+  const isDebugMode = adminAppEl && (adminAppEl.dataset.debug === '1' || adminAppEl.dataset.debug === 'true');
+
+  const MAILPIT_DEFAULTS = {
+    smtp_host: 'mailpit',
+    smtp_port: 1025,
+    smtp_secure: 'none',
+    smtp_auth: 0,
+    smtp_username: '',
+    smtp_password: ''
+  };
+
+  let originalSmtpSnapshot = null;
+
   // Get CSRF token
   function getCsrfToken() {
     const adminApp = document.getElementById('adminApp');
@@ -80,6 +94,83 @@
       smtp_from_email: document.getElementById('smtp_from_email')?.value || undefined,
       smtp_from_name: document.getElementById('smtp_from_name')?.value || undefined
     };
+  }
+
+  function captureCurrentSmtpConfig() {
+    return {
+      smtp_host: document.getElementById('smtp_host')?.value || '',
+      smtp_port: document.getElementById('smtp_port')?.value ? parseInt(document.getElementById('smtp_port').value) : '',
+      smtp_secure: document.getElementById('smtp_secure')?.value || 'none',
+      smtp_auth: document.getElementById('smtp_auth')?.checked ? 1 : 0,
+      smtp_username: document.getElementById('smtp_username')?.value || '',
+      smtp_password: document.getElementById('smtp_password')?.value || '',
+      smtp_from_email: document.getElementById('smtp_from_email')?.value || '',
+      smtp_from_name: document.getElementById('smtp_from_name')?.value || ''
+    };
+  }
+
+  function applySmtpConfigToForm(cfg) {
+    const host = document.getElementById('smtp_host');
+    const port = document.getElementById('smtp_port');
+    const secure = document.getElementById('smtp_secure');
+    const auth = document.getElementById('smtp_auth');
+    const username = document.getElementById('smtp_username');
+    const password = document.getElementById('smtp_password');
+    const fromEmail = document.getElementById('smtp_from_email');
+    const fromName = document.getElementById('smtp_from_name');
+
+    if (host && typeof cfg.smtp_host !== 'undefined') host.value = cfg.smtp_host;
+    if (port && typeof cfg.smtp_port !== 'undefined') port.value = cfg.smtp_port;
+    if (secure && typeof cfg.smtp_secure !== 'undefined') secure.value = cfg.smtp_secure;
+    if (auth && typeof cfg.smtp_auth !== 'undefined') auth.checked = !!cfg.smtp_auth;
+    if (username && typeof cfg.smtp_username !== 'undefined') username.value = cfg.smtp_username;
+    if (password && typeof cfg.smtp_password !== 'undefined') password.value = cfg.smtp_password;
+    if (fromEmail && typeof cfg.smtp_from_email !== 'undefined') fromEmail.value = cfg.smtp_from_email;
+    if (fromName && typeof cfg.smtp_from_name !== 'undefined') fromName.value = cfg.smtp_from_name;
+  }
+
+  function setSmtpFieldsDisabled(disabled) {
+    ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_auth', 'smtp_username', 'smtp_password'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = disabled;
+    });
+  }
+
+  function isMailpitConfigActive() {
+    const host = document.getElementById('smtp_host')?.value || '';
+    const port = document.getElementById('smtp_port')?.value ? parseInt(document.getElementById('smtp_port').value) : null;
+    const secure = document.getElementById('smtp_secure')?.value || 'none';
+    const auth = document.getElementById('smtp_auth')?.checked ? 1 : 0;
+
+    return host === MAILPIT_DEFAULTS.smtp_host &&
+      port === MAILPIT_DEFAULTS.smtp_port &&
+      secure === MAILPIT_DEFAULTS.smtp_secure &&
+      auth === MAILPIT_DEFAULTS.smtp_auth;
+  }
+
+  function buildSmtpPayload(cfg) {
+    const payload = {};
+    if (cfg.smtp_host) payload.smtp_host = cfg.smtp_host;
+    if (typeof cfg.smtp_port !== 'undefined' && cfg.smtp_port !== '') payload.smtp_port = parseInt(cfg.smtp_port, 10);
+    if (typeof cfg.smtp_secure !== 'undefined') payload.smtp_secure = cfg.smtp_secure;
+    payload.smtp_auth = cfg.smtp_auth ? 1 : 0;
+    if (cfg.smtp_username) payload.smtp_username = cfg.smtp_username;
+    if (cfg.smtp_password) payload.smtp_password = cfg.smtp_password;
+    if (cfg.smtp_from_email) payload.smtp_from_email = cfg.smtp_from_email;
+    if (cfg.smtp_from_name) payload.smtp_from_name = cfg.smtp_from_name;
+    return payload;
+  }
+
+  async function saveSmtpConfigPayload(payload) {
+    const response = await fetch('/api/admin/settings.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': getCsrfToken()
+      },
+      body: JSON.stringify(payload)
+    });
+    return response.json();
   }
 
   // Show SMTP test result message
@@ -793,6 +884,81 @@
         } catch (error) {
           console.error('Error updating SMTP batch delay:', error);
           showNotification('Error updating SMTP batch delay', 'error');
+        }
+      });
+    }
+
+    const mailpitToggle = document.getElementById('smtp_mailpit_toggle');
+    if (mailpitToggle && isDebugMode) {
+      const fromEmailEl = document.getElementById('smtp_from_email');
+      const fromNameEl = document.getElementById('smtp_from_name');
+
+      const applyMailpitState = (checked) => {
+        if (checked) {
+          const withFrom = {
+            ...MAILPIT_DEFAULTS,
+            smtp_from_email: fromEmailEl?.value || '',
+            smtp_from_name: fromNameEl?.value || ''
+          };
+          applySmtpConfigToForm(withFrom);
+          setSmtpFieldsDisabled(true);
+        } else {
+          setSmtpFieldsDisabled(false);
+          if (originalSmtpSnapshot) {
+            applySmtpConfigToForm(originalSmtpSnapshot);
+          }
+        }
+      };
+
+      if (isMailpitConfigActive()) {
+        mailpitToggle.checked = true;
+        applyMailpitState(true);
+      }
+
+      mailpitToggle.addEventListener('change', async function() {
+        mailpitToggle.disabled = true;
+        try {
+          if (this.checked) {
+            if (!originalSmtpSnapshot) {
+              originalSmtpSnapshot = captureCurrentSmtpConfig();
+            }
+
+            const payload = buildSmtpPayload({
+              ...MAILPIT_DEFAULTS,
+              smtp_from_email: fromEmailEl?.value || '',
+              smtp_from_name: fromNameEl?.value || ''
+            });
+
+            applyMailpitState(true);
+
+            const result = await saveSmtpConfigPayload(payload);
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to override SMTP to Mailpit');
+            }
+            showNotification('SMTP now points to Mailpit (dev override).', 'info');
+          } else {
+            if (!originalSmtpSnapshot) {
+              // Nothing to restore; just unlock fields
+              applyMailpitState(false);
+              return;
+            }
+
+            const payload = buildSmtpPayload(originalSmtpSnapshot);
+            applyMailpitState(false);
+
+            const result = await saveSmtpConfigPayload(payload);
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to restore SMTP settings');
+            }
+            showNotification('SMTP restored to previous settings.', 'success');
+          }
+        } catch (error) {
+          console.error('Mailpit toggle error:', error);
+          showNotification(error.message || 'SMTP override failed', 'error');
+          this.checked = !this.checked;
+          applyMailpitState(this.checked);
+        } finally {
+          mailpitToggle.disabled = false;
         }
       });
     }

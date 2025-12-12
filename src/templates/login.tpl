@@ -1,9 +1,8 @@
-<div class="card {$page_bg_color_class}">
-
+<div class="{$page_bg_color_class} d-flex align-items-center justify-content-center min-vh-100 py-4">
     <div class="container">
-        <div class="row justify-content-md-center">
-            <div class="col col-lg-6 inset-1">
-                <div class="card">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-5 inset-1">
+                <div class="card shadow-sm">
                     <div class="card-header text-center">
                         <i class="fa me-2 fa-user-lock"></i>{$msg_login}
                     </div>
@@ -32,5 +31,4 @@
             </div>
         </div>
     </div>
-
 </div>
