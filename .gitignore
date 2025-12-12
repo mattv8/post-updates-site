@@ -1,5 +1,6 @@
 # Dependencies
 src/vendor/
+vendor/
 
 # Application directories
 src/cache/
