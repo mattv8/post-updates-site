@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // DEPRECATED: This Stripe-based donation endpoint is no longer used.
 // Donations are now handled via direct links (Venmo, PayPal, Ko-fi, etc.)
 // configured in the admin panel.

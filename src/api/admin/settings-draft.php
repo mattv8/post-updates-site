@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Settings Draft API
  * Handles auto-save operations to draft fields for settings

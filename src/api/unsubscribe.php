@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Newsletter Unsubscribe API
  * Handles unsubscribe requests from email links

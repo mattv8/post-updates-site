@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Media Processing Library
  * Handles image uploads, optimization, and responsive variant generation

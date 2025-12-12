@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Newsletter Subscription API
  * Handles email subscription submissions from the mailing list form

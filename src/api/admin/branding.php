@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Branding API
  * Handles logo and favicon uploads with cropping

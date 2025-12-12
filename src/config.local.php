@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * config.local.php
  * Post Portal Application Configuration

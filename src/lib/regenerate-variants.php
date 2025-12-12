@@ -1,5 +1,8 @@
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
+
 /**
  * CLI Utility to Regenerate Image Variants
  * Usage: php regenerate-variants.php [--all|--id=123]

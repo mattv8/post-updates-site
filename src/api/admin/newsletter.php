@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Newsletter Admin API
  * Handles CRUD operations for newsletter subscribers (admin only)

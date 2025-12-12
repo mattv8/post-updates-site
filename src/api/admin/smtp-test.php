@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * SMTP Test API
  * Tests SMTP configuration and sends test emails

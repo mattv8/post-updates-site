@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 require_once(__DIR__ . '/../functions.php');
 require(__DIR__ . '/../config.local.php');
 

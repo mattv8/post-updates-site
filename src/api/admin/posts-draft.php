@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Posts Draft API
  * Handles auto-save operations to draft fields

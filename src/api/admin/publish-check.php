@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Check if publishing a post will trigger email notifications
  * Returns: { isFirstPublish: boolean, subscriberCount: number }
