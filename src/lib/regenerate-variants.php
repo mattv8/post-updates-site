@@ -51,10 +51,12 @@ if (isset($options['all'])) {
 
         if ($result['success']) {
             // Update database with new variants
-            $variantsJson = mysqli_real_escape_string($db_conn, json_encode($result['variants']));
-            $updateQuery = "UPDATE media SET variants_json = '$variantsJson', updated_at = NOW() WHERE id = {$row['id']}";
+            $variantsJson = json_encode($result['variants']);
+            $updateQuery = "UPDATE media SET variants_json = ?, updated_at = NOW() WHERE id = ?";
+            $stmt = mysqli_prepare($db_conn, $updateQuery);
+            mysqli_stmt_bind_param($stmt, 'si', $variantsJson, $row['id']);
 
-            if (mysqli_query($db_conn, $updateQuery)) {
+            if (mysqli_stmt_execute($stmt)) {
                 echo "OK\n";
             } else {
                 echo "ERROR updating database\n";
@@ -72,8 +74,11 @@ if (isset($options['all'])) {
     $id = intval($options['id']);
     echo "Regenerating variants for media ID {$id}...\n";
 
-    $query = "SELECT id, filename FROM media WHERE id = {$id}";
-    $result = mysqli_query($db_conn, $query);
+    $query = "SELECT id, filename FROM media WHERE id = ?";
+    $stmt = mysqli_prepare($db_conn, $query);
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
 
     if (!$result || mysqli_num_rows($result) === 0) {
         die("Media ID {$id} not found\n");
@@ -83,10 +88,12 @@ if (isset($options['all'])) {
     $result = $processor->regenerateVariants(null, $row['filename']);
 
     if ($result['success']) {
-        $variantsJson = mysqli_real_escape_string($db_conn, json_encode($result['variants']));
-        $updateQuery = "UPDATE media SET variants_json = '$variantsJson', updated_at = NOW() WHERE id = {$id}";
+        $variantsJson = json_encode($result['variants']);
+        $updateQuery = "UPDATE media SET variants_json = ?, updated_at = NOW() WHERE id = ?";
+        $stmt = mysqli_prepare($db_conn, $updateQuery);
+        mysqli_stmt_bind_param($stmt, 'si', $variantsJson, $id);
 
-        if (mysqli_query($db_conn, $updateQuery)) {
+        if (mysqli_stmt_execute($stmt)) {
             echo "Successfully regenerated variants\n";
         } else {
             echo "ERROR updating database: " . mysqli_error($db_conn) . "\n";

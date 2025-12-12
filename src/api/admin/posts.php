@@ -174,16 +174,22 @@ switch ($method) {
         $limit = isset($_GET['limit']) ? min(100, max(1, (int)$_GET['limit'])) : 20;
         $offset = ($page - 1) * $limit;
 
-        $result = mysqli_query($db_conn, 'SELECT COUNT(*) as c FROM posts WHERE deleted_at IS NULL');
+        $stmt = mysqli_prepare($db_conn, 'SELECT COUNT(*) as c FROM posts WHERE deleted_at IS NULL');
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
         $total = $result ? (int)mysqli_fetch_assoc($result)['c'] : 0;
 
         $rows = [];
-        $res = mysqli_query($db_conn, "SELECT p.*,
-                                              u.first AS author_first, u.last AS author_last, u.username AS author_username
-                                       FROM posts p
-                                       LEFT JOIN users u ON p.created_by_user_id = u.username
-                                       WHERE p.deleted_at IS NULL
-                                       ORDER BY p.created_at DESC LIMIT {$limit} OFFSET {$offset}");
+        $sql = "SELECT p.*,
+                      u.first AS author_first, u.last AS author_last, u.username AS author_username
+               FROM posts p
+               LEFT JOIN users u ON p.created_by_user_id = u.username
+               WHERE p.deleted_at IS NULL
+               ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
+        $stmt2 = mysqli_prepare($db_conn, $sql);
+        mysqli_stmt_bind_param($stmt2, 'ii', $limit, $offset);
+        mysqli_stmt_execute($stmt2);
+        $res = mysqli_stmt_get_result($stmt2);
         if ($res) { while ($r = mysqli_fetch_assoc($res)) { $rows[] = $r; } }
         echo json_encode(['success' => true, 'data' => $rows, 'meta' => ['total' => $total, 'page' => $page, 'limit' => $limit]]);
         break;

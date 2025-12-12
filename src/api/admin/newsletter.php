@@ -58,7 +58,9 @@ switch ($method) {
 
         $sql .= "ORDER BY subscribed_at DESC";
 
-        $result = mysqli_query($db_conn, $sql);
+        $stmt = mysqli_prepare($db_conn, $sql);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
 
         if (!$result) {
             http_response_code(500);
@@ -162,7 +164,7 @@ switch ($method) {
             break;
         }
 
-        $email = mysqli_real_escape_string($db_conn, strtolower($email));
+        $email = strtolower($email);
 
         // Check for existing email
         $check_sql = "SELECT id, is_active FROM newsletter_subscribers WHERE email = ?";

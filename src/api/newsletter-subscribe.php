@@ -49,13 +49,10 @@ if (strlen($email) > 255) {
 }
 
 // Sanitize email
-$email = mysqli_real_escape_string($db_conn, strtolower($email));
+$email = strtolower($email);
 
 // Get IP address for logging
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
-if ($ip_address) {
-    $ip_address = mysqli_real_escape_string($db_conn, $ip_address);
-}
 
 // Check if email already exists (including archived subscriptions)
 $check_sql = "SELECT id, is_active FROM newsletter_subscribers WHERE email = ?";
