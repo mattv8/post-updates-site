@@ -1,0 +1,8 @@
+parameters:
+  level: 8
+  paths:
+    - src
+  tmpDir: var/phpstan
+  checkMissingIterableValueType: true
+  checkGenericClassInNonGenericObjectType: true
+  reportUnmatchedIgnoredErrors: true

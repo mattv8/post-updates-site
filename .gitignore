@@ -4,6 +4,7 @@ vendor/
 
 # Application directories
 src/cache/
+src/templates_c/
 logs/
 src/storage/uploads/*
 !src/storage/uploads/.gitkeep

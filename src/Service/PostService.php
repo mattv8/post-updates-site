@@ -46,7 +46,7 @@ class PostService
             }
 
             $id = $this->postRepository->create($data);
-            
+
             return ['success' => true, 'id' => $id];
         } catch (\Throwable $e) {
             error_log('PostService::createPost error: ' . $e->getMessage());
@@ -78,7 +78,7 @@ class PostService
             }
 
             $success = $this->postRepository->update($id, $data);
-            
+
             return ['success' => $success];
         } catch (\Throwable $e) {
             error_log('PostService::updatePost error: ' . $e->getMessage());
@@ -132,6 +132,124 @@ class PostService
         } catch (\Throwable $e) {
             error_log('PostService::deletePost error: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Get post with author details.
+     */
+    public function getPostWithAuthor(int $id): ?array
+    {
+        try {
+            return $this->postRepository->findWithAuthor($id);
+        } catch (\Throwable $e) {
+            error_log('PostService::getPostWithAuthor error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Paginated posts with author info (non-deleted).
+     *
+     * @return array{data: array<int, array<string, mixed>>, total: int}
+     */
+    public function getPostsWithAuthor(int $limit, int $offset): array
+    {
+        try {
+            return [
+                'data' => $this->postRepository->getWithAuthor($limit, $offset),
+                'total' => $this->postRepository->countNonDeleted(),
+            ];
+        } catch (\Throwable $e) {
+            error_log('PostService::getPostsWithAuthor error: ' . $e->getMessage());
+            return ['data' => [], 'total' => 0];
+        }
+    }
+
+    /**
+     * Update draft-only fields for a post.
+     *
+     * @param array<string, mixed> $payload
+     * @return array{success: bool, error?: string}
+     */
+    public function updateDraftFields(int $id, array $payload): array
+    {
+        try {
+            $allowed = [
+                'title_draft',
+                'body_html_draft',
+                'hero_media_id_draft',
+                'hero_image_height_draft',
+                'hero_crop_overlay_draft',
+                'hero_title_overlay_draft',
+                'hero_overlay_opacity_draft',
+                'gallery_media_ids_draft',
+            ];
+
+            $data = [];
+            if (isset($payload['title'])) {
+                $data['title_draft'] = (string) $payload['title'];
+            }
+            if (isset($payload['body_html'])) {
+                $data['body_html_draft'] = $this->sanitizeHtml((string) $payload['body_html']);
+            }
+            if (array_key_exists('hero_media_id', $payload)) {
+                $data['hero_media_id_draft'] = $payload['hero_media_id'] !== null ? (int) $payload['hero_media_id'] : null;
+            }
+            if (isset($payload['hero_image_height'])) {
+                $data['hero_image_height_draft'] = (int) $payload['hero_image_height'];
+            }
+            if (isset($payload['hero_crop_overlay'])) {
+                $data['hero_crop_overlay_draft'] = (int) (bool) $payload['hero_crop_overlay'];
+            }
+            if (isset($payload['hero_title_overlay'])) {
+                $data['hero_title_overlay_draft'] = (int) (bool) $payload['hero_title_overlay'];
+            }
+            if (isset($payload['hero_overlay_opacity'])) {
+                $data['hero_overlay_opacity_draft'] = (float) $payload['hero_overlay_opacity'];
+            }
+            if (isset($payload['gallery_media_ids'])) {
+                $galleryIds = is_array($payload['gallery_media_ids']) ? $payload['gallery_media_ids'] : [];
+                $data['gallery_media_ids_draft'] = json_encode($galleryIds);
+            }
+
+            $data = array_filter(
+                $data,
+                static fn($key) => in_array($key, $allowed, true),
+                ARRAY_FILTER_USE_KEY
+            );
+
+            if (empty($data)) {
+                return ['success' => true, 'message' => 'No fields to update'];
+            }
+
+            $updated = $this->postRepository->updateDraftFields($id, $data);
+            return ['success' => $updated];
+        } catch (\Throwable $e) {
+            error_log('PostService::updateDraftFields error: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to update draft'];
+        }
+    }
+
+    /**
+     * Increment post metrics.
+     */
+    public function incrementMetrics(int $postId, int $impressionInc, int $uniqueImpressionInc, int $viewInc, int $uniqueViewInc): array
+    {
+        try {
+            if ($postId <= 0) {
+                return ['success' => false, 'error' => 'Invalid post id'];
+            }
+
+            $updated = $this->postRepository->incrementMetrics($postId, $impressionInc, $uniqueImpressionInc, $viewInc, $uniqueViewInc);
+            if (!$updated) {
+                return ['success' => false, 'error' => 'Post not found or not published'];
+            }
+
+            return ['success' => true];
+        } catch (\Throwable $e) {
+            error_log('PostService::incrementMetrics error: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to update metrics'];
         }
     }
 

@@ -45,7 +45,12 @@ interface NewsletterRepositoryInterface
      * @param string|null $verificationToken Verification token
      * @return int Newly created subscriber ID
      */
-    public function create(string $email, ?string $verificationToken = null): int;
+    public function create(string $email, ?string $verificationToken = null, ?string $ipAddress = null): int;
+
+    /**
+     * Reactivate a previously archived subscriber.
+     */
+    public function reactivate(int $id, ?string $ipAddress = null): bool;
 
     /**
      * Verify a subscriber
@@ -62,4 +67,16 @@ interface NewsletterRepositoryInterface
      * @return bool True on success
      */
     public function unsubscribe(string $email): bool;
+
+    /**
+     * Get subscribers with optional active filter.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getSubscribers(bool $activeOnly = true): array;
+
+    /**
+     * Update subscriber active state by id.
+     */
+    public function updateStatus(int $id, bool $isActive): bool;
 }

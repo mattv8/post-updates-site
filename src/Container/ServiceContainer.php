@@ -115,7 +115,8 @@ class ServiceContainer
         if (!isset($this->services['MediaService'])) {
             $this->services['MediaService'] = new MediaService(
                 $this->getMediaRepository(),
-                $this->db
+                $this->getPostRepository(),
+                $this->getSettingsRepository()
             );
         }
         return $this->services['MediaService'];

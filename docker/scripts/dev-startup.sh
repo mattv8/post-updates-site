@@ -98,16 +98,14 @@ fi
 # 3. Clean framework artifacts from src/ (mounted volume conflicts)
 echo "==> Cleaning framework artifacts from src/..."
 
-# Remove index.php if it's a directory (broken state), symlink, or file
-if [ -e "${SRC_DIR}/index.php" ] || [ -L "${SRC_DIR}/index.php" ] || [ -d "${SRC_DIR}/index.php" ]; then
-    rm -rf "${SRC_DIR}/index.php"
-    echo "    Removed index.php (${SRC_DIR}/index.php)"
-fi
+# Note: index.php and framework/ are mounted as read-only by docker-compose
+# The mounts will overlay the local files, so we don't need to remove them here.
+# They will be provided by the framework at runtime.
 
-# Remove framework directory/symlink if exists (framework is mounted separately)
+# Remove framework directory/symlink if exists locally (framework is mounted separately)
 if [ -d "${SRC_DIR}/framework" ] || [ -L "${SRC_DIR}/framework" ]; then
     rm -rf "${SRC_DIR}/framework"
-    echo "    Removed framework directory/symlink"
+    echo "    Removed local framework directory/symlink (will be mounted by docker-compose)"
 fi
 
 # 4. Ensure cache directories exist with proper permissions

@@ -6,98 +6,62 @@ declare(strict_types=1);
  * Generate Title API Endpoint
  * Uses OpenAI to generate a post title from the content body
  */
-
-session_start();
-header('Content-Type: application/json');
-
-require_once($_SERVER['DOCUMENT_ROOT'] . '/config.local.php');
-require_once($_SERVER['DOCUMENT_ROOT'] . '/functions.php');
-require_once($_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
-
 use OpenAI;
+use PostPortal\Http\ApiHandler;
+use PostPortal\Http\ErrorResponse;
 
-// Check authentication
-if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
+require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// Get POST data
-$input = json_decode(file_get_contents('php://input'), true);
+ApiHandler::handle(function (): void {
+    ['container' => $container] = bootstrapApi(requireAuth: true, requireAdmin: false);
 
-if (!isset($input['content']) || empty(trim($input['content']))) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Content is required']);
-    exit;
-}
-
-$content = trim($input['content']);
-
-// Check if OpenAI API key is configured
-if (empty($openai_api_key)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'OpenAI API key not configured']);
-    exit;
-}
-
-try {
-    // Create OpenAI client
-    $client = OpenAI::client($openai_api_key);
-
-    // Strip HTML tags from content for better context
-    $plainContent = strip_tags($content);
-
-    // Truncate content if too long (to avoid token limits)
-    $maxContentLength = 2000;
-    if (strlen($plainContent) > $maxContentLength) {
-        $plainContent = substr($plainContent, 0, $maxContentLength) . '...';
+    $input = readJsonInput();
+    if (!isset($input['content']) || empty(trim((string) $input['content']))) {
+        ErrorResponse::badRequest('Content is required');
     }
 
-    // Get custom AI system prompt from settings, or use default
-    $db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
-    $systemPrompt = DEFAULT_AI_SYSTEM_PROMPT;
+    $content = trim((string) $input['content']);
 
-    if ($db_conn) {
-        $result = mysqli_query($db_conn, 'SELECT ai_system_prompt FROM settings WHERE id = 1');
-        if ($result) {
-            $row = mysqli_fetch_assoc($result);
-            if (!empty($row['ai_system_prompt'])) {
-                $systemPrompt = $row['ai_system_prompt'];
-            }
+    if (empty($GLOBALS['openai_api_key'])) {
+        ErrorResponse::internalError('OpenAI API key not configured');
+    }
+
+    $settingsRepository = $container->getSettingsRepository();
+    $settings = $settingsRepository->getSettings();
+    $systemPrompt = $settings['ai_system_prompt'] ?? DEFAULT_AI_SYSTEM_PROMPT;
+
+    try {
+        $client = OpenAI::client($GLOBALS['openai_api_key']);
+
+        $plainContent = strip_tags($content);
+        $maxContentLength = 2000;
+        if (strlen($plainContent) > $maxContentLength) {
+            $plainContent = substr($plainContent, 0, $maxContentLength) . '...';
         }
-        mysqli_close($db_conn);
-    }
 
-    // Generate title using OpenAI
-    $response = $client->chat()->create([
-        'model' => 'gpt-4o-mini',
-        'messages' => [
-            [
-                'role' => 'system',
-                'content' => $systemPrompt
+        $response = $client->chat()->create([
+            'model' => 'gpt-4o-mini',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => $systemPrompt,
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "Create a title for this post:\n\n" . $plainContent,
+                ],
             ],
-            [
-                'role' => 'user',
-                'content' => "Create a title for this post:\n\n" . $plainContent
-            ]
-        ],
-        'max_tokens' => 100,
-        'temperature' => 0.7,
-    ]);
+            'max_tokens' => 100,
+            'temperature' => 0.7,
+        ]);
 
-    $generatedTitle = trim($response->choices[0]->message->content);
+        $generatedTitle = trim($response->choices[0]->message->content);
+        $generatedTitle = trim($generatedTitle, '"\'');
 
-    // Remove any quotes that might be added
-    $generatedTitle = trim($generatedTitle, '"\'');
-
-    echo json_encode([
-        'success' => true,
-        'title' => $generatedTitle
-    ]);
-
-} catch (Exception $e) {
-    error_log("OpenAI API Error: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['error' => 'Failed to generate title: ' . $e->getMessage()]);
-}
+        ErrorResponse::success(['title' => $generatedTitle]);
+    } catch (\Exception $e) {
+        error_log('OpenAI API Error: ' . $e->getMessage());
+        ErrorResponse::internalError('Failed to generate title: ' . $e->getMessage());
+    }
+});

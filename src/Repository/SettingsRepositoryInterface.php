@@ -23,4 +23,11 @@ interface SettingsRepositoryInterface
      * @return bool True on success
      */
     public function update(array $data): bool;
+
+    /**
+     * Identify whether a media asset is referenced in global settings.
+     *
+     * @return array<string, bool>
+     */
+    public function getMediaUsageFlags(int $mediaId): array;
 }

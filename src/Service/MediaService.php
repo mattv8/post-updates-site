@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace PostPortal\Service;
 
 use PostPortal\Repository\MediaRepositoryInterface;
-use mysqli;
+use PostPortal\Repository\PostRepositoryInterface;
+use PostPortal\Repository\SettingsRepositoryInterface;
 
 /**
  * Media service for business logic around media operations
@@ -13,12 +14,14 @@ use mysqli;
 class MediaService
 {
     private MediaRepositoryInterface $mediaRepository;
-    private mysqli $db;
+    private PostRepositoryInterface $postRepository;
+    private SettingsRepositoryInterface $settingsRepository;
 
-    public function __construct(MediaRepositoryInterface $mediaRepository, mysqli $db)
+    public function __construct(MediaRepositoryInterface $mediaRepository, PostRepositoryInterface $postRepository, SettingsRepositoryInterface $settingsRepository)
     {
         $this->mediaRepository = $mediaRepository;
-        $this->db = $db;
+        $this->postRepository = $postRepository;
+        $this->settingsRepository = $settingsRepository;
     }
 
     /**
@@ -103,6 +106,48 @@ class MediaService
         } catch (\Throwable $e) {
             error_log('MediaService::deleteMedia error: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Describe where a media item is referenced (posts/settings).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getUsage(int $mediaId): array
+    {
+        try {
+            $usage = $this->postRepository->getMediaUsage($mediaId);
+            $flags = $this->settingsRepository->getMediaUsageFlags($mediaId);
+
+            if ($flags['hero']) {
+                $usage[] = [
+                    'id' => 0,
+                    'title' => 'Site Hero Settings',
+                    'usage' => 'site hero',
+                ];
+            }
+
+            if ($flags['logo']) {
+                $usage[] = [
+                    'id' => 0,
+                    'title' => 'Site Logo',
+                    'usage' => 'branding logo',
+                ];
+            }
+
+            if ($flags['favicon']) {
+                $usage[] = [
+                    'id' => 0,
+                    'title' => 'Site Favicon',
+                    'usage' => 'branding favicon',
+                ];
+            }
+
+            return $usage;
+        } catch (\Throwable $e) {
+            error_log('MediaService::getUsage error: ' . $e->getMessage());
+            return [];
         }
     }
 }

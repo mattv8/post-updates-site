@@ -43,6 +43,49 @@ class MediaProcessor
     }
 
     /**
+     * Safely write file contents with contextual logging.
+     */
+    private function writeFile(string $path, string $data): void
+    {
+        if (@file_put_contents($path, $data) === false) {
+            error_log('Failed to write file: ' . $path);
+            throw new Exception('Failed to write file to disk');
+        }
+    }
+
+    /**
+     * Safely move an uploaded file, falling back to copy when needed.
+     */
+    private function moveUploadedFile(string $tmpPath, string $destination): void
+    {
+        if (@move_uploaded_file($tmpPath, $destination)) {
+            return;
+        }
+
+        if (@copy($tmpPath, $destination)) {
+            return;
+        }
+
+        error_log('Failed to move uploaded file to ' . $destination);
+        throw new Exception('Failed to persist uploaded file');
+    }
+
+    /**
+     * Delete a file if it exists, throwing when deletion fails.
+     */
+    private function unlinkIfExists(string $path): void
+    {
+        if (!file_exists($path)) {
+            return;
+        }
+
+        if (!@unlink($path)) {
+            error_log('Failed to delete file: ' . $path);
+            throw new Exception('Unable to delete file');
+        }
+    }
+
+    /**
      * Ensure all required directories exist
      */
     private function ensureDirectories()
@@ -133,7 +176,7 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                     $file['type'] = 'image/jpeg';
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
@@ -141,11 +184,7 @@ class MediaProcessor
             } else {
                 // Move uploaded file to originals directory
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Apply crop if provided
@@ -406,18 +445,14 @@ class MediaProcessor
         try {
             // Delete original
             $originalPath = $this->originalsDir . '/' . $filename;
-            if (file_exists($originalPath)) {
-                unlink($originalPath);
-            }
+            $this->unlinkIfExists($originalPath);
 
             // Delete variants
             $variants = json_decode($variantsJson, true);
             if (is_array($variants)) {
                 foreach ($variants as $variant) {
                     $variantPath = __DIR__ . '/../' . $variant['path'];
-                    if (file_exists($variantPath)) {
-                        unlink($variantPath);
-                    }
+                    $this->unlinkIfExists($variantPath);
                 }
             }
 
@@ -496,7 +531,7 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                     $file['type'] = 'image/jpeg';
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
@@ -504,11 +539,7 @@ class MediaProcessor
             } else {
                 // Move uploaded file to originals directory
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Load image for cropping
@@ -587,17 +618,13 @@ class MediaProcessor
                 if ($converted['success']) {
                     $uniqueFilename = str_replace('.heic', '.jpg', $uniqueFilename);
                     $originalPath = $this->originalsDir . '/' . $uniqueFilename;
-                    file_put_contents($originalPath, $converted['data']);
+                    $this->writeFile($originalPath, $converted['data']);
                 } else {
                     return ['success' => false, 'error' => 'Failed to convert HEIC image'];
                 }
             } else {
                 // Use copy() as fallback for CLI/seed scripts where move_uploaded_file() fails
-                if (!move_uploaded_file($file['tmp_name'], $originalPath)) {
-                    if (!copy($file['tmp_name'], $originalPath)) {
-                        return ['success' => false, 'error' => 'Failed to save uploaded file'];
-                    }
-                }
+                $this->moveUploadedFile($file['tmp_name'], $originalPath);
             }
 
             // Load image for cropping

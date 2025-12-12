@@ -38,7 +38,7 @@ class MediaRepository extends BaseRepository implements MediaRepositoryInterface
             $sql = 'SELECT * FROM media WHERE original_filename LIKE ? OR alt_text LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
             return $this->fetchAll($sql, [$searchPattern, $searchPattern, $limit, $offset]);
         }
-        
+
         $sql = 'SELECT * FROM media ORDER BY created_at DESC LIMIT ? OFFSET ?';
         return $this->fetchAll($sql, [$limit, $offset]);
     }
@@ -54,16 +54,16 @@ class MediaRepository extends BaseRepository implements MediaRepositoryInterface
         $fields = [];
         $placeholders = [];
         $params = [];
-        
+
         foreach ($data as $key => $value) {
             $fields[] = $key;
             $placeholders[] = '?';
             $params[] = $value;
         }
-        
+
         $sql = 'INSERT INTO media (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
         $this->execute($sql, $params);
-        
+
         return $this->lastInsertId();
     }
 
@@ -78,7 +78,7 @@ class MediaRepository extends BaseRepository implements MediaRepositoryInterface
     {
         $sql = 'UPDATE media SET alt_text = ? WHERE id = ?';
         $this->execute($sql, [$altText, $id]);
-        
+
         return $this->affectedRows() > 0;
     }
 
@@ -92,7 +92,27 @@ class MediaRepository extends BaseRepository implements MediaRepositoryInterface
     {
         $sql = 'DELETE FROM media WHERE id = ?';
         $this->execute($sql, [$id]);
-        
+
         return $this->affectedRows() > 0;
+    }
+
+    /**
+     * Count all media records.
+     */
+    public function countAll(): int
+    {
+        $count = $this->fetchColumn('SELECT COUNT(*) as c FROM media');
+        return $count !== null ? (int) $count : 0;
+    }
+
+    /**
+     * Get recent media items for dashboards.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getRecent(int $limit = 8): array
+    {
+        $sql = 'SELECT id, original_filename, created_at FROM media ORDER BY created_at DESC LIMIT ?';
+        return $this->fetchAll($sql, [$limit]);
     }
 }

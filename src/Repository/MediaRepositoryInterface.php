@@ -51,4 +51,16 @@ interface MediaRepositoryInterface
      * @return bool True on success
      */
     public function delete(int $id): bool;
+
+    /**
+     * Count all media records.
+     */
+    public function countAll(): int;
+
+    /**
+     * Get recent media for dashboards.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getRecent(int $limit = 8): array;
 }

@@ -76,4 +76,50 @@ interface PostRepositoryInterface
      * @return bool True on success
      */
     public function updateExcerpt(int $id, string $excerpt): bool;
+
+    /**
+     * Update draft-only fields for a post.
+     */
+    public function updateDraftFields(int $id, array $data): bool;
+
+    /**
+     * Count posts optionally filtered by status.
+     */
+    public function countAll(?string $status = null): int;
+
+    /**
+     * Get recent posts for dashboards.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getRecent(int $limit = 5): array;
+
+    /**
+     * Count posts excluding soft-deleted ones.
+     */
+    public function countNonDeleted(): int;
+
+    /**
+     * Get posts with author info, paginated, excluding soft-deleted.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getWithAuthor(int $limit, int $offset): array;
+
+    /**
+     * Get single post with author info.
+     */
+    public function findWithAuthor(int $id): ?array;
+
+    /**
+     * Increment view/impression metrics for a post.
+     */
+    public function incrementMetrics(int $postId, int $impressionInc, int $uniqueImpressionInc, int $viewInc, int $uniqueViewInc): bool;
+
+    /**
+     * Describe how a media item is referenced by posts.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getMediaUsage(int $mediaId): array;
 }

@@ -1177,7 +1177,7 @@ function getMedia(\mysqli $db_conn, int $id): ?array
 function getAllMedia(\mysqli $db_conn, int $limit = 50, int $offset = 0, ?string $search = null): array
 {
     $limit = (int)$limit; $offset = (int)$offset;
-    
+
     if ($search) {
         $searchPattern = "%{$search}%";
         $sql = "SELECT * FROM media WHERE original_filename LIKE ? OR alt_text LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
@@ -1192,7 +1192,7 @@ function getAllMedia(\mysqli $db_conn, int $limit = 50, int $offset = 0, ?string
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
     }
-    
+
     $rows = [];
     if ($res) { while ($r = mysqli_fetch_assoc($res)) { $rows[] = $r; } }
     return $rows;
@@ -1234,13 +1234,12 @@ function getSettings(\mysqli $db_conn): ?array
  * Get logo URL (with retina support via srcset)
  * Returns array with logo_url and logo_srcset_png
  */
-function getLogoUrls($db_conn, $logo_media_id = null)
+function getLogoUrls($db_conn, $logo_media_id = null, ?string $defaultLogo = null)
 {
-    global $logo;
+    $default_logo = $defaultLogo ?? '/images/default-logo.svg';
 
     if (!$logo_media_id) {
         // Return default logo from config
-        $default_logo = $logo ?? '/images/default-logo.svg';
         return [
             'logo_url' => $default_logo,
             'logo_srcset_png' => '',
@@ -1251,7 +1250,6 @@ function getLogoUrls($db_conn, $logo_media_id = null)
     $media = getMedia($db_conn, (int)$logo_media_id);
     if (!$media || empty($media['variants_json'])) {
         // Return default logo from config
-        $default_logo = $logo ?? '/images/default-logo.svg';
         return [
             'logo_url' => $default_logo,
             'logo_srcset_png' => '',
@@ -1271,7 +1269,6 @@ function getLogoUrls($db_conn, $logo_media_id = null)
         }
     }
 
-    $default_logo = $logo ?? '/images/default-logo.svg';
     $logo_url = $logo200 ? ('/' . $logo200['path']) : $default_logo;
     $logo_srcset_png = MediaProcessor::generateSrcset($variants, 'png');
     $logo_srcset_webp = MediaProcessor::generateSrcset($variants, 'webp');
@@ -1643,25 +1640,21 @@ function sendNewPostNotification($db_conn, $postId)
     // Link directly to post detail overlay: /?page=home&post_id=X
     $postUrl = "{$baseUrl}/?page=home&post_id={$postId}";
 
-    // Build HTML email body using Smarty templates
-    // Initialize Smarty if not already available
-    global $smarty;
-    if (!isset($smarty) || !$smarty) {
-        require_once(__DIR__ . '/framework/vendor/smarty4/libs/Smarty.class.php');
-        $smarty = new Smarty();
-        $smarty->setTemplateDir(__DIR__ . '/templates');
-        $smarty->setCompileDir(__DIR__ . '/cache');
-        $smarty->setCacheDir(__DIR__ . '/cache');
-        // Disable auto-escaping since we're handling HTML content
-        $smarty->escape_html = false;
-    }
+    // Build HTML email body using Smarty templates without relying on globals
+    require_once(__DIR__ . '/framework/vendor/smarty4/libs/Smarty.class.php');
+    $emailView = new Smarty();
+    $emailView->setTemplateDir(__DIR__ . '/templates');
+    $emailView->setCompileDir(__DIR__ . '/cache');
+    $emailView->setCacheDir(__DIR__ . '/cache');
+    // Disable auto-escaping since we're handling HTML content
+    $emailView->escape_html = false;
 
     $includePostBody = (bool)$settings['email_include_post_body'];
 
     // Prepare common template variables (non-personalized)
-    $smarty->assign('site_title', $siteTitle);
-    $smarty->assign('post_url', $postUrl);
-    $smarty->assign('base_url', $baseUrl);
+    $emailView->assign('site_title', $siteTitle);
+    $emailView->assign('post_url', $postUrl);
+    $emailView->assign('base_url', $baseUrl);
 
     // Prepare template variables based on email type
     if ($includePostBody) {
@@ -1691,19 +1684,19 @@ function sendNewPostNotification($db_conn, $postId)
         }
 
         // Assign variables for full email template
-        $smarty->assign('post_title', $postTitle);
-        $smarty->assign('hero_image_url', $heroImageUrl);
-        $smarty->assign('hero_image_height', $post['hero_image_height'] ?? 100);
-        $smarty->assign('hero_title_overlay', $post['hero_title_overlay'] ?? 1);
-        $smarty->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
-        $smarty->assign('body_html', $bodyHtml);
+        $emailView->assign('post_title', $postTitle);
+        $emailView->assign('hero_image_url', $heroImageUrl);
+        $emailView->assign('hero_image_height', $post['hero_image_height'] ?? 100);
+        $emailView->assign('hero_title_overlay', $post['hero_title_overlay'] ?? 1);
+        $emailView->assign('hero_overlay_opacity', $post['hero_overlay_opacity'] ?? 0.70);
+        $emailView->assign('body_html', $bodyHtml);
     } else {
         // Always derive excerpt from the latest body_html to avoid stale saved excerpts
         $excerpt = generateExcerpt($post['body_html'], 150);
 
         // Assign variables for excerpt email template
-        $smarty->assign('author_name', $authorName);
-        $smarty->assign('excerpt', $excerpt);
+        $emailView->assign('author_name', $authorName);
+        $emailView->assign('excerpt', $excerpt);
     }
 
     // Send emails individually to each subscriber with personalized unsubscribe link
@@ -1818,13 +1811,13 @@ function sendNewPostNotification($db_conn, $postId)
                 $unsubscribeUrl = "{$baseUrl}/api/unsubscribe.php?token={$unsubscribeToken}";
 
                 // Assign the personalized unsubscribe URL to template
-                $smarty->assign('unsubscribe_url', $unsubscribeUrl);
+                $emailView->assign('unsubscribe_url', $unsubscribeUrl);
 
                 // Render the email body with personalized unsubscribe link
                 if ($includePostBody) {
-                    $emailBody = $smarty->fetch('email_notification_full.tpl');
+                    $emailBody = $emailView->fetch('email_notification_full.tpl');
                 } else {
-                    $emailBody = $smarty->fetch('email_notification_excerpt.tpl');
+                    $emailBody = $emailView->fetch('email_notification_excerpt.tpl');
                 }
 
                 // Clear previous recipients
