@@ -26,7 +26,8 @@ if (!$db_conn) { http_response_code(500); echo json_encode(['success'=>false,'er
 $method = $_SERVER['REQUEST_METHOD'];
 function requireCsrf() { $t = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['csrf_token'] ?? ''); if (!validateCsrfToken($t)) { http_response_code(419); echo json_encode(['success'=>false,'error'=>'CSRF validation failed']); exit; } }
 
-switch ($method) {
+try {
+    switch ($method) {
     case 'GET':
         // If specific ID requested, return single media item
         if (isset($_GET['id']) && $_GET['id']) {
@@ -127,6 +128,11 @@ switch ($method) {
 
     default:
         http_response_code(405); echo json_encode(['success'=>false,'error'=>'Method not allowed']);
+    }
+} catch (\Throwable $e) {
+    error_log('API error in media.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 // Helper function to check which posts use this media

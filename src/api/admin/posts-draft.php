@@ -44,7 +44,8 @@ function requireCsrf() {
     }
 }
 
-switch ($method) {
+try {
+    switch ($method) {
     case 'PUT':
         // Auto-save draft content
         requireCsrf();
@@ -143,4 +144,9 @@ switch ($method) {
     default:
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+}
+} catch (\Throwable $e) {
+    error_log('API error in posts-draft.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }

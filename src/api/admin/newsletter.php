@@ -43,7 +43,8 @@ function requireCsrf() {
     }
 }
 
-switch ($method) {
+try {
+    switch ($method) {
     case 'GET':
         // Get all newsletter subscribers
         $show_archived = isset($_GET['show_archived']) && $_GET['show_archived'] === 'true';
@@ -208,6 +209,11 @@ switch ($method) {
     default:
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    }
+} catch (\Throwable $e) {
+    error_log('API error in newsletter.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 mysqli_close($db_conn);
