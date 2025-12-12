@@ -23,7 +23,9 @@ ApiHandler::handle(function (): void {
 
     $content = trim((string) $input['content']);
 
-    if (empty($GLOBALS['openai_api_key'])) {
+    // Prefer env lookup to avoid scope issues when config is required inside helper functions
+    $apiKey = getenv('OPENAI_API_KEY') ?: '';
+    if (empty($apiKey)) {
         // Treat as a client-visible configuration issue, not a 500
         ErrorResponse::badRequest('OpenAI API key not configured');
     }
@@ -33,7 +35,7 @@ ApiHandler::handle(function (): void {
     $systemPrompt = $settings['ai_system_prompt'] ?? DEFAULT_AI_SYSTEM_PROMPT;
 
     try {
-        $client = OpenAI::client($GLOBALS['openai_api_key']);
+        $client = OpenAI::client($apiKey);
 
         $plainContent = strip_tags($content);
         $maxContentLength = 2000;
