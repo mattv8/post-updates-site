@@ -17,7 +17,7 @@ define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates con
  * @param string $message The message to log
  * @param string $prefix Optional prefix for the log message
  */
-function debug_log($message, $prefix = 'DEBUG') {
+function debug_log(string $message, string $prefix = 'DEBUG'): void {
     global $debug;
     if ($debug === true) {
         error_log("[$prefix] " . $message);
@@ -78,7 +78,7 @@ function implodeNotEmpty($separator, $array)
 
 
 # Simple functio so store and return GET params to an associative array
-function getParams($GET)
+function getParams(array $GET): array
 {
     $params = array();
     foreach ($GET as $key => $value) {
@@ -713,7 +713,7 @@ function decodeHtmlEntities($data)
  * @param string $html HTML content to sanitize (can be empty)
  * @return string Sanitized HTML (empty string if input is empty)
  */
-function sanitizeHtml($html)
+function sanitizeHtml(string $html): string
 {
     // Allow a safe subset of tags (including both <em> and <i> for italic formatting)
     $allowed_tags = '<p><br><strong><b><em><i><u><ol><ul><li><blockquote><code><pre><a><h1><h2><h3><h4><h5><h6><img><figure><figcaption><hr><span><div>';
@@ -855,7 +855,7 @@ function sanitizeHtml($html)
 /**
  * Generate a text excerpt from HTML
  */
-function generateExcerpt($html, $maxLength = 250)
+function generateExcerpt(string $html, int $maxLength = 250): string
 {
     $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8')));
     if (mb_strlen($text, 'UTF-8') <= $maxLength) {
@@ -880,7 +880,7 @@ function ensureSession()
     }
 }
 
-function generateCsrfToken()
+function generateCsrfToken(): string
 {
     ensureSession();
     if (empty($_SESSION['csrf_token'])) {
@@ -889,7 +889,7 @@ function generateCsrfToken()
     return $_SESSION['csrf_token'];
 }
 
-function validateCsrfToken($token)
+function validateCsrfToken(string $token): bool
 {
     ensureSession();
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], (string)$token);
@@ -898,7 +898,7 @@ function validateCsrfToken($token)
 /**
  * Posts - CRUD helpers
  */
-function createPost($db_conn, $data)
+function createPost(\mysqli $db_conn, array $data): array
 {
     $title = $data['title'] ?? null;
     $body_html = sanitizeHtml($data['body_html'] ?? '');
@@ -926,7 +926,7 @@ function createPost($db_conn, $data)
     return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
-function updatePost($db_conn, $id, $data)
+function updatePost(\mysqli $db_conn, int $id, array $data): array
 {
     $id = (int)$id;
     $title = $data['title'] ?? null;
@@ -986,7 +986,7 @@ function updatePost($db_conn, $id, $data)
     return ['success' => true];
 }
 
-function deletePost($db_conn, $id)
+function deletePost(\mysqli $db_conn, int $id): bool
 {
     $id = (int)$id;
     // Soft delete - set deleted_at timestamp instead of actually deleting
@@ -995,7 +995,7 @@ function deletePost($db_conn, $id)
     return mysqli_stmt_execute($stmt);
 }
 
-function publishDraft($db_conn, $id)
+function publishDraft(\mysqli $db_conn, int $id): array
 {
     // Copy all draft fields to published fields for posts
     $id = (int)$id;
@@ -1081,7 +1081,7 @@ function publishSettingsDraft($db_conn)
  * @param array|null $post Post data array
  * @return array|null Post data with decoded HTML entities
  */
-function decodePostHtmlEntities($post) {
+function decodePostHtmlEntities(?array $post): ?array {
     if (!$post) {
         return null;
     }
@@ -1098,7 +1098,7 @@ function decodePostHtmlEntities($post) {
     return $post;
 }
 
-function getPost($db_conn, $id)
+function getPost(\mysqli $db_conn, int $id): ?array
 {
     $id = (int)$id;
     $sql = "SELECT p.*,
@@ -1114,7 +1114,7 @@ function getPost($db_conn, $id)
     return decodePostHtmlEntities($post);
 }
 
-function getPublishedPosts($db_conn, $limit = 10, $offset = 0)
+function getPublishedPosts(\mysqli $db_conn, int $limit = 10, int $offset = 0): array
 {
     $limit = (int)$limit; $offset = (int)$offset;
     $sql = "SELECT p.*, m.variants_json AS hero_variants,
@@ -1164,7 +1164,7 @@ function saveMediaRecord($db_conn, $data)
     return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
-function getMedia($db_conn, $id)
+function getMedia(\mysqli $db_conn, int $id): ?array
 {
     $id = (int)$id;
     $stmt = mysqli_prepare($db_conn, "SELECT * FROM media WHERE id = ? LIMIT 1");
@@ -1174,7 +1174,7 @@ function getMedia($db_conn, $id)
     return $res ? mysqli_fetch_assoc($res) : null;
 }
 
-function getAllMedia($db_conn, $limit = 50, $offset = 0, $search = null)
+function getAllMedia(\mysqli $db_conn, int $limit = 50, int $offset = 0, ?string $search = null): array
 {
     $limit = (int)$limit; $offset = (int)$offset;
     
@@ -1198,7 +1198,7 @@ function getAllMedia($db_conn, $limit = 50, $offset = 0, $search = null)
     return $rows;
 }
 
-function updateMediaAltText($db_conn, $id, $altText)
+function updateMediaAltText(\mysqli $db_conn, int $id, string $altText): bool
 {
     $id = (int)$id;
     $stmt = mysqli_prepare($db_conn, 'UPDATE media SET alt_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
@@ -1209,7 +1209,7 @@ function updateMediaAltText($db_conn, $id, $altText)
 /**
  * Settings helpers
  */
-function getSettings($db_conn)
+function getSettings(\mysqli $db_conn): ?array
 {
     $res = mysqli_query($db_conn, 'SELECT * FROM settings WHERE id = 1');
     $settings = $res ? mysqli_fetch_assoc($res) : null;
@@ -1460,7 +1460,7 @@ function updateSettings($db_conn, $data)
 /**
  * Newsletter helpers
  */
-function getActiveSubscriberCount($db_conn)
+function getActiveSubscriberCount(\mysqli $db_conn): int
 {
     $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = 1');
     if ($result) {
@@ -1470,7 +1470,7 @@ function getActiveSubscriberCount($db_conn)
     return 0;
 }
 
-function getTotalSubscriberCount($db_conn)
+function getTotalSubscriberCount(\mysqli $db_conn): int
 {
     $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers');
     if ($result) {
@@ -1487,7 +1487,7 @@ function getTotalSubscriberCount($db_conn)
  * @param string $email The email address to generate a token for
  * @return string URL-safe base64 encoded token
  */
-function generateUnsubscribeToken($email)
+function generateUnsubscribeToken(string $email): string
 {
     require(__DIR__ . '/config.local.php');
 
@@ -1514,7 +1514,7 @@ function generateUnsubscribeToken($email)
  * @param string $token The token to validate
  * @return string|false Email address if valid, false otherwise
  */
-function validateUnsubscribeToken($token)
+function validateUnsubscribeToken(string $token): string|false
 {
     require(__DIR__ . '/config.local.php');
 
