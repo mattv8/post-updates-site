@@ -23,7 +23,8 @@ if (!$db_conn) {
 $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 $postId = isset($payload['post_id']) ? (int)$payload['post_id'] : 0;
 
-$impressionInc = !empty($payload['impression']) ? 1 : 0;
+try {
+    $impressionInc = !empty($payload['impression']) ? 1 : 0;
 $uniqueImpressionInc = !empty($payload['unique_impression']) ? 1 : 0;
 $viewInc = !empty($payload['view']) ? 1 : 0;
 $uniqueViewInc = !empty($payload['unique_view']) ? 1 : 0;
@@ -57,6 +58,13 @@ if (!mysqli_stmt_execute($stmt)) {
 if (mysqli_stmt_affected_rows($stmt) === 0) {
     http_response_code(404);
     echo json_encode(['success' => false, 'error' => 'Post not found or not published']);
+    exit;
+}
+
+} catch (\Throwable $e) {
+    error_log('API error in analytics.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
     exit;
 }
 

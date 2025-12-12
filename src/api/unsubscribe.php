@@ -33,6 +33,8 @@ $smarty->assign('settings', $settings);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+try {
+
 // Handle GET request - show confirmation page
 if ($method === 'GET') {
     $token = $_GET['token'] ?? '';
@@ -160,3 +162,10 @@ http_response_code(405);
 header('Content-Type: application/json');
 echo json_encode(['success' => false, 'error' => 'Method not allowed']);
 exit;
+} catch (\Throwable $e) {
+    error_log('API error in unsubscribe.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    exit;
+}

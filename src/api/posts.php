@@ -18,7 +18,8 @@ if (!$db_conn) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'GET') {
+try {
+    if ($method === 'GET') {
     // Single post by id
     if (isset($_GET['id'])) {
         $id = (int)$_GET['id'];
@@ -87,3 +88,8 @@ if ($method === 'GET') {
 
 http_response_code(405);
 echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+} catch (\Throwable $e) {
+    error_log('API error in posts.php: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+}
