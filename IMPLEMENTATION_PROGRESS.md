@@ -118,7 +118,17 @@ This document tracks the implementation progress of the PostPortal refactor base
   - Utility files: envtest.php, index.local.php
 - **Benefit**: Foundation for type safety across entire application
 
-### Phase 2: Architecture & Type Safety
+#### 2.2 ✅ Add Parameter and Return Type Hints
+- **Status**: Complete (Critical functions)
+- **Files Modified**: src/functions.php (20+ functions)
+- **Functions with Type Hints**:
+  - Security: sanitizeHtml(), validateCsrfToken(), generateCsrfToken()
+  - Posts: createPost(), updatePost(), getPost(), getPublishedPosts(), deletePost(), publishDraft()
+  - Media: getMedia(), getAllMedia(), updateMediaAltText()
+  - Settings: getSettings()
+  - Newsletter: getActiveSubscriberCount(), getTotalSubscriberCount(), generateUnsubscribeToken(), validateUnsubscribeToken()
+  - Utilities: debug_log(), getParams(), generateExcerpt(), decodePostHtmlEntities()
+- **Type Safety**: All DB connections typed as \mysqli, array/nullable types properly declared
 
 #### 2.3 ✅ Repository Interfaces
 - **Status**: Complete
@@ -137,6 +147,20 @@ This document tracks the implementation progress of the PostPortal refactor base
   - src/Repository/SettingsRepository.php
 - **Features**: All repositories extend BaseRepository, use prepared statements exclusively
 
+#### 2.5 ✅ Service Layer Classes
+- **Status**: Complete
+- **Files Created**:
+  - src/Service/PostService.php
+  - src/Service/MediaService.php
+  - src/Service/NewsletterService.php
+- **Features**:
+  - Constructor injection of repository dependencies
+  - Comprehensive error handling with try/catch blocks
+  - Type-safe method signatures with PHPDoc annotations
+  - Centralized business logic separated from data access
+  - Returns standardized array responses
+- **Benefits**: Clear separation of concerns (Controllers → Services → Repositories → DB)
+
 ## Security Impact Summary
 
 ### ✅ CRITICAL VULNERABILITIES ELIMINATED
@@ -151,17 +175,21 @@ This document tracks the implementation progress of the PostPortal refactor base
 
 ### Phase 1 Remaining Tasks
 - [ ] 1.11 - Add input validation to all API endpoints (partially complete - validation exists in newsletter-subscribe)
-- [x] 1.12 - Add try/catch error handling around all DB operations (partially complete - done for critical endpoints)
+- [x] 1.12 - Add try/catch error handling around all DB operations (critical endpoints complete)
 
 ### Phase 2 Priority Tasks
 - [x] 2.1 - Add declare(strict_types=1) to all PHP files (COMPLETE)
-- [ ] 2.2 - Add parameter and return types to functions
-- [ ] 2.5 - Create Service classes
+- [x] 2.2 - Add parameter and return types to functions (COMPLETE for critical functions)
+- [x] 2.5 - Create Service classes (COMPLETE - PostService, MediaService, NewsletterService)
 - [ ] 2.6 - Add DI container or constructor injection
 - [ ] 2.7 - Update API endpoints to use services
 
-### Phase 2 New Additions
-- [x] Added strict types to all 25+ PHP files in src/
+### Phase 3 Next Tasks
+- [ ] 3.1 - Separate logic from presentation in src/admin.php
+- [ ] 3.2 - Separate logic from presentation in src/home.php
+- [ ] 3.3 - Remove global variables ($debug, $logo, $smarty)
+- [ ] 3.4 - Wrap Imagick operations in try/catch with logging
+- [ ] 3.5 - Wrap file I/O operations in try/catch with logging
 
 ## Files Modified
 
@@ -182,6 +210,9 @@ This document tracks the implementation progress of the PostPortal refactor base
 - src/Repository/NewsletterRepository.php
 - src/Repository/SettingsRepositoryInterface.php
 - src/Repository/SettingsRepository.php
+- src/Service/PostService.php
+- src/Service/MediaService.php
+- src/Service/NewsletterService.php
 
 ### Files Modified for Security
 - src/functions.php (17 query fixes)
