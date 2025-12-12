@@ -10,7 +10,7 @@ require_once(__DIR__ . '/../functions.php');
 ensureSession();
 
 // DB connect
-require(__DIR__ . '/../config.local.php');
+require(__DIR__ . '/../config.php');
 $db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
 if (!$db_conn) {
     http_response_code(500);
@@ -21,8 +21,7 @@ if (!$db_conn) {
 // Get site settings for consistent branding
 $settings = getSettings($db_conn);
 
-// Initialize Smarty
-require_once(__DIR__ . '/../framework/vendor/smarty4/libs/Smarty.class.php');
+// Initialize Smarty via Composer autoload
 $smarty = new Smarty();
 $smarty->setTemplateDir(__DIR__ . '/../templates');
 $smarty->setCompileDir(__DIR__ . '/../cache');

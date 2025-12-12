@@ -136,7 +136,7 @@ All 12 tasks completed:
 - **Status**: Complete
 - **Impact**: ALL 25+ PHP files in src/ directory
 - **Files Modified**:
-  - Core files: functions.php, admin.php, home.php, config.local.php
+  - Core files: functions.php, admin.php, home.php, config.php
   - All 16 API endpoints (posts, dashboard, newsletter, media, settings, etc.)
   - Library files: MediaProcessor.php, regenerate-variants.php
   - Utility files: envtest.php, index.local.php

@@ -10,9 +10,6 @@
 docker-compose.yml.old
 docker/docker-compose.dev.yml
 
-# Framework files (bundled separately)
-src/index.php
-
 # Documentation
 README.md
 docs/

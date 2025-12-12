@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * config.local.php
+ * config.php
  * Post Portal Application Configuration
  *
  * This file contains application defaults and structure.

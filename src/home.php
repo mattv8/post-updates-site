@@ -25,4 +25,4 @@ if (!empty($_SESSION['authenticated'])) {
 
 $context['view']->assign($data);
 
-// Don't call display() - let the framework's index.tpl handle rendering
+// Rendering handled by the front controller

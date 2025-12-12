@@ -56,13 +56,6 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    PHP_MEMORY_LIMIT=256M
    PHP_MAX_EXECUTION_TIME=60
 
-   # ----------------------------------------------------------------------------
-   # Development Only Settings (not used in production)
-   # ----------------------------------------------------------------------------
-   # Path to Smarty Portal Framework (for development only)
-   # Clone from: https://github.com/mattv8/smarty-portal-framework.git
-   FRAMEWORK_PATH=/path/to/smarty-portal-framework
-
    # Development service ports
    PHPMA_PORT=82
    MAILPIT_PORT=83
@@ -185,34 +178,14 @@ Note: MySQL root password is auto-generated for security.
    cd post-portal
    ```
 
-2. **Clone the Smarty Portal Framework:**
-   ```bash
-   cd ..
-   git clone https://github.com/mattv8/smarty-portal-framework.git
-   ```
-
-   The [Smarty Portal Framework](https://github.com/mattv8/smarty-portal-framework) provides routing, authentication, and base templates.
-
-3. **Configure development environment:**
+2. **Configure development environment:**
    ```bash
    cp .env.example .env
    ```
 
-   Edit `.env` and set `FRAMEWORK_PATH`:
-   ```properties
-   FRAMEWORK_PATH=/path/to/smarty-portal-framework
+   Edit `.env` and set your values (ports, database, SMTP, etc.).
 
-   # Development defaults
-   PORT=81
-   MYSQL_DATABASE=devdb
-   MYSQL_USER=admin
-   MYSQL_PASSWORD=admin
-   SMTP_HOST=mailpit
-   SMTP_PORT=1025
-   SMTP_AUTH=false
-   ```
-
-4. **Start development stack:**
+3. **Start development stack:**
 
    **Option A: Using VS Code tasks:**
    - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
@@ -253,7 +226,7 @@ Changes are immediately reflected (no rebuild required).
 - **`media`** - Uploaded images with responsive variants and metadata
 - **`posts`** - User posts with hero images and gallery references
 - **`settings`** - Site configuration (hero, bio, donation settings)
-- **`users`**, **`sites`**, **`audit`** - Framework tables (reused from Smarty Portal Framework)
+- **`users`**, **`sites`**, **`audit`** - Legacy tables retained for compatibility with existing data
 
 ### Migrations
 

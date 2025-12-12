@@ -94,7 +94,7 @@ echo "==> Running database initialization..."
 
 # Run migrations
 echo "==> Running database migrations..."
-export CONFIG_FILE=/var/www/html/config.local.php
+export CONFIG_FILE=/var/www/html/config.php
 /docker-scripts/run-migrations.sh || echo "Warning: Some migrations may have failed"
 
 # Seed demo content (if enabled)

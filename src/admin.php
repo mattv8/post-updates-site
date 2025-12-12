@@ -18,4 +18,4 @@ $data = $page->build();
 
 $context['view']->assign($data);
 
-// Don't call display() - framework index.tpl handles rendering
+// Rendering handled by the front controller

@@ -24,9 +24,7 @@ class ViewRenderer
             $smarty->debugging = $debug;
             return new self($smarty);
         }
-
-        require_once __DIR__ . '/../framework/vendor/smarty4/libs/Smarty.class.php';
-
+        // Fall back to a new Composer-managed Smarty instance when none was provided.
         $instance = new Smarty();
         $instance->setTemplateDir(__DIR__ . '/../templates');
         $instance->setCompileDir(__DIR__ . '/../cache');

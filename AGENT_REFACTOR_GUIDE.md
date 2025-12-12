@@ -1,6 +1,6 @@
 # PostPortal Refactor & Security Playbook
 
-**Scope:** User code in `src/` (5,700+ LOC; excludes vendor/, framework/, migrations/)
+**Scope:** User code in `src/` (5,700+ LOC; excludes vendor/, migrations/)
 
 This is the single source of truth for refactoring PostPortal. Use the master checklist to track work; follow the phase order unless directed otherwise. Do not stop until you have validated that all phases are complete.
 

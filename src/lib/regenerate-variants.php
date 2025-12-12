@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 
 require_once(__DIR__ . '/../vendor/autoload.php');
-require_once(__DIR__ . '/../framework/conf/config.php');
+require_once(__DIR__ . '/../config.php');
 require_once(__DIR__ . '/MediaProcessor.php');
 
 // Parse command line arguments
@@ -24,8 +24,8 @@ if (isset($options['help'])) {
     exit(0);
 }
 
-// Connect to database
-$db_conn = mysqli_connect($mysqlHost, $mysqlUsername, $mysqlPassword, $mysqlDatabase);
+// Connect to database using local config
+$db_conn = mysqli_connect($db_servername, $db_username, $db_password, $db_name);
 if (!$db_conn) {
     die("Database connection failed: " . mysqli_connect_error() . "\n");
 }

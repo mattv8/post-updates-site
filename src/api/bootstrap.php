@@ -29,7 +29,7 @@ function bootstrapApi(bool $requireAuth = false, bool $requireAdmin = false): ar
         ErrorResponse::forbidden('Forbidden');
     }
 
-    require __DIR__ . '/../config.local.php';
+    require __DIR__ . '/../config.php';
     $db = getDbConnection($db_servername, $db_username, $db_password, $db_name);
     if (!$db) {
         ErrorResponse::internalError('DB connection failed');

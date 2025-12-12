@@ -17,7 +17,6 @@ require_once __DIR__ . '/Http/ViewRenderer.php';
  */
 function bootstrapPageContext(bool $requireAuth = false, bool $requireAdmin = false): array
 {
-    require_once __DIR__ . '/framework/conf/config.php';
     ensureSession();
 
     if ($requireAuth && (empty($_SESSION['authenticated']) || empty($_SESSION['username']))) {
@@ -30,7 +29,7 @@ function bootstrapPageContext(bool $requireAuth = false, bool $requireAdmin = fa
         exit;
     }
 
-    require __DIR__ . '/config.local.php';
+    require __DIR__ . '/config.php';
     $db = getDbConnection($db_servername, $db_username, $db_password, $db_name);
     if (!$db) {
         http_response_code(500);
@@ -48,6 +47,9 @@ function bootstrapPageContext(bool $requireAuth = false, bool $requireAdmin = fa
         'config' => [
             'default_admin_password' => $default_admin_password ?? '',
             'default_logo' => $logo ?? '/images/default-logo.svg',
+            'default_page' => $default_page ?? 'home',
+            'public_pages' => $public_pages ?? [],
+            'auth_type' => $auth_type ?? 'none',
         ],
     ];
 }

@@ -44,71 +44,13 @@ if [ ! -f "${PROJECT_ROOT}/.env" ]; then
     exit 1
 fi
 
-# 1b. Check for FRAMEWORK_PATH and verify it exists
-FRAMEWORK_PATH=$(grep "^FRAMEWORK_PATH=" "${PROJECT_ROOT}/.env" | cut -d'=' -f2 | tr -d ' ')
-
-if [ -z "$FRAMEWORK_PATH" ] || [ "$FRAMEWORK_PATH" = "/path/to/smarty-portal-framework" ]; then
-    echo ""
-    echo "$(tput setaf 1)❌ ERROR: FRAMEWORK_PATH not configured$(tput sgr0)"
-    echo ""
-    echo "You must configure FRAMEWORK_PATH in your .env file."
-    echo ""
-    echo "Steps to fix:"
-    echo "  1. Clone the framework:"
-    echo "     git clone https://github.com/mattv8/smarty-portal-framework.git $(dirname ${PROJECT_ROOT})/smarty-portal-framework"
-    echo ""
-    echo "  2. Update FRAMEWORK_PATH in .env:"
-    FRAMEWORK_EXPECTED="$(dirname ${PROJECT_ROOT})/smarty-portal-framework"
-    echo "     FRAMEWORK_PATH=${FRAMEWORK_EXPECTED}"
-    echo ""
-    exit 1
-fi
-
-# 1c. Verify framework directory exists and has index.php
-if [ ! -d "$FRAMEWORK_PATH" ]; then
-    echo ""
-    echo "$(tput setaf 1)❌ ERROR: Framework directory does not exist$(tput sgr0)"
-    echo "    FRAMEWORK_PATH: $FRAMEWORK_PATH"
-    echo ""
-    echo "Clone the framework:"
-    echo "  git clone https://github.com/mattv8/smarty-portal-framework.git $FRAMEWORK_PATH"
-    echo ""
-    exit 1
-fi
-
-if [ ! -f "$FRAMEWORK_PATH/index.php" ]; then
-    echo ""
-    echo "$(tput setaf 1)❌ ERROR: Framework index.php not found$(tput sgr0)"
-    echo "    FRAMEWORK_PATH: $FRAMEWORK_PATH"
-    echo "    Missing: $FRAMEWORK_PATH/index.php"
-    echo ""
-    echo "Verify the framework was cloned correctly."
-    echo ""
-    exit 1
-fi
-
-echo "✓ Framework found: $FRAMEWORK_PATH"
-
 # 2. Create .env symlink in docker directory if needed
 if [ ! -L "${PROJECT_ROOT}/docker/.env" ]; then
     ln -sf "${PROJECT_ROOT}/.env" "${PROJECT_ROOT}/docker/.env"
     echo "==> Created .env symlink in docker directory"
 fi
 
-# 3. Clean framework artifacts from src/ (mounted volume conflicts)
-echo "==> Cleaning framework artifacts from src/..."
-
-# Note: index.php and framework/ are mounted as read-only by docker-compose
-# The mounts will overlay the local files, so we don't need to remove them here.
-# They will be provided by the framework at runtime.
-
-# Remove framework directory/symlink if exists locally (framework is mounted separately)
-if [ -d "${SRC_DIR}/framework" ] || [ -L "${SRC_DIR}/framework" ]; then
-    rm -rf "${SRC_DIR}/framework"
-    echo "    Removed local framework directory/symlink (will be mounted by docker-compose)"
-fi
-
-# 4. Ensure cache directories exist with proper permissions
+# 3. Ensure cache directories exist with proper permissions
 echo "==> Ensuring cache directories exist..."
 mkdir -p "${SRC_DIR}/cache" "${SRC_DIR}/templates_c"
 
