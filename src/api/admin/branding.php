@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 use PostPortal\Http\ApiHandler;
 use PostPortal\Http\ErrorResponse;
+use PostPortal\Lib\MediaProcessor;
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../lib/MediaProcessor.php';

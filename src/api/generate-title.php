@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Generate Title API Endpoint
  * Uses OpenAI to generate a post title from the content body
  */
-use OpenAI;
 use PostPortal\Http\ApiHandler;
 use PostPortal\Http\ErrorResponse;
 

@@ -8,6 +8,8 @@ declare(strict_types=1);
  * Usage: php regenerate-variants.php [--all|--id=123]
  */
 
+use PostPortal\Lib\MediaProcessor;
+
 require_once(__DIR__ . '/../vendor/autoload.php');
 require_once(__DIR__ . '/../config.php');
 require_once(__DIR__ . '/MediaProcessor.php');
@@ -36,10 +38,18 @@ if (isset($options['all'])) {
     echo "Regenerating variants for all media...\n";
 
     $query = "SELECT id, filename FROM media ORDER BY id";
-    $result = mysqli_query($db_conn, $query);
+    $stmt = mysqli_prepare($db_conn, $query);
+    if (!$stmt) {
+        die("Query preparation failed: " . mysqli_error($db_conn) . "\n");
+    }
 
-    if (!$result) {
+    if (!mysqli_stmt_execute($stmt)) {
         die("Query failed: " . mysqli_error($db_conn) . "\n");
+    }
+
+    $result = mysqli_stmt_get_result($stmt);
+    if (!$result) {
+        die("Failed to get result: " . mysqli_error($db_conn) . "\n");
     }
 
     $total = mysqli_num_rows($result);

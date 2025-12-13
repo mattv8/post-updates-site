@@ -23,7 +23,8 @@
                             <span class="input-group-text"><i class="fa fa-fw fa-lock"></i></span>
                             <input type="password" name="password" id="password" class="form-control" placeholder="{$msg_password}"{if $debug && $default_admin_password} value="{$default_admin_password}"{/if}/>
                         </div>
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <a href="/" class="btn btn-secondary col-md-auto"><i class="fa me-2 fa-arrow-left"></i>{$msg_go_back|default:'Go Back'}</a>
                             <button type="submit" class="btn btn-primary col-md-auto" onclick="handleLogin(this)"><i class="fa me-2 fa-check-circle"></i>{$msg_submit}</button>
                         </div>
                     </div>

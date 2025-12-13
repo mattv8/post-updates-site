@@ -10,7 +10,7 @@ use mysqli;
 /**
  * Newsletter service for business logic around newsletter operations
  */
-class NewsletterService
+class NewsletterService implements NewsletterServiceInterface
 {
     private NewsletterRepositoryInterface $newsletterRepository;
     private mysqli $db;
@@ -205,6 +205,16 @@ class NewsletterService
     public function archiveSubscriber(int $id): array
     {
         return $this->updateSubscriberStatus($id, false);
+    }
+
+    /**
+     * Reactivate a subscriber (admin action).
+     *
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function reactivateSubscriber(int $id): array
+    {
+        return $this->updateSubscriberStatus($id, true);
     }
 
     /**

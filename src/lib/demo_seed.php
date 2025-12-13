@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+use PostPortal\Lib\MediaProcessor;
+
 if (php_sapi_name() !== 'cli') {
     fwrite(STDERR, "This script must be run from the CLI.\n");
     exit(1);

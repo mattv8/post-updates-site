@@ -594,6 +594,8 @@
         hero_height: payload.hero_height
       })
     });
+
+    showNotification('Hero banner saved successfully', 'success');
   });
 
   document.getElementById('aboutForm').addEventListener('submit', async function (e) {

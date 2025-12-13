@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+namespace PostPortal\Lib;
+
+use Exception;
+use Intervention\Image\ImageManager;
+
 /**
  * Media Processing Library
  * Handles image uploads, optimization, and responsive variant generation
@@ -9,21 +14,22 @@ declare(strict_types=1);
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
-use Intervention\Image\ImageManager;
-
 class MediaProcessor
 {
-    private $uploadsDir;
-    private $originalsDir;
-    private $variantsDir;
-    private $webRoot;
-    private $maxFileSize = 20971520; // 20MB in bytes
-    private $allowedFormats = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
-    private $allowedExtensions = ['jpg', 'jpeg', 'png', 'heic', 'webp'];
-    private $variantWidths = [1600, 800, 400];
-    private $manager;
+    private string $uploadsDir;
+    private string $originalsDir;
+    private string $variantsDir;
+    private string $webRoot;
+    private int $maxFileSize = 20971520; // 20MB in bytes
+    /** @var array<string> */
+    private array $allowedFormats = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
+    /** @var array<string> */
+    private array $allowedExtensions = ['jpg', 'jpeg', 'png', 'heic', 'webp'];
+    /** @var array<int> */
+    private array $variantWidths = [1600, 800, 400];
+    private ImageManager $manager;
 
-    public function __construct($baseDir = null)
+    public function __construct(?string $baseDir = null)
     {
         if ($baseDir === null) {
             $baseDir = __DIR__ . '/../storage/uploads';
@@ -88,7 +94,7 @@ class MediaProcessor
     /**
      * Ensure all required directories exist
      */
-    private function ensureDirectories()
+    private function ensureDirectories(): void
     {
         $dirs = [
             $this->uploadsDir,
@@ -128,7 +134,7 @@ class MediaProcessor
      * @param string $absolutePath Full filesystem path
      * @return string Relative path from web root (e.g., 'storage/uploads/...')
      */
-    private function toRelativePath($absolutePath)
+    private function toRelativePath(string $absolutePath): string
     {
         // Normalize the absolute path
         $normalized = realpath($absolutePath) ?: $absolutePath;
@@ -150,13 +156,13 @@ class MediaProcessor
 
     /**
      * Process an uploaded file
-     * @param array $file $_FILES array element
+     * @param array<string, mixed> $file $_FILES array element
      * @param string $altText Optional alt text
      * @param string $username Username of uploader
-     * @param array $cropData Optional crop coordinates (x, y, width, height)
-     * @return array Result with success status and data/error
+     * @param array<string, int>|null $cropData Optional crop coordinates (x, y, width, height)
+     * @return array{success: bool, data?: array<string, mixed>, error?: string}
      */
-    public function processUpload($file, $altText = '', $username = 'admin', $cropData = null)
+    public function processUpload(array $file, string $altText = '', string $username = 'admin', ?array $cropData = null): array
     {
         error_log('MediaProcessor: upload start for user ' . $username . ' file ' . ($file['name'] ?? 'unknown') . ' type ' . ($file['type'] ?? 'n/a') . ' size ' . ($file['size'] ?? 'n/a'));
         // Validate file upload
@@ -239,8 +245,10 @@ class MediaProcessor
 
     /**
      * Validate uploaded file
+     * @param array<string, mixed> $file
+     * @return array{success: bool, error?: string}
      */
-    private function validateUpload($file)
+    private function validateUpload(array $file): array
     {
         // Check for upload errors
         if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -287,8 +295,9 @@ class MediaProcessor
 
     /**
      * Generate responsive variants of an image
+     * @return array<array{width: int, path: string, format: string}>
      */
-    private function generateVariants($originalPath, $filename)
+    private function generateVariants(string $originalPath, string $filename): array
     {
         $variants = [];
         $baseFilename = pathinfo($filename, PATHINFO_FILENAME);
@@ -343,7 +352,7 @@ class MediaProcessor
     /**
      * Convert image to WebP format using CLI tool
      */
-    private function convertToWebP($source, $destination)
+    private function convertToWebP(string $source, string $destination): bool
     {
         // Check if cwebp is available
         exec('which cwebp 2>&1', $output, $returnCode);
@@ -365,7 +374,7 @@ class MediaProcessor
     /**
      * Optimize JPEG file using jpegoptim
      */
-    private function optimizeJpeg($filepath)
+    private function optimizeJpeg(string $filepath): bool
     {
         exec('which jpegoptim 2>&1', $output, $returnCode);
         if ($returnCode !== 0) {
@@ -384,7 +393,7 @@ class MediaProcessor
     /**
      * Strip EXIF data from image (keep orientation)
      */
-    private function stripExifData($filepath)
+    private function stripExifData(string $filepath): bool
     {
         try {
             $img = $this->manager->make($filepath);
@@ -413,7 +422,7 @@ class MediaProcessor
         }
 
         try {
-            $imagick = new Imagick($heicPath);
+            $imagick = new \Imagick($heicPath);
             $imagick->setImageFormat('jpeg');
             $imagick->setImageCompressionQuality(90);
             $jpegData = $imagick->getImageBlob();

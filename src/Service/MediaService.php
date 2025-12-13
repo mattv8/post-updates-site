@@ -11,7 +11,7 @@ use PostPortal\Repository\SettingsRepositoryInterface;
 /**
  * Media service for business logic around media operations
  */
-class MediaService
+class MediaService implements MediaServiceInterface
 {
     private MediaRepositoryInterface $mediaRepository;
     private PostRepositoryInterface $postRepository;
