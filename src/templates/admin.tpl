@@ -347,140 +347,116 @@
 
     <div class="tab-pane fade" id="pane-branding" role="tabpanel">
       <div class="mt-3">
-        <h5 class="mb-4">Site Branding</h5>
-
-        {* Site Title *}
-        <div class="card mb-4">
-          <div class="card-body">
-            <div class="mb-3">
-              <label class="form-label"><strong>Site Title</strong></label>
-              <input type="text" id="site_title" class="form-control" />
-              <small class="text-muted">The title displayed in the browser tab and site header</small>
-            </div>
-          </div>
-        </div>
-
-        {* Logo Display Toggle *}
-        <div class="card mb-4">
-          <div class="card-body">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="showLogoToggle" {if $settings.show_logo}checked{/if}>
-              <label class="form-check-label" for="showLogoToggle">
-                <strong>Display Logo Site-Wide</strong>
-                <div class="text-muted small">When enabled, the logo will appear in the site header. When disabled, only the site title will be shown.</div>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {* Logo Section *}
-        <div class="card mb-4">
-          <div class="card-header">
-            <h6 class="mb-0">Site Logo</h6>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Upload Logo</label>
-                  <input type="file" class="form-control" id="logoFile" accept="image/*" />
-                  <small class="form-text text-muted">
-                    Upload a logo image. You can crop it after upload. Recommended: PNG with transparent background.
-                  </small>
-                </div>
-
-                <div id="logoCropContainer" class="mb-3" style="display: none;">
-                  <label class="form-label">Crop Logo</label>
-                  <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
-                    <img id="logoCropImage" src="" style="max-width: 100%; display: block;" />
-                  </div>
-                  <div class="mt-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="logoAutoDetect">
-                      <i class="bi bi-magic"></i> Auto-Detect Bounds
-                    </button>
-                    <button type="button" class="btn btn-sm btn-primary" id="logoUploadBtn">
-                      <i class="bi bi-upload"></i> Upload & Apply
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="logoCancelBtn">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Current Logo</label>
-                  <div id="logoPreview" class="border rounded p-3 bg-white text-center" style="min-height: 150px;">
-                    <div class="text-muted">No logo uploaded</div>
-                  </div>
-                  <div class="mt-2" id="logoActions" style="display: none;">
-                    <button type="button" class="btn btn-sm btn-danger" id="logoRemoveBtn">
-                      <i class="bi bi-trash"></i> Remove Logo
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {* Favicon Section *}
-        <div class="card mb-4">
-          <div class="card-header">
-            <h6 class="mb-0">Site Favicon</h6>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Upload Favicon</label>
-                  <input type="file" class="form-control" id="faviconFile" accept="image/*" />
-                  <small class="form-text text-muted">
-                    Upload a square image for your favicon. It will be automatically cropped to 1:1 aspect ratio and resized to multiple sizes (16x16, 32x32, etc.).
-                  </small>
-                </div>
-
-                <div id="faviconCropContainer" class="mb-3" style="display: none;">
-                  <label class="form-label">Crop Favicon (1:1 Aspect Ratio)</label>
-                  <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
-                    <img id="faviconCropImage" src="" style="max-width: 100%; display: block;" />
-                  </div>
-                  <div class="mt-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="faviconAutoDetect">
-                      <i class="bi bi-magic"></i> Auto-Detect Bounds
-                    </button>
-                    <button type="button" class="btn btn-sm btn-primary" id="faviconUploadBtn">
-                      <i class="bi bi-upload"></i> Upload & Apply
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="faviconCancelBtn">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Current Favicon</label>
-                  <div id="faviconPreview" class="border rounded p-3 bg-white text-center" style="min-height: 150px;">
-                    <div class="text-muted">No favicon uploaded</div>
-                  </div>
-                  <div class="mt-2" id="faviconActions" style="display: none;">
-                    <button type="button" class="btn btn-sm btn-danger" id="faviconRemoveBtn">
-                      <i class="bi bi-trash"></i> Remove Favicon
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="alert alert-info">
+        <h5 class="mb-3">Site Branding</h5>
+        <div class="alert alert-info mt-3">
           <i class="bi bi-info-circle"></i>
           <strong>Note:</strong> After uploading a new logo or favicon, you may need to refresh the page to see the changes in the site header.
         </div>
+
+        {* Site Title *}
+        <div class="mb-3">
+          <label class="form-label"><strong>Site Title</strong></label>
+          <input type="text" id="site_title" class="form-control" />
+          <div class="form-text">The title displayed in the browser tab and site header</div>
+        </div>
+
+        <hr>
+
+        {* Logo Section *}
+        <h6 class="mb-3">Site Logo</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label"><strong>Upload Logo</strong></label>
+              <input type="file" class="form-control" id="logoFile" accept="image/*" />
+              <div class="form-text">Upload a logo image. You can crop it after upload. Recommended: PNG with transparent background.</div>
+            </div>
+
+            {* Logo Display Toggle *}
+            <div class="mb-3 form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="showLogoToggle" {if $settings.show_logo}checked{/if}>
+              <label class="form-check-label" for="showLogoToggle">
+                <strong>Display Logo Site-Wide</strong>
+              </label>
+              <div class="form-text">When enabled, the logo will appear in the site header. When disabled, only the site title will be shown.</div>
+            </div>
+
+            <div id="logoCropContainer" class="mb-3" style="display: none;">
+              <label class="form-label">Crop Logo</label>
+              <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+                <img id="logoCropImage" src="" style="max-width: 100%; display: block;" />
+              </div>
+              <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="logoAutoDetect">
+                  <i class="bi bi-magic"></i> Auto-Detect Bounds
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" id="logoUploadBtn">
+                  <i class="bi bi-upload"></i> Upload & Apply
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="logoCancelBtn">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label"><strong>Current Logo</strong></label>
+              <div id="logoPreview" class="border rounded p-3 bg-light text-center" style="min-height: 120px;">
+                <div class="text-muted">No logo uploaded</div>
+              </div>
+              <div class="mt-2" id="logoActions" style="display: none;">
+                <button type="button" class="btn btn-sm btn-danger" id="logoRemoveBtn">
+                  <i class="bi bi-trash"></i> Remove Logo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        {* Favicon Section *}
+        <h6 class="mb-3">Site Favicon</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label"><strong>Upload Favicon</strong></label>
+              <input type="file" class="form-control" id="faviconFile" accept="image/*" />
+              <div class="form-text">Upload a square image for your favicon. It will be automatically cropped to 1:1 aspect ratio and resized to multiple sizes.</div>
+            </div>
+
+            <div id="faviconCropContainer" class="mb-3" style="display: none;">
+              <label class="form-label">Crop Favicon (1:1 Aspect Ratio)</label>
+              <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+                <img id="faviconCropImage" src="" style="max-width: 100%; display: block;" />
+              </div>
+              <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="faviconAutoDetect">
+                  <i class="bi bi-magic"></i> Auto-Detect Bounds
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" id="faviconUploadBtn">
+                  <i class="bi bi-upload"></i> Upload & Apply
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="faviconCancelBtn">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label"><strong>Current Favicon</strong></label>
+              <div id="faviconPreview" class="border rounded p-3 bg-light text-center" style="min-height: 120px;">
+                <div class="text-muted">No favicon uploaded</div>
+              </div>
+              <div class="mt-2" id="faviconActions" style="display: none;">
+                <button type="button" class="btn btn-sm btn-danger" id="faviconRemoveBtn">
+                  <i class="bi bi-trash"></i> Remove Favicon
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
