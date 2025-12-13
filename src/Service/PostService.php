@@ -10,7 +10,7 @@ use mysqli;
 /**
  * Post service for business logic around post operations
  */
-class PostService
+class PostService implements PostServiceInterface
 {
     private PostRepositoryInterface $postRepository;
     private mysqli $db;

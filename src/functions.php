@@ -6,6 +6,9 @@ declare(strict_types=1);
     Custom PHP Functions
 */
 require_once(__DIR__ . '/vendor/autoload.php'); // Composer autoload
+require_once(__DIR__ . '/lib/MediaProcessor.php');
+
+use PostPortal\Lib\MediaProcessor;
 
 // Default AI system prompt for title generation
 define('DEFAULT_AI_SYSTEM_PROMPT', 'You are a helpful assistant that creates concise, engaging titles for update posts. The title should be short (3-8 words), and capture the essence of the update. Return ONLY the title text, nothing else.');
@@ -69,83 +72,6 @@ function getDefaultDbConnection(): ?\mysqli
     $cfg = getDbConfig();
     return getDbConnection($cfg['host'], $cfg['user'], $cfg['password'], $cfg['database']);
 }
-
-/**
- * Sends an email using Swift Mailer.
- *
- * @param array $smtpConfig SMTP server configuration.
- *                          Requires keys 'server', 'port', 'username', 'password'.
- *                          Optionally 'security' for encryption type.
- * @param string $fromEmail Sender's email address.
- * @param string $fromName Sender's name.
- * @param string|array $toEmails Recipient's email address(es). Can be a string or an array of strings.
- * @param string $subject Email subject.
- * @param string $htmlBody HTML content of the email body.
- * @param array $attachments Array of Swift_Attachment objects for attaching files.
- * @return int|bool Number of emails sent or false on failure.
- */
-function sendEmail($smtpConfig, $fromEmail, $fromName, $toEmails, $subject, $htmlBody, array $attachments = [])
-{
-
-    try {
-        // Create the transport
-        $transport = new Swift_SmtpTransport(
-            $smtpConfig['server'],
-            $smtpConfig['port'],
-            $smtpConfig['security'] ?? null
-        );
-
-        if (isset($smtpConfig['username'], $smtpConfig['password'])) {
-            $transport->setUsername($smtpConfig['username']);
-            $transport->setPassword($smtpConfig['password']);
-        } else {
-            throw new Exception('SMTP configuration is missing username or password.');
-        }
-
-        // Create the mailer
-        $mailer = new Swift_Mailer($transport);
-
-        // Create the message
-        $message = new Swift_Message($subject);
-        $message->setFrom([$fromEmail => $fromName]);
-
-        // Set recipient email(s) based on debug mode
-        require(__DIR__ . '/config.php');
-        if ($email_debug && isset($debug_catchall_email)) {
-            $toEmails = $debug_catchall_email; // Use debug catch-all email
-        }
-
-        // Handle both single email address and array of email addresses
-        if (is_array($toEmails)) {
-            foreach ($toEmails as $email) {
-                $message->addTo($email);
-            }
-        } elseif (is_string($toEmails)) {
-            $message->addTo($toEmails);
-        } else {
-            throw new Exception('Invalid recipient format. Expected string or array of emails.');
-        }
-
-        // Set the HTML body
-        $message->setBody($htmlBody, 'text/html');
-
-        // Attach the files if provided
-        foreach ($attachments as $attachment) {
-            if ($attachment instanceof Swift_Attachment) {
-                $message->attach($attachment);
-            } else {
-                throw new Exception('Invalid attachment type. Expected Swift_Attachment.');
-            }
-        }
-
-        // Send the email
-        return $mailer->send($message);
-    } catch (Exception $e) {
-        error_log('Email sending failed: ' . $e->getMessage()); // Log to PHP log
-        return false;
-    }
-}
-
 
 /**
  * Registers a function to be called when the script execution ends.
@@ -222,16 +148,20 @@ function sanitizeHtml(string $html): string
     // Process all elements to clean up class attributes
     $xpath = new DOMXPath($dom);
     $elementsWithClass = $xpath->query('//*[@class]');
-    foreach ($elementsWithClass as $element) {
-        $classes = explode(' ', $element->getAttribute('class'));
-        $safeClasses = array_filter($classes, function($cls) use ($allowedClasses) {
-            return in_array(trim($cls), $allowedClasses);
-        });
 
-        if (empty($safeClasses)) {
-            $element->removeAttribute('class');
-        } else {
-            $element->setAttribute('class', implode(' ', $safeClasses));
+    if ($elementsWithClass !== false) {
+        /** @var \DOMElement $element */
+        foreach ($elementsWithClass as $element) {
+            $classes = explode(' ', $element->getAttribute('class'));
+            $safeClasses = array_filter($classes, function($cls) use ($allowedClasses) {
+                return in_array(trim($cls), $allowedClasses);
+            });
+
+            if (empty($safeClasses)) {
+                $element->removeAttribute('class');
+            } else {
+                $element->setAttribute('class', implode(' ', $safeClasses));
+            }
         }
     }
 
@@ -377,147 +307,280 @@ function validateCsrfToken(string $token): bool
  */
 function createPost(\mysqli $db_conn, array $data): array
 {
-    $title = $data['title'] ?? null;
-    $body_html = sanitizeHtml($data['body_html'] ?? '');
-    $excerpt = $data['excerpt'] ?? generateExcerpt($body_html, 250);
-    $hero_media_id = !empty($data['hero_media_id']) ? (int)$data['hero_media_id'] : null;
-    $hero_image_height = !empty($data['hero_image_height']) ? (int)$data['hero_image_height'] : 100;
-    $hero_crop_overlay = isset($data['hero_crop_overlay']) ? (int)(bool)$data['hero_crop_overlay'] : 0;
-    $hero_title_overlay = isset($data['hero_title_overlay']) ? (int)(bool)$data['hero_title_overlay'] : 1;
-    $hero_overlay_opacity = isset($data['hero_overlay_opacity']) ? (float)$data['hero_overlay_opacity'] : 0.70;
-    $gallery_media_ids = !empty($data['gallery_media_ids']) ? json_encode($data['gallery_media_ids']) : null;
-    $status = in_array(($data['status'] ?? 'draft'), ['draft','published']) ? $data['status'] : 'draft';
-    $published_at = !empty($data['published_at']) ? $data['published_at'] : null;
-    $created_by = $data['created_by_user_id'] ?? ($_SESSION['username'] ?? 'admin');
+    try {
+        $title = $data['title'] ?? null;
+        $body_html = sanitizeHtml($data['body_html'] ?? '');
+        $excerpt = $data['excerpt'] ?? generateExcerpt($body_html, 250);
+        $hero_media_id = !empty($data['hero_media_id']) ? (int)$data['hero_media_id'] : null;
+        $hero_image_height = !empty($data['hero_image_height']) ? (int)$data['hero_image_height'] : 100;
+        $hero_crop_overlay = isset($data['hero_crop_overlay']) ? (int)(bool)$data['hero_crop_overlay'] : 0;
+        $hero_title_overlay = isset($data['hero_title_overlay']) ? (int)(bool)$data['hero_title_overlay'] : 1;
+        $hero_overlay_opacity = isset($data['hero_overlay_opacity']) ? (float)$data['hero_overlay_opacity'] : 0.70;
+        $gallery_media_ids = !empty($data['gallery_media_ids']) ? json_encode($data['gallery_media_ids']) : null;
+        $status = in_array(($data['status'] ?? 'draft'), ['draft','published']) ? $data['status'] : 'draft';
+        $published_at = !empty($data['published_at']) ? $data['published_at'] : null;
+        $created_by = $data['created_by_user_id'] ?? ($_SESSION['username'] ?? 'admin');
 
-    // Auto-set published_at when status is 'published' and no published_at is provided
-    if ($status === 'published' && is_null($published_at)) {
-        $published_at = date('Y-m-d H:i:s');
-    }
+        // Auto-set published_at when status is 'published' and no published_at is provided
+        if ($status === 'published' && is_null($published_at)) {
+            $published_at = date('Y-m-d H:i:s');
+        }
 
-    $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, hero_image_height, hero_crop_overlay, hero_title_overlay, hero_overlay_opacity, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, 'sssiiiidssss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $hero_crop_overlay, $hero_title_overlay, $hero_overlay_opacity, $gallery_media_ids, $status, $published_at, $created_by);
-    if (!mysqli_stmt_execute($stmt)) {
-        return ['success' => false, 'error' => mysqli_error($db_conn)];
+        $stmt = mysqli_prepare($db_conn, "INSERT INTO posts (title, body_html, excerpt, hero_media_id, hero_image_height, hero_crop_overlay, hero_title_overlay, hero_overlay_opacity, gallery_media_ids, status, published_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        if (!$stmt) {
+            throw new \Exception('Failed to prepare statement: ' . mysqli_error($db_conn));
+        }
+        mysqli_stmt_bind_param($stmt, 'sssiiiidssss', $title, $body_html, $excerpt, $hero_media_id, $hero_image_height, $hero_crop_overlay, $hero_title_overlay, $hero_overlay_opacity, $gallery_media_ids, $status, $published_at, $created_by);
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new \Exception('Failed to execute statement: ' . mysqli_error($db_conn));
+        }
+        return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
+    } catch (\Throwable $e) {
+        error_log('createPost error: ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
     }
-    return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
 function updatePost(\mysqli $db_conn, int $id, array $data): array
 {
-    $id = (int)$id;
-    $title = $data['title'] ?? null;
-    $body_html = isset($data['body_html']) ? sanitizeHtml($data['body_html']) : null;
-    $excerpt = $data['excerpt'] ?? null;
-    $hero_media_id = array_key_exists('hero_media_id', $data) ? (is_null($data['hero_media_id']) ? null : (int)$data['hero_media_id']) : null;
-    $hero_image_height = array_key_exists('hero_image_height', $data) ? (is_null($data['hero_image_height']) ? null : (int)$data['hero_image_height']) : null;
-    $hero_crop_overlay = array_key_exists('hero_crop_overlay', $data) ? (int)(bool)$data['hero_crop_overlay'] : null;
-    $hero_title_overlay = array_key_exists('hero_title_overlay', $data) ? (int)(bool)$data['hero_title_overlay'] : null;
-    $hero_overlay_opacity = array_key_exists('hero_overlay_opacity', $data) ? (float)$data['hero_overlay_opacity'] : null;
-    $gallery_media_ids = array_key_exists('gallery_media_ids', $data) ? json_encode($data['gallery_media_ids']) : null;
-    $status = isset($data['status']) && in_array($data['status'], ['draft','published']) ? $data['status'] : null;
-    $published_at = $data['published_at'] ?? null;
+    try {
+        $id = (int)$id;
+        $title = $data['title'] ?? null;
+        $body_html = isset($data['body_html']) ? sanitizeHtml($data['body_html']) : null;
+        $excerpt = $data['excerpt'] ?? null;
+        $hero_media_id = array_key_exists('hero_media_id', $data) ? (is_null($data['hero_media_id']) ? null : (int)$data['hero_media_id']) : null;
+        $hero_image_height = array_key_exists('hero_image_height', $data) ? (is_null($data['hero_image_height']) ? null : (int)$data['hero_image_height']) : null;
+        $hero_crop_overlay = array_key_exists('hero_crop_overlay', $data) ? (int)(bool)$data['hero_crop_overlay'] : null;
+        $hero_title_overlay = array_key_exists('hero_title_overlay', $data) ? (int)(bool)$data['hero_title_overlay'] : null;
+        $hero_overlay_opacity = array_key_exists('hero_overlay_opacity', $data) ? (float)$data['hero_overlay_opacity'] : null;
+        $gallery_media_ids = array_key_exists('gallery_media_ids', $data) ? json_encode($data['gallery_media_ids']) : null;
+        $status = isset($data['status']) && in_array($data['status'], ['draft','published']) ? $data['status'] : null;
+        $published_at = $data['published_at'] ?? null;
 
-    // Auto-set published_at when status changes to 'published'
-    // Check current status and published_at from database
-    if ($status === 'published') {
-        $stmt_check = mysqli_prepare($db_conn, "SELECT status, published_at FROM posts WHERE id = ?");
-        mysqli_stmt_bind_param($stmt_check, 'i', $id);
-        mysqli_stmt_execute($stmt_check);
-        $current = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_check));
-        if ($current && is_null($current['published_at'])) {
-            $published_at = date('Y-m-d H:i:s');
+        // Auto-set published_at when status changes to 'published'
+        // Check current status and published_at from database
+        if ($status === 'published') {
+            $stmt_check = mysqli_prepare($db_conn, "SELECT status, published_at FROM posts WHERE id = ?");
+            if (!$stmt_check) {
+                throw new \Exception('Failed to prepare check statement: ' . mysqli_error($db_conn));
+            }
+            mysqli_stmt_bind_param($stmt_check, 'i', $id);
+            mysqli_stmt_execute($stmt_check);
+            $current = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_check));
+            if ($current && is_null($current['published_at'])) {
+                $published_at = date('Y-m-d H:i:s');
+            }
         }
+
+        // Build dynamic update
+        $fields = [];
+        $params = [];
+        $types = '';
+
+        if (!is_null($title)) { $fields[] = 'title = ?'; $params[] = $title; $types .= 's'; }
+        if (!is_null($body_html)) { $fields[] = 'body_html = ?'; $params[] = $body_html; $types .= 's'; }
+        if (!is_null($excerpt)) { $fields[] = 'excerpt = ?'; $params[] = $excerpt; $types .= 's'; }
+        if (!is_null($hero_media_id) || array_key_exists('hero_media_id', $data)) { $fields[] = 'hero_media_id = ?'; $params[] = $hero_media_id; $types .= 'i'; }
+        if (!is_null($hero_image_height) || array_key_exists('hero_image_height', $data)) { $fields[] = 'hero_image_height = ?'; $params[] = $hero_image_height; $types .= 'i'; }
+        if (!is_null($hero_crop_overlay) || array_key_exists('hero_crop_overlay', $data)) { $fields[] = 'hero_crop_overlay = ?'; $params[] = $hero_crop_overlay; $types .= 'i'; }
+        if (!is_null($hero_title_overlay) || array_key_exists('hero_title_overlay', $data)) { $fields[] = 'hero_title_overlay = ?'; $params[] = $hero_title_overlay; $types .= 'i'; }
+        if (!is_null($hero_overlay_opacity) || array_key_exists('hero_overlay_opacity', $data)) { $fields[] = 'hero_overlay_opacity = ?'; $params[] = $hero_overlay_opacity; $types .= 'd'; }
+        if (!is_null($gallery_media_ids) || array_key_exists('gallery_media_ids', $data)) { $fields[] = 'gallery_media_ids = ?'; $params[] = $gallery_media_ids; $types .= 's'; }
+        if (!is_null($status)) { $fields[] = 'status = ?'; $params[] = $status; $types .= 's'; }
+        if (!is_null($published_at)) { $fields[] = 'published_at = ?'; $params[] = $published_at; $types .= 's'; }
+
+        if (empty($fields)) {
+            return ['success' => false, 'error' => 'No fields to update'];
+        }
+
+        $sql = 'UPDATE posts SET ' . implode(', ', $fields) . ', updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+        $types .= 'i';
+        $params[] = $id;
+
+        $stmt = mysqli_prepare($db_conn, $sql);
+        if (!$stmt) {
+            throw new \Exception('Failed to prepare statement: ' . mysqli_error($db_conn));
+        }
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new \Exception('Failed to execute statement: ' . mysqli_error($db_conn));
+        }
+        return ['success' => true];
+    } catch (\Throwable $e) {
+        error_log('updatePost error: ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
     }
-
-    // Build dynamic update
-    $fields = [];
-    $params = [];
-    $types = '';
-
-    if (!is_null($title)) { $fields[] = 'title = ?'; $params[] = $title; $types .= 's'; }
-    if (!is_null($body_html)) { $fields[] = 'body_html = ?'; $params[] = $body_html; $types .= 's'; }
-    if (!is_null($excerpt)) { $fields[] = 'excerpt = ?'; $params[] = $excerpt; $types .= 's'; }
-    if (!is_null($hero_media_id) || array_key_exists('hero_media_id', $data)) { $fields[] = 'hero_media_id = ?'; $params[] = $hero_media_id; $types .= 'i'; }
-    if (!is_null($hero_image_height) || array_key_exists('hero_image_height', $data)) { $fields[] = 'hero_image_height = ?'; $params[] = $hero_image_height; $types .= 'i'; }
-    if (!is_null($hero_crop_overlay) || array_key_exists('hero_crop_overlay', $data)) { $fields[] = 'hero_crop_overlay = ?'; $params[] = $hero_crop_overlay; $types .= 'i'; }
-    if (!is_null($hero_title_overlay) || array_key_exists('hero_title_overlay', $data)) { $fields[] = 'hero_title_overlay = ?'; $params[] = $hero_title_overlay; $types .= 'i'; }
-    if (!is_null($hero_overlay_opacity) || array_key_exists('hero_overlay_opacity', $data)) { $fields[] = 'hero_overlay_opacity = ?'; $params[] = $hero_overlay_opacity; $types .= 'd'; }
-    if (!is_null($gallery_media_ids) || array_key_exists('gallery_media_ids', $data)) { $fields[] = 'gallery_media_ids = ?'; $params[] = $gallery_media_ids; $types .= 's'; }
-    if (!is_null($status)) { $fields[] = 'status = ?'; $params[] = $status; $types .= 's'; }
-    if (!is_null($published_at)) { $fields[] = 'published_at = ?'; $params[] = $published_at; $types .= 's'; }
-
-    if (empty($fields)) {
-        return ['success' => false, 'error' => 'No fields to update'];
-    }
-
-    $sql = 'UPDATE posts SET ' . implode(', ', $fields) . ', updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-    $types .= 'i';
-    $params[] = $id;
-
-    $stmt = mysqli_prepare($db_conn, $sql);
-    mysqli_stmt_bind_param($stmt, $types, ...$params);
-    if (!mysqli_stmt_execute($stmt)) {
-        return ['success' => false, 'error' => mysqli_error($db_conn)];
-    }
-    return ['success' => true];
 }
 
 function deletePost(\mysqli $db_conn, int $id): bool
 {
-    $id = (int)$id;
-    // Soft delete - set deleted_at timestamp instead of actually deleting
-    $stmt = mysqli_prepare($db_conn, 'UPDATE posts SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    return mysqli_stmt_execute($stmt);
+    try {
+        $id = (int)$id;
+        // Soft delete - set deleted_at timestamp instead of actually deleting
+        $stmt = mysqli_prepare($db_conn, 'UPDATE posts SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
+        if (!$stmt) {
+            throw new \Exception('Failed to prepare statement: ' . mysqli_error($db_conn));
+        }
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        return mysqli_stmt_execute($stmt);
+    } catch (\Throwable $e) {
+        error_log('deletePost error: ' . $e->getMessage());
+        return false;
+    }
 }
 
 function publishDraft(\mysqli $db_conn, int $id): array
 {
-    // Copy all draft fields to published fields for posts
-    $id = (int)$id;
-    $sql = "UPDATE posts SET
-        title = COALESCE(title_draft, title),
-        body_html = COALESCE(body_html_draft, body_html),
-        hero_media_id = COALESCE(hero_media_id_draft, hero_media_id),
-        hero_image_height = COALESCE(hero_image_height_draft, hero_image_height),
-        hero_crop_overlay = COALESCE(hero_crop_overlay_draft, hero_crop_overlay),
-        hero_title_overlay = COALESCE(hero_title_overlay_draft, hero_title_overlay),
-        hero_overlay_opacity = COALESCE(hero_overlay_opacity_draft, hero_overlay_opacity),
-        gallery_media_ids = COALESCE(gallery_media_ids_draft, gallery_media_ids),
-        status = 'published',
-        published_at = COALESCE(published_at, CURRENT_TIMESTAMP),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND deleted_at IS NULL";
+    try {
+        // Copy all draft fields to published fields for posts
+        // First, check which draft fields have been explicitly set (are not NULL)
+        // For nullable fields like hero_media_id, we need to check if the draft differs from published
+        $id = (int)$id;
 
-    $stmt = mysqli_prepare($db_conn, $sql);
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    if (!mysqli_stmt_execute($stmt)) {
-        return ['success' => false, 'error' => mysqli_error($db_conn)];
-    }
+        // Get current draft state to determine what to update
+        $stmt_check = mysqli_prepare($db_conn, "SELECT
+            title_draft, body_html_draft, hero_media_id_draft, hero_image_height_draft,
+            hero_crop_overlay_draft, hero_title_overlay_draft, hero_overlay_opacity_draft,
+            gallery_media_ids_draft,
+            title, body_html, hero_media_id, hero_image_height,
+            hero_crop_overlay, hero_title_overlay, hero_overlay_opacity, gallery_media_ids
+            FROM posts WHERE id = ? AND deleted_at IS NULL");
+        if (!$stmt_check) {
+            throw new \Exception('Failed to prepare check statement: ' . mysqli_error($db_conn));
+        }
+        mysqli_stmt_bind_param($stmt_check, 'i', $id);
+        mysqli_stmt_execute($stmt_check);
+        $post = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_check));
 
-    // Refresh excerpt based on the now-published body_html to avoid stale excerpts
-    // This ensures email notifications and list views use up-to-date summaries
-    $stmt_body = mysqli_prepare($db_conn, "SELECT body_html FROM posts WHERE id = ? LIMIT 1");
-    mysqli_stmt_bind_param($stmt_body, 'i', $id);
-    mysqli_stmt_execute($stmt_body);
-    $res = mysqli_stmt_get_result($stmt_body);
-    if ($res) {
-        $row = mysqli_fetch_assoc($res);
-        if ($row && isset($row['body_html'])) {
-            $newExcerpt = generateExcerpt($row['body_html'], 250);
-            $stmt2 = mysqli_prepare($db_conn, 'UPDATE posts SET excerpt = ? WHERE id = ?');
-            if ($stmt2) {
-                mysqli_stmt_bind_param($stmt2, 'si', $newExcerpt, $id);
-                // If this update fails, don't fail the publish action; log and continue
-                if (!mysqli_stmt_execute($stmt2)) {
-                    error_log('Failed to refresh excerpt on publish for post ' . $id . ': ' . mysqli_error($db_conn));
+        if (!$post) {
+            return ['success' => false, 'error' => 'Post not found'];
+        }
+
+        // Build dynamic update based on which draft fields exist
+        $updates = [];
+        $params = [];
+        $types = '';
+
+        // For each field, if draft is set (not null), use it; otherwise keep current
+        // Special handling: hero_media_id_draft can be explicitly set to NULL to remove the image
+        // We detect this by checking if ANY draft field has been set, meaning the user has edited the post
+        $draftWasEdited = $post['title_draft'] !== null ||
+                          $post['body_html_draft'] !== null ||
+                          $post['hero_image_height_draft'] !== null ||
+                          $post['hero_crop_overlay_draft'] !== null;
+
+        if ($post['title_draft'] !== null) {
+            $updates[] = 'title = ?';
+            $params[] = $post['title_draft'];
+            $types .= 's';
+        }
+
+        if ($post['body_html_draft'] !== null) {
+            $updates[] = 'body_html = ?';
+            $params[] = $post['body_html_draft'];
+            $types .= 's';
+        }
+
+        // hero_media_id: if draft was edited, copy draft value (even if NULL = remove image)
+        if ($draftWasEdited) {
+            $updates[] = 'hero_media_id = ?';
+            $params[] = $post['hero_media_id_draft']; // Can be NULL
+            $types .= 'i';
+        }
+
+        if ($post['hero_image_height_draft'] !== null) {
+            $updates[] = 'hero_image_height = ?';
+            $params[] = $post['hero_image_height_draft'];
+            $types .= 'i';
+        }
+
+        if ($post['hero_crop_overlay_draft'] !== null) {
+            $updates[] = 'hero_crop_overlay = ?';
+            $params[] = $post['hero_crop_overlay_draft'];
+            $types .= 'i';
+        }
+
+        if ($post['hero_title_overlay_draft'] !== null) {
+            $updates[] = 'hero_title_overlay = ?';
+            $params[] = $post['hero_title_overlay_draft'];
+            $types .= 'i';
+        }
+
+        if ($post['hero_overlay_opacity_draft'] !== null) {
+            $updates[] = 'hero_overlay_opacity = ?';
+            $params[] = $post['hero_overlay_opacity_draft'];
+            $types .= 'd';
+        }
+
+        if ($post['gallery_media_ids_draft'] !== null) {
+            $updates[] = 'gallery_media_ids = ?';
+            $params[] = $post['gallery_media_ids_draft'];
+            $types .= 's';
+        }
+
+        // Always update status and timestamps
+        $updates[] = "status = 'published'";
+        $updates[] = 'published_at = COALESCE(published_at, CURRENT_TIMESTAMP)';
+        $updates[] = 'updated_at = CURRENT_TIMESTAMP';
+
+        $sql = 'UPDATE posts SET ' . implode(', ', $updates) . ' WHERE id = ? AND deleted_at IS NULL';
+        $types .= 'i';
+        $params[] = $id;
+
+        $stmt = mysqli_prepare($db_conn, $sql);
+        if (!$stmt) {
+            throw new \Exception('Failed to prepare statement: ' . mysqli_error($db_conn));
+        }
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new \Exception('Failed to execute statement: ' . mysqli_error($db_conn));
+        }
+
+        // Refresh excerpt based on the now-published body_html to avoid stale excerpts
+        // This ensures email notifications and list views use up-to-date summaries
+        $stmt_body = mysqli_prepare($db_conn, "SELECT body_html FROM posts WHERE id = ? LIMIT 1");
+        if ($stmt_body) {
+            mysqli_stmt_bind_param($stmt_body, 'i', $id);
+            mysqli_stmt_execute($stmt_body);
+            $res = mysqli_stmt_get_result($stmt_body);
+            if ($res) {
+                $row = mysqli_fetch_assoc($res);
+                if ($row && isset($row['body_html'])) {
+                    $newExcerpt = generateExcerpt($row['body_html'], 250);
+                    $stmt2 = mysqli_prepare($db_conn, 'UPDATE posts SET excerpt = ? WHERE id = ?');
+                    if ($stmt2) {
+                        mysqli_stmt_bind_param($stmt2, 'si', $newExcerpt, $id);
+                        // If this update fails, don't fail the publish action; log and continue
+                        if (!mysqli_stmt_execute($stmt2)) {
+                            error_log('Failed to refresh excerpt on publish for post ' . $id . ': ' . mysqli_error($db_conn));
+                        }
+                    }
                 }
             }
         }
-    }
 
-    return ['success' => true];
+        // Clear draft fields after successful publish
+        $clearDraftSql = "UPDATE posts SET
+            title_draft = NULL,
+            body_html_draft = NULL,
+            hero_media_id_draft = NULL,
+            hero_image_height_draft = NULL,
+            hero_crop_overlay_draft = NULL,
+            hero_title_overlay_draft = NULL,
+            hero_overlay_opacity_draft = NULL,
+            gallery_media_ids_draft = NULL
+            WHERE id = ?";
+        $stmt_clear = mysqli_prepare($db_conn, $clearDraftSql);
+        if ($stmt_clear) {
+            mysqli_stmt_bind_param($stmt_clear, 'i', $id);
+            mysqli_stmt_execute($stmt_clear);
+        }
+
+        return ['success' => true];
+    } catch (\Throwable $e) {
+        error_log('publishDraft error: ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
 }
 
 /**
@@ -529,25 +592,35 @@ function publishDraft(\mysqli $db_conn, int $id): array
  * @param mysqli $db_conn Database connection
  * @return array Result with success status
  */
-function publishSettingsDraft($db_conn)
+function publishSettingsDraft(\mysqli $db_conn): array
 {
-    // Copy all draft fields to published fields for settings
-    $sql = "UPDATE settings SET
-        hero_html = COALESCE(hero_html_draft, hero_html),
-        site_bio_html = COALESCE(site_bio_html_draft, site_bio_html),
-        donate_text_html = COALESCE(donate_text_html_draft, donate_text_html),
-        donation_instructions_html = COALESCE(donation_instructions_html_draft, donation_instructions_html),
-        footer_column1_html = COALESCE(footer_column1_html_draft, footer_column1_html),
-        footer_column2_html = COALESCE(footer_column2_html_draft, footer_column2_html),
-        mailing_list_html = COALESCE(mailing_list_html_draft, mailing_list_html),
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = 1";
+    try {
+        // Copy all draft fields to published fields for settings
+        $sql = "UPDATE settings SET
+            hero_html = COALESCE(hero_html_draft, hero_html),
+            site_bio_html = COALESCE(site_bio_html_draft, site_bio_html),
+            donate_text_html = COALESCE(donate_text_html_draft, donate_text_html),
+            donation_instructions_html = COALESCE(donation_instructions_html_draft, donation_instructions_html),
+            footer_column1_html = COALESCE(footer_column1_html_draft, footer_column1_html),
+            footer_column2_html = COALESCE(footer_column2_html_draft, footer_column2_html),
+            mailing_list_html = COALESCE(mailing_list_html_draft, mailing_list_html),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = 1";
 
-    $stmt = mysqli_prepare($db_conn, $sql);
-    if (!mysqli_stmt_execute($stmt)) {
-        return ['success' => false, 'error' => mysqli_error($db_conn)];
+        $stmt = mysqli_prepare($db_conn, $sql);
+        if (!$stmt) {
+            throw new \Exception('Failed to prepare statement: ' . mysqli_error($db_conn));
+        }
+
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new \Exception('Failed to execute statement: ' . mysqli_error($db_conn));
+        }
+
+        return ['success' => true];
+    } catch (\Throwable $e) {
+        error_log('publishSettingsDraft error: ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
     }
-    return ['success' => true];
 }
 
 /**
@@ -618,7 +691,7 @@ function getPublishedPosts(\mysqli $db_conn, int $limit = 10, int $offset = 0): 
 /**
  * Media helpers
  */
-function saveMediaRecord($db_conn, $data)
+function saveMediaRecord(\mysqli $db_conn, array $data): array
 {
     $stmt = mysqli_prepare($db_conn, "INSERT INTO media (filename, original_filename, mime_type, size_bytes, width, height, alt_text, storage_path, variants_json, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     mysqli_stmt_bind_param(
@@ -638,6 +711,7 @@ function saveMediaRecord($db_conn, $data)
     if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
+
     return ['success' => true, 'id' => mysqli_insert_id($db_conn)];
 }
 
@@ -688,7 +762,23 @@ function updateMediaAltText(\mysqli $db_conn, int $id, string $altText): bool
  */
 function getSettings(\mysqli $db_conn): ?array
 {
-    $res = mysqli_query($db_conn, 'SELECT * FROM settings WHERE id = 1');
+    $sql = 'SELECT * FROM settings WHERE id = ?';
+    $stmt = mysqli_prepare($db_conn, $sql);
+
+    if (!$stmt) {
+        error_log('getSettings: failed to prepare statement: ' . mysqli_error($db_conn));
+        return null;
+    }
+
+    $settingsId = 1;
+    mysqli_stmt_bind_param($stmt, 'i', $settingsId);
+
+    if (!mysqli_stmt_execute($stmt)) {
+        error_log('getSettings: failed to execute statement: ' . mysqli_error($db_conn));
+        return null;
+    }
+
+    $res = mysqli_stmt_get_result($stmt);
     $settings = $res ? mysqli_fetch_assoc($res) : null;
 
     // Decrypt SMTP password if it exists
@@ -711,7 +801,7 @@ function getSettings(\mysqli $db_conn): ?array
  * Get logo URL (with retina support via srcset)
  * Returns array with logo_url and logo_srcset_png
  */
-function getLogoUrls($db_conn, $logo_media_id = null, ?string $defaultLogo = null)
+function getLogoUrls(\mysqli $db_conn, string|int|null $logo_media_id = null, ?string $defaultLogo = null): array
 {
     $default_logo = $defaultLogo ?? '/images/default-logo.svg';
 
@@ -761,7 +851,7 @@ function getLogoUrls($db_conn, $logo_media_id = null, ?string $defaultLogo = nul
  * Get favicon URLs for various sizes
  * Returns array with favicon URLs for different sizes
  */
-function getFaviconUrls($db_conn, $favicon_media_id = null)
+function getFaviconUrls(\mysqli $db_conn, string|int|null $favicon_media_id = null): array
 {
     if (!$favicon_media_id) {
         // Return default favicon
@@ -828,17 +918,40 @@ function getFaviconUrls($db_conn, $favicon_media_id = null)
 
 /**
  * Encrypt SMTP password using AES-256-CBC
+ *
+ * @param string $password Plain text password to encrypt
+ * @return string Encrypted password (base64 encoded with IV) or empty string
  */
-function encryptSmtpPassword($password)
+function encryptSmtpPassword(string $password): string
 {
-    if (empty($password)) {
+    if ($password === '') {
         return '';
     }
 
     // Use a key derived from the database credentials (consistent across requests)
-    $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
-    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+    $mysqlPassword = getenv('MYSQL_PASSWORD');
+    $mysqlDatabase = getenv('MYSQL_DATABASE');
+
+    if ($mysqlPassword === false || $mysqlDatabase === false) {
+        error_log('encryptSmtpPassword: Missing MYSQL_PASSWORD or MYSQL_DATABASE env vars');
+        return '';
+    }
+
+    $key = hash('sha256', $mysqlPassword . $mysqlDatabase, true);
+    $ivLength = openssl_cipher_iv_length('aes-256-cbc');
+
+    if ($ivLength === false) {
+        error_log('encryptSmtpPassword: Failed to get IV length');
+        return '';
+    }
+
+    $iv = openssl_random_pseudo_bytes($ivLength);
     $encrypted = openssl_encrypt($password, 'aes-256-cbc', $key, 0, $iv);
+
+    if ($encrypted === false) {
+        error_log('encryptSmtpPassword: Encryption failed');
+        return '';
+    }
 
     // Store IV with encrypted data (base64 encoded)
     return base64_encode($iv . $encrypted);
@@ -846,16 +959,27 @@ function encryptSmtpPassword($password)
 
 /**
  * Decrypt SMTP password
+ *
+ * @param string $encryptedPassword Base64 encoded encrypted password with IV
+ * @return string Decrypted password or empty string on failure
  */
-function decryptSmtpPassword($encryptedPassword)
+function decryptSmtpPassword(string $encryptedPassword): string
 {
-    if (empty($encryptedPassword)) {
+    if ($encryptedPassword === '') {
         return '';
     }
 
     try {
         // Use the same key as encryption
-        $key = hash('sha256', getenv('MYSQL_PASSWORD') . getenv('MYSQL_DATABASE'), true);
+        $mysqlPassword = getenv('MYSQL_PASSWORD');
+        $mysqlDatabase = getenv('MYSQL_DATABASE');
+
+        if ($mysqlPassword === false || $mysqlDatabase === false) {
+            error_log('decryptSmtpPassword: Missing MYSQL_PASSWORD or MYSQL_DATABASE env vars');
+            return '';
+        }
+
+        $key = hash('sha256', $mysqlPassword . $mysqlDatabase, true);
         $data = base64_decode($encryptedPassword, true);
 
         if ($data === false) {
@@ -865,6 +989,12 @@ function decryptSmtpPassword($encryptedPassword)
 
         // Extract IV and encrypted data
         $ivLength = openssl_cipher_iv_length('aes-256-cbc');
+
+        if ($ivLength === false) {
+            error_log('decryptSmtpPassword: Failed to get IV length');
+            return '';
+        }
+
         $iv = substr($data, 0, $ivLength);
         $encrypted = substr($data, $ivLength);
 
@@ -887,7 +1017,7 @@ function decryptSmtpPassword($encryptedPassword)
     }
 }
 
-function updateSettings($db_conn, $data)
+function updateSettings(\mysqli $db_conn, array $data): array
 {
     // In demo mode, prevent changing the donation link
     $demoMode = filter_var(getenv('DEMO_MODE') ?: 'false', FILTER_VALIDATE_BOOLEAN);
@@ -924,10 +1054,16 @@ function updateSettings($db_conn, $data)
 
     $sql = 'UPDATE settings SET ' . implode(', ', $sets) . ', updated_at = CURRENT_TIMESTAMP WHERE id = 1';
     $stmt = mysqli_prepare($db_conn, $sql);
+    if (!$stmt) {
+        return ['success' => false, 'error' => mysqli_error($db_conn)];
+    }
+
     mysqli_stmt_bind_param($stmt, $types, ...$params);
+
     if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => mysqli_error($db_conn)];
     }
+
     return ['success' => true];
 }
 
@@ -936,21 +1072,52 @@ function updateSettings($db_conn, $data)
  */
 function getActiveSubscriberCount(\mysqli $db_conn): int
 {
-    $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = 1');
+    $sql = 'SELECT COUNT(*) as count FROM newsletter_subscribers WHERE is_active = ?';
+    $stmt = mysqli_prepare($db_conn, $sql);
+
+    if (!$stmt) {
+        error_log('getActiveSubscriberCount: failed to prepare statement: ' . mysqli_error($db_conn));
+        return 0;
+    }
+
+    $isActive = 1;
+    mysqli_stmt_bind_param($stmt, 'i', $isActive);
+
+    if (!mysqli_stmt_execute($stmt)) {
+        error_log('getActiveSubscriberCount: failed to execute statement: ' . mysqli_error($db_conn));
+        return 0;
+    }
+
+    $result = mysqli_stmt_get_result($stmt);
     if ($result) {
         $row = mysqli_fetch_assoc($result);
-        return (int)$row['count'];
+        return isset($row['count']) ? (int)$row['count'] : 0;
     }
+
     return 0;
 }
 
 function getTotalSubscriberCount(\mysqli $db_conn): int
 {
-    $result = mysqli_query($db_conn, 'SELECT COUNT(*) as count FROM newsletter_subscribers');
+    $sql = 'SELECT COUNT(*) as count FROM newsletter_subscribers';
+    $stmt = mysqli_prepare($db_conn, $sql);
+
+    if (!$stmt) {
+        error_log('getTotalSubscriberCount: failed to prepare statement: ' . mysqli_error($db_conn));
+        return 0;
+    }
+
+    if (!mysqli_stmt_execute($stmt)) {
+        error_log('getTotalSubscriberCount: failed to execute statement: ' . mysqli_error($db_conn));
+        return 0;
+    }
+
+    $result = mysqli_stmt_get_result($stmt);
     if ($result) {
         $row = mysqli_fetch_assoc($result);
-        return (int)$row['count'];
+        return isset($row['count']) ? (int)$row['count'] : 0;
     }
+
     return 0;
 }
 
@@ -1041,7 +1208,7 @@ function validateUnsubscribeToken(string $token): string|false
  * @param int $postId ID of the newly published post
  * @return array Result with success status and details
  */
-function sendNewPostNotification($db_conn, $postId)
+function sendNewPostNotification(\mysqli $db_conn, int $postId): array
 {
     // Get settings - notifications enabled and SMTP configuration
     $settings = getSettings($db_conn);
@@ -1078,16 +1245,28 @@ function sendNewPostNotification($db_conn, $postId)
     }
 
     // Get all active subscribers
-    $result = mysqli_query($db_conn, 'SELECT email FROM newsletter_subscribers WHERE is_active = 1');
-    if (!$result) {
+    $sql = 'SELECT email FROM newsletter_subscribers WHERE is_active = ?';
+    $stmt = mysqli_prepare($db_conn, $sql);
+
+    if (!$stmt) {
+        return ['success' => false, 'error' => 'Failed to prepare subscriber fetch'];
+    }
+
+    $isActive = 1;
+    mysqli_stmt_bind_param($stmt, 'i', $isActive);
+
+    if (!mysqli_stmt_execute($stmt)) {
         return ['success' => false, 'error' => 'Failed to fetch subscribers'];
     }
 
+    $result = mysqli_stmt_get_result($stmt);
     $subscribers = [];
-    while ($row = mysqli_fetch_assoc($result)) {
-        // Only add non-empty email addresses
-        if (!empty($row['email'])) {
-            $subscribers[] = $row['email'];
+
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            if (!empty($row['email'])) {
+                $subscribers[] = $row['email'];
+            }
         }
     }
 
@@ -1276,7 +1455,7 @@ function sendNewPostNotification($db_conn, $postId)
 
                     if ($remainingTime > 0) {
                         error_log("Rate limit reached ({$smtp_rate_limit} emails per {$smtp_rate_period}s). Pausing for {$remainingTime}s...");
-                        sleep(ceil($remainingTime));
+                        sleep((int) ceil($remainingTime));
                     }
 
                     // Reset counter and timer for new period

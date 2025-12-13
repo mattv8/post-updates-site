@@ -9,7 +9,7 @@ use PostPortal\Container\ServiceContainer;
 use PostPortal\Service\MediaService;
 use PostPortal\Service\PostService;
 use PostPortal\Repository\SettingsRepository;
-use MediaProcessor;
+use PostPortal\Lib\MediaProcessor;
 
 require_once __DIR__ . '/../lib/MediaProcessor.php';
 

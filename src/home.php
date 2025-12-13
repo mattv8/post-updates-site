@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PostPortal\Page\HomePage;
+use PostPortal\Lib\MediaProcessor;
 
 require_once __DIR__ . '/page_bootstrap.php';
 require_once __DIR__ . '/Page/HomePage.php';

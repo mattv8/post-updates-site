@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use mysqli;
 use PostPortal\Container\ServiceContainer;
 use PostPortal\Http\ErrorResponse;
 
@@ -18,6 +17,11 @@ require_once __DIR__ . '/../Repository/NewsletterRepositoryInterface.php';
 require_once __DIR__ . '/../Repository/NewsletterRepository.php';
 require_once __DIR__ . '/../Repository/SettingsRepositoryInterface.php';
 require_once __DIR__ . '/../Repository/SettingsRepository.php';
+
+// Service Interfaces
+require_once __DIR__ . '/../Service/PostServiceInterface.php';
+require_once __DIR__ . '/../Service/MediaServiceInterface.php';
+require_once __DIR__ . '/../Service/NewsletterServiceInterface.php';
 
 // Services
 require_once __DIR__ . '/../Service/PostService.php';

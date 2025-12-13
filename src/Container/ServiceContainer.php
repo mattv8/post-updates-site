@@ -10,8 +10,11 @@ use PostPortal\Repository\MediaRepository;
 use PostPortal\Repository\NewsletterRepository;
 use PostPortal\Repository\SettingsRepository;
 use PostPortal\Service\PostService;
+use PostPortal\Service\PostServiceInterface;
 use PostPortal\Service\MediaService;
+use PostPortal\Service\MediaServiceInterface;
 use PostPortal\Service\NewsletterService;
+use PostPortal\Service\NewsletterServiceInterface;
 
 /**
  * Simple service container for dependency injection
@@ -96,7 +99,7 @@ class ServiceContainer
     /**
      * Get PostService instance
      */
-    public function getPostService(): PostService
+    public function getPostService(): PostServiceInterface
     {
         if (!isset($this->services['PostService'])) {
             $this->services['PostService'] = new PostService(
@@ -110,7 +113,7 @@ class ServiceContainer
     /**
      * Get MediaService instance
      */
-    public function getMediaService(): MediaService
+    public function getMediaService(): MediaServiceInterface
     {
         if (!isset($this->services['MediaService'])) {
             $this->services['MediaService'] = new MediaService(
@@ -125,7 +128,7 @@ class ServiceContainer
     /**
      * Get NewsletterService instance
      */
-    public function getNewsletterService(): NewsletterService
+    public function getNewsletterService(): NewsletterServiceInterface
     {
         if (!isset($this->services['NewsletterService'])) {
             $this->services['NewsletterService'] = new NewsletterService(
