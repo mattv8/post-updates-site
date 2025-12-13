@@ -91,6 +91,14 @@
   <div id="{$prefix}donation_instructions_html" class="form-control" style="min-height: 150px;"></div>
 </div>
 
+<hr class="mb-3" />
+
+<div class="mb-3">
+  <label class="form-label">Donation Presets (comma-separated)</label>
+  <input type="text" id="{$prefix}donation_presets" class="form-control" placeholder="10,25,50,100" />
+  <small class="text-muted">Suggested donation amounts shown to users</small>
+</div>
+
 {* Donation Modal Preview *}
 <div class="mb-3">
   <label class="form-label fw-bold">Preview</label>

@@ -15,6 +15,9 @@
       <button class="nav-link" id="tab-donation" data-bs-toggle="tab" data-bs-target="#pane-donation" type="button" role="tab">Donation</button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-footer" data-bs-toggle="tab" data-bs-target="#pane-footer" type="button" role="tab">Footer</button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-newsletter" data-bs-toggle="tab" data-bs-target="#pane-newsletter" type="button" role="tab">Newsletter</button>
     </li>
     <li class="nav-item" role="presentation">
@@ -27,7 +30,7 @@
       <button class="nav-link" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab">Analytics</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">Settings</button>
+      <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">AI Settings</button>
     </li>
   </ul>
 
@@ -76,6 +79,19 @@
         {include file='templates/partials/donation_form.tpl'}
         <button type="submit" class="btn btn-primary">Save Donation</button>
       </form>
+    </div>
+
+    <div class="tab-pane fade" id="pane-footer" role="tabpanel">
+      <div class="mt-3">
+        <h5 class="mb-4">Footer Settings</h5>
+        <div class="mb-3 form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="show_footer" />
+          <label class="form-check-label" for="show_footer">
+            <strong>Show footer section on home page</strong>
+          </label>
+          <div class="form-text">Toggle visibility of the footer section at the bottom of the page</div>
+        </div>
+      </div>
     </div>
 
     <div class="tab-pane fade" id="pane-newsletter" role="tabpanel">
@@ -333,6 +349,17 @@
       <div class="mt-3">
         <h5 class="mb-4">Site Branding</h5>
 
+        {* Site Title *}
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label"><strong>Site Title</strong></label>
+              <input type="text" id="site_title" class="form-control" />
+              <small class="text-muted">The title displayed in the browser tab and site header</small>
+            </div>
+          </div>
+        </div>
+
         {* Logo Display Toggle *}
         <div class="card mb-4">
           <div class="card-body">
@@ -495,27 +522,7 @@
 
     <div class="tab-pane fade" id="pane-settings" role="tabpanel">
       <form id="settingsForm" class="mt-3">
-        <div class="mb-3">
-          <label class="form-label">Site Title</label>
-          <input type="text" id="site_title" class="form-control" />
-        </div>
-
-        <hr class="my-4" />
-        <h6 class="mb-3">Section Visibility</h6>
-
-        <div class="mb-3 form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="show_footer" />
-          <label class="form-check-label" for="show_footer">
-            <strong>Show footer section on home page</strong>
-          </label>
-          <div class="form-text">Toggle visibility of the footer section at the bottom of the page</div>
-        </div>
-
-        <hr class="my-4" />
-        <div class="mb-3">
-          <label class="form-label">Donation Presets (comma-separated)</label>
-          <input type="text" id="donation_presets" class="form-control" placeholder="10,25,50,100" />
-        </div>
+        <h5 class="mb-4">AI Settings</h5>
         <div class="mb-3">
           <label class="form-label d-flex justify-content-between align-items-center">
             <span>AI Title Generation System Prompt</span>
