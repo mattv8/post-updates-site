@@ -460,6 +460,14 @@
     <div class="tab-pane fade" id="pane-analytics" role="tabpanel">
       <div class="mt-3">
         <h5 class="mb-3">View & Impression Tracking</h5>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          <strong>How tracking works:</strong>
+          <ul class="mb-0 mt-2">
+            <li>A <strong>view</strong> requires some level of <em>active consumption</em>. In this case, a user must open a post for a view to be counted.</li>
+            <li>An <strong>impression</strong> is a <em>load event</em>. An impression is counted when the post appears on someone's screen, even if they don't actually look at it or interact with it.</li>
+          </ul>
+        </div>
         <div class="mb-3 form-check form-switch">
           <input class="form-check-input" type="checkbox" id="ignore_admin_tracking" />
           <label class="form-check-label" for="ignore_admin_tracking">
@@ -481,14 +489,6 @@
             <strong>Show impression counts publicly</strong>
           </label>
           <div class="form-text">Display impression counts (total and unique) on post cards and overlays.</div>
-        </div>
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle"></i>
-          <strong>How tracking works:</strong>
-          <ul class="mb-0 mt-2">
-            <li>A <strong>view</strong> requires some level of <em>active consumption</em>. In this case, a user must open a post for a view to be counted.</li>
-            <li>An <strong>impression</strong> is a <em>load event</em>. An impression is counted when the post appears on someone's screen, even if they don't actually look at it or interact with it.</li>
-          </ul>
         </div>
       </div>
     </div>

@@ -470,7 +470,8 @@ class MediaProcessor
 
             return ['success' => true];
         } catch (Exception $e) {
-            error_log("Media deletion error: " . $e->getMessage());
+            error_log("Media deletion error for {$filename}: " . $e->getMessage());
+            error_log('Tried original at: ' . ($originalPath ?? 'n/a'));
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }

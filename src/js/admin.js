@@ -1775,17 +1775,14 @@
       });
 
       if (deleteResponse.success) {
-        // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('mediaDeleteModal'));
-        if (modal) modal.hide();
-
-        // Reload media gallery
+        bootstrap.Modal.getInstance(document.getElementById('mediaDeleteModal'))?.hide();
         loadMedia();
       } else {
-        console.error('Error deleting image:', deleteResponse.error);
+        showNotification(deleteResponse.error || 'Delete failed', 'danger');
       }
     } catch (error) {
       console.error('Error deleting media:', error);
+      showNotification('Delete failed. Please check logs.', 'danger');
     } finally {
       pendingDeleteMediaId = null;
       pendingDeleteHasUsage = false;

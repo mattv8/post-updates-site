@@ -150,14 +150,21 @@ ApiHandler::handle(function (): void {
 
             $media = $mediaService->getMedia($id);
             if (!$media) {
-                ErrorResponse::notFound('Not found');
+                // Idempotent: already gone
+                ErrorResponse::success();
             }
 
+            // Delete files first; abort if that fails
             $processor = new MediaProcessor(__DIR__ . '/../../storage/uploads');
-            $processor->deleteMedia($media['filename'], $media['variants_json'] ?? null);
+            $deleteResult = $processor->deleteMedia($media['filename'], $media['variants_json'] ?? null);
+            if (empty($deleteResult['success'])) {
+                error_log("Media file delete failed (id={$id}): " . ($deleteResult['error'] ?? 'unknown'));
+                ErrorResponse::badRequest($deleteResult['error'] ?? 'Failed to delete files');
+            }
 
-            $deleted = $mediaService->deleteMedia($id);
-            ErrorResponse::success(['success' => $deleted]);
+            // Remove DB record
+            $mediaService->deleteMedia($id);
+            ErrorResponse::success();
             break;
         default:
             ErrorResponse::json(405, 'Method not allowed');
