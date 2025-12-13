@@ -2,6 +2,9 @@
 src/vendor/
 vendor/
 
+# Cache/build artifacts
+var/
+
 # Application directories
 src/cache/
 src/templates_c/

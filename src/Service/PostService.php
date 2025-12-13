@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace PostPortal\Service;
 
 use PostPortal\Repository\PostRepositoryInterface;
-use mysqli;
 
 /**
  * Post service for business logic around post operations
@@ -13,12 +12,10 @@ use mysqli;
 class PostService implements PostServiceInterface
 {
     private PostRepositoryInterface $postRepository;
-    private mysqli $db;
 
-    public function __construct(PostRepositoryInterface $postRepository, mysqli $db)
+    public function __construct(PostRepositoryInterface $postRepository)
     {
         $this->postRepository = $postRepository;
-        $this->db = $db;
     }
 
     /**
