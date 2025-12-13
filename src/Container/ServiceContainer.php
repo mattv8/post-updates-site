@@ -103,8 +103,7 @@ class ServiceContainer
     {
         if (!isset($this->services['PostService'])) {
             $this->services['PostService'] = new PostService(
-                $this->getPostRepository(),
-                $this->db
+                $this->getPostRepository()
             );
         }
         return $this->services['PostService'];
@@ -132,8 +131,7 @@ class ServiceContainer
     {
         if (!isset($this->services['NewsletterService'])) {
             $this->services['NewsletterService'] = new NewsletterService(
-                $this->getNewsletterRepository(),
-                $this->db
+                $this->getNewsletterRepository()
             );
         }
         return $this->services['NewsletterService'];

@@ -749,14 +749,6 @@ function getAllMedia(\mysqli $db_conn, int $limit = 50, int $offset = 0, ?string
     return $rows;
 }
 
-function updateMediaAltText(\mysqli $db_conn, int $id, string $altText): bool
-{
-    $id = (int)$id;
-    $stmt = mysqli_prepare($db_conn, 'UPDATE media SET alt_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    mysqli_stmt_bind_param($stmt, 'si', $altText, $id);
-    return mysqli_stmt_execute($stmt);
-}
-
 /**
  * Settings helpers
  */

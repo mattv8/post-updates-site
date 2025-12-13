@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace PostPortal\Service;
 
 use PostPortal\Repository\NewsletterRepositoryInterface;
-use mysqli;
 
 /**
  * Newsletter service for business logic around newsletter operations
@@ -13,12 +12,10 @@ use mysqli;
 class NewsletterService implements NewsletterServiceInterface
 {
     private NewsletterRepositoryInterface $newsletterRepository;
-    private mysqli $db;
 
-    public function __construct(NewsletterRepositoryInterface $newsletterRepository, mysqli $db)
+    public function __construct(NewsletterRepositoryInterface $newsletterRepository)
     {
         $this->newsletterRepository = $newsletterRepository;
-        $this->db = $db;
     }
 
     /**
