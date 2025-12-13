@@ -15,6 +15,12 @@ abstract class BaseRepository
 {
     protected mysqli $db;
 
+    /**
+     * Store affected rows from the last executed statement.
+     * This is needed because $stmt->affected_rows is reset to -1 when the statement is destroyed.
+     */
+    private int $lastAffectedRows = 0;
+
     public function __construct(mysqli $db)
     {
         $this->db = $db;
@@ -37,6 +43,7 @@ abstract class BaseRepository
                 if ($result === false) {
                     throw new RuntimeException('Query failed: ' . $this->db->error);
                 }
+                $this->lastAffectedRows = $this->db->affected_rows;
                 return $result;
             }
 
@@ -58,21 +65,25 @@ abstract class BaseRepository
             }
 
             $stmt->bind_param($types, ...$params);
-            
+
             // Execute statement
             if (!$stmt->execute()) {
                 throw new RuntimeException('Execute failed: ' . $stmt->error);
             }
 
+            // Store affected rows before statement goes out of scope
+            // (destroying $stmt resets $db->affected_rows to -1)
+            $this->lastAffectedRows = $stmt->affected_rows;
+
             // Get result
             $result = $stmt->get_result();
-            
+
             // For INSERT/UPDATE/DELETE, get_result() returns false
             if ($result === false) {
                 // Return true for successful non-SELECT queries
                 return true;
             }
-            
+
             return $result;
         } catch (\Throwable $e) {
             error_log('DB error: ' . $e->getMessage() . ' | SQL: ' . $sql);
@@ -90,12 +101,12 @@ abstract class BaseRepository
     protected function fetchOne(string $sql, array $params = []): ?array
     {
         $result = $this->execute($sql, $params);
-        
+
         if ($result instanceof mysqli_result) {
             $row = $result->fetch_assoc();
             return $row !== null ? $row : null;
         }
-        
+
         return null;
     }
 
@@ -109,11 +120,11 @@ abstract class BaseRepository
     protected function fetchAll(string $sql, array $params = []): array
     {
         $result = $this->execute($sql, $params);
-        
+
         if ($result instanceof mysqli_result) {
             return $result->fetch_all(MYSQLI_ASSOC);
         }
-        
+
         return [];
     }
 
@@ -127,12 +138,12 @@ abstract class BaseRepository
     protected function fetchColumn(string $sql, array $params = []): mixed
     {
         $result = $this->execute($sql, $params);
-        
+
         if ($result instanceof mysqli_result) {
             $row = $result->fetch_row();
             return $row !== null ? $row[0] : null;
         }
-        
+
         return null;
     }
 
@@ -153,7 +164,7 @@ abstract class BaseRepository
      */
     protected function affectedRows(): int
     {
-        return $this->db->affected_rows;
+        return $this->lastAffectedRows;
     }
 
     /**
