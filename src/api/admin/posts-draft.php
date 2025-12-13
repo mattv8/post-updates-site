@@ -29,5 +29,5 @@ ApiHandler::handle(function (): void {
         ErrorResponse::badRequest($result['error'] ?? 'Failed to update draft');
     }
 
-    ErrorResponse::success(['message' => $result['message'] ?? 'Draft saved']);
+    ErrorResponse::success(['message' => 'Draft saved']);
 });

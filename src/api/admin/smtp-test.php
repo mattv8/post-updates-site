@@ -36,7 +36,7 @@ ApiHandler::handle(function (): void {
     $smtpConfig = [];
     if (isset($payload['smtp_host'])) {
         $smtpConfig = [
-            'host' => $payload['smtp_host'] ?? '',
+            'host' => $payload['smtp_host'],
             'port' => isset($payload['smtp_port']) ? (int) $payload['smtp_port'] : 587,
             'secure' => $payload['smtp_secure'] ?? 'none',
             'auth' => isset($payload['smtp_auth']) ? (bool) $payload['smtp_auth'] : true,
@@ -99,10 +99,9 @@ ApiHandler::handle(function (): void {
 
         $mail->isSMTP();
         $mail->Timeout = $timeoutSeconds;
-        if ($mail->SMTP instanceof PHPMailer\PHPMailer\SMTP) {
-            $mail->SMTP->Timeout = $timeoutSeconds;
-            $mail->SMTP->Timelimit = $timeoutSeconds;
-        }
+        $smtp = $mail->getSMTPInstance();
+        $smtp->Timeout = $timeoutSeconds;
+        $smtp->Timelimit = $timeoutSeconds;
         $mail->SMTPKeepAlive = false;
         $mail->Host = $smtpConfig['host'];
         $mail->Port = $smtpConfig['port'];
@@ -224,7 +223,7 @@ ApiHandler::handle(function (): void {
 
         ErrorResponse::json(500, $helpfulMsg, [
             'detailed_error' => $errorMsg,
-            'debug' => $debugLog ?? [],
+            'debug' => $debugLog,
         ]);
     }
 });

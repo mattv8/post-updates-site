@@ -1496,11 +1496,12 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
         }
 
         if ($sentCount > 0) {
+            $failedCount = count($errors);
             return [
                 'success' => true,
                 'sent' => $sentCount,
-                'failed' => count($errors),
-                'message' => "Notifications sent to {$sentCount} subscriber(s)" . (count($errors) > 0 ? " ({count($errors)} failed)" : '')
+                'failed' => $failedCount,
+                'message' => "Notifications sent to {$sentCount} subscriber(s)" . ($failedCount > 0 ? " ({$failedCount} failed)" : '')
             ];
         } else {
             return [

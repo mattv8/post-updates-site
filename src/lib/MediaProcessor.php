@@ -122,7 +122,9 @@ class MediaProcessor
             if (!is_writable($dir)) {
                 error_log("Directory exists but is not writable: {$dir}");
                 error_log("Directory permissions: " . substr(sprintf('%o', fileperms($dir)), -4));
-                error_log("Directory owner: " . posix_getpwuid(fileowner($dir))['name'] ?? 'unknown');
+                $ownerInfo = posix_getpwuid(fileowner($dir));
+                $ownerName = ($ownerInfo !== false) ? $ownerInfo['name'] : 'unknown';
+                error_log("Directory owner: " . $ownerName);
                 error_log("Current user: " . get_current_user());
                 throw new Exception("Upload directory is not writable. Please check permissions on storage/uploads.");
             }
@@ -474,9 +476,9 @@ class MediaProcessor
      */
     public function deleteMedia(string $filename, ?string $variantsJson): array
     {
+        $originalPath = $this->originalsDir . '/' . $filename;
         try {
             // Delete original
-            $originalPath = $this->originalsDir . '/' . $filename;
             $this->unlinkIfExists($originalPath);
 
             // Delete variants
@@ -491,7 +493,7 @@ class MediaProcessor
             return ['success' => true];
         } catch (Exception $e) {
             error_log("Media deletion error for {$filename}: " . $e->getMessage());
-            error_log('Tried original at: ' . ($originalPath ?? 'n/a'));
+            error_log('Tried original at: ' . $originalPath);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -898,7 +900,7 @@ class MediaProcessor
             $img = $this->manager->make($imagePath);
 
             // Trim whitespace/transparent pixels
-            $img->trim('transparent', null, 1);
+            $img->trim('transparent', [], 1);
 
             // For now, return the full dimensions after trim
             // In a real implementation, we'd compare with original to get coordinates

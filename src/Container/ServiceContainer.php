@@ -56,10 +56,11 @@ class ServiceContainer
      * Get PostRepository instance
      */
     public function getPostRepository(): PostRepository
-    {
+     {
         if (!isset($this->services['PostRepository'])) {
             $this->services['PostRepository'] = new PostRepository($this->db);
         }
+        /** @var PostRepository */
         return $this->services['PostRepository'];
     }
 
@@ -71,6 +72,7 @@ class ServiceContainer
         if (!isset($this->services['MediaRepository'])) {
             $this->services['MediaRepository'] = new MediaRepository($this->db);
         }
+        /** @var MediaRepository */
         return $this->services['MediaRepository'];
     }
 
@@ -82,6 +84,7 @@ class ServiceContainer
         if (!isset($this->services['NewsletterRepository'])) {
             $this->services['NewsletterRepository'] = new NewsletterRepository($this->db);
         }
+        /** @var NewsletterRepository */
         return $this->services['NewsletterRepository'];
     }
 
@@ -93,6 +96,7 @@ class ServiceContainer
         if (!isset($this->services['SettingsRepository'])) {
             $this->services['SettingsRepository'] = new SettingsRepository($this->db);
         }
+        /** @var SettingsRepository */
         return $this->services['SettingsRepository'];
     }
 
@@ -106,6 +110,7 @@ class ServiceContainer
                 $this->getPostRepository()
             );
         }
+        /** @var PostServiceInterface */
         return $this->services['PostService'];
     }
 
@@ -121,6 +126,7 @@ class ServiceContainer
                 $this->getSettingsRepository()
             );
         }
+        /** @var MediaServiceInterface */
         return $this->services['MediaService'];
     }
 
@@ -134,6 +140,7 @@ class ServiceContainer
                 $this->getNewsletterRepository()
             );
         }
+        /** @var NewsletterServiceInterface */
         return $this->services['NewsletterService'];
     }
 

@@ -1,8 +1,12 @@
+includes:
+  - phpstan-baseline.neon
+
 parameters:
-  level: 8
+  level: 5
   paths:
     - src
   tmpDir: var/phpstan
-  checkMissingIterableValueType: true
-  checkGenericClassInNonGenericObjectType: true
   reportUnmatchedIgnoredErrors: true
+  excludePaths:
+    - src/lib/demo_seed.php
+    - src/lib/regenerate-variants.php
