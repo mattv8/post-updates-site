@@ -414,8 +414,11 @@ class MediaProcessor
     /**
      * Convert HEIC to JPEG
      * Note: Requires imagick extension with HEIC support
+     *
+     * @param string $heicPath Path to HEIC file
+     * @return array{success: bool, data?: string, error?: string}
      */
-    private function convertHeicToJpeg($heicPath)
+    private function convertHeicToJpeg(string $heicPath): array
     {
         if (!extension_loaded('imagick')) {
             return ['success' => false, 'error' => 'Imagick extension not available'];
@@ -438,8 +441,12 @@ class MediaProcessor
 
     /**
      * Regenerate variants for an existing original image
+     *
+     * @param string $originalPath Path to original image
+     * @param string $filename Original filename
+     * @return array{success: bool, variants?: array<array{width: int, path: string, format: string}>, error?: string}
      */
-    public function regenerateVariants($originalPath, $filename)
+    public function regenerateVariants(string $originalPath, string $filename): array
     {
         $fullPath = $this->originalsDir . '/' . $filename;
 
@@ -460,8 +467,12 @@ class MediaProcessor
 
     /**
      * Delete media file and all variants
+     *
+     * @param string $filename Original filename
+     * @param string|null $variantsJson JSON string of variant paths
+     * @return array{success: bool, error?: string}
      */
-    public function deleteMedia($filename, $variantsJson)
+    public function deleteMedia(string $filename, ?string $variantsJson): array
     {
         try {
             // Delete original
@@ -487,8 +498,11 @@ class MediaProcessor
 
     /**
      * Get upload error message
+     *
+     * @param int $code PHP upload error code
+     * @return string Human-readable error message
      */
-    private function getUploadError($code)
+    private function getUploadError(int $code): string
     {
         $errors = [
             UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',
@@ -505,8 +519,12 @@ class MediaProcessor
 
     /**
      * Generate srcset attribute for responsive images
+     *
+     * @param string|array<array{width: int, path: string, format: string}>|null $variants Variants data (JSON string or array)
+     * @param string $format Image format to filter by (jpg, webp, png)
+     * @return string Srcset attribute value
      */
-    public static function generateSrcset($variants, $format = 'jpg')
+    public static function generateSrcset(string|array|null $variants, string $format = 'jpg'): string
     {
         if (empty($variants)) {
             return '';
@@ -528,12 +546,13 @@ class MediaProcessor
 
     /**
      * Process logo upload with optional cropping
-     * @param array $file $_FILES array element
-     * @param array $cropData Optional crop coordinates (x, y, width, height)
+     *
+     * @param array<string, mixed> $file $_FILES array element
+     * @param array<string, int>|null $cropData Optional crop coordinates (x, y, width, height)
      * @param string $username Username of uploader
-     * @return array Result with success status and data/error
+     * @return array{success: bool, data?: array<string, mixed>, error?: string}
      */
-    public function processLogoUpload($file, $cropData = null, $username = 'admin')
+    public function processLogoUpload(array $file, ?array $cropData = null, string $username = 'admin'): array
     {
         // Validate file upload
         $validation = $this->validateUpload($file);
@@ -615,12 +634,13 @@ class MediaProcessor
 
     /**
      * Process favicon upload with cropping and generate multiple sizes
-     * @param array $file $_FILES array element
-     * @param array $cropData Optional crop coordinates (x, y, width, height)
+     *
+     * @param array<string, mixed> $file $_FILES array element
+     * @param array<string, int>|null $cropData Optional crop coordinates (x, y, width, height)
      * @param string $username Username of uploader
-     * @return array Result with success status and data/error
+     * @return array{success: bool, data?: array<string, mixed>, error?: string}
      */
-    public function processFaviconUpload($file, $cropData = null, $username = 'admin')
+    public function processFaviconUpload(array $file, ?array $cropData = null, string $username = 'admin'): array
     {
         // Validate file upload
         $validation = $this->validateUpload($file);
@@ -708,8 +728,12 @@ class MediaProcessor
 
     /**
      * Generate logo variants for different screen sizes
+     *
+     * @param string $originalPath Path to original image
+     * @param string $filename Original filename
+     * @return array<array{width: int, path: string, format: string}>
      */
-    private function generateLogoVariants($originalPath, $filename)
+    private function generateLogoVariants(string $originalPath, string $filename): array
     {
         $variants = [];
         $baseFilename = pathinfo($filename, PATHINFO_FILENAME);
@@ -768,8 +792,12 @@ class MediaProcessor
 
     /**
      * Generate favicon variants in multiple sizes
+     *
+     * @param string $originalPath Path to original image
+     * @param string $filename Original filename
+     * @return array<array{size: int|string, path: string, format: string}>
      */
-    private function generateFaviconVariants($originalPath, $filename)
+    private function generateFaviconVariants(string $originalPath, string $filename): array
     {
         $variants = [];
         $baseFilename = pathinfo($filename, PATHINFO_FILENAME);
@@ -827,8 +855,12 @@ class MediaProcessor
 
     /**
      * Generate .ico file from PNG (using imagemagick convert if available)
+     *
+     * @param string $sourcePath Path to source PNG image
+     * @param string $icoPath Path where ICO file will be saved
+     * @return bool True if ICO file was created successfully
      */
-    private function generateIcoFile($sourcePath, $icoPath)
+    private function generateIcoFile(string $sourcePath, string $icoPath): bool
     {
         // Check if ImageMagick convert is available
         exec('which convert 2>&1', $output, $returnCode);
@@ -856,10 +888,11 @@ class MediaProcessor
     /**
      * Auto-detect content bounds and return crop coordinates
      * Detects and removes whitespace around the image
+     *
      * @param string $imagePath Path to image file
-     * @return array Crop coordinates [x, y, width, height]
+     * @return array{x: int, y: int, width: int, height: int, detected: bool, error?: string}
      */
-    public function detectContentBounds($imagePath)
+    public function detectContentBounds(string $imagePath): array
     {
         try {
             $img = $this->manager->make($imagePath);
