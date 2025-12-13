@@ -11,6 +11,26 @@ env:
   IMAGE_NAME: library/post-portal
 
 jobs:
+  phpstan:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, gd, mysqli
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse --error-format=github
+
   build-and-push:
     name: Build and Push Container Image
     runs-on: self-hosted
@@ -150,15 +170,23 @@ jobs:
   sync-readme:
     name: Sync README
     runs-on: self-hosted
+    needs: [build-and-push]
     permissions:
       contents: write
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update docker-compose.yml with branch tag
+        run: |
+          BRANCH="${{ needs.build-and-push.outputs.branch }}"
+          echo "Updating docker-compose.yml image tag to: ${BRANCH}"
+          sed -i "s|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}|" docker-compose.yml
+          echo "Updated docker-compose.yml:"
+          grep "image:" docker-compose.yml
 
       - name: Sync README with source files
         id: sync
@@ -171,14 +199,14 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add README.md
-          git commit -m "docs: auto-update README with latest .env and docker-compose.yml"
+          git add README.md docker-compose.yml
+          git commit -m "docs: auto-update README and docker-compose.yml for branch ${{ needs.build-and-push.outputs.branch }}"
           git push
 
   summary:
     name: Build Summary
     runs-on: self-hosted
-    needs: [build-and-push, sign, sbom]
+    needs: [build-and-push, sign, sbom, phpstan]
     if: always()
     permissions:
       contents: read
@@ -190,6 +218,7 @@ jobs:
           BUILD_PUSH_STATUS="${{ needs.build-and-push.result }}"
           SIGN_STATUS="${{ needs.sign.result }}"
           SBOM_STATUS="${{ needs.sbom.result }}"
+          PHPSTAN_STATUS="${{ needs.phpstan.result }}"
 
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -211,4 +240,10 @@ jobs:
             echo "**Signed:** ✅ Yes (Cosign)" >> $GITHUB_STEP_SUMMARY
           else
             echo "**Signed:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$PHPSTAN_STATUS" = "success" ]; then
+            echo "**Static Analysis:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Static Analysis:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
           fi
