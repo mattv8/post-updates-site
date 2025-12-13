@@ -79,4 +79,13 @@ interface NewsletterServiceInterface
      * @return array{success: bool, message?: string, error?: string}
      */
     public function reactivateSubscriber(int $id): array;
+
+    /**
+     * Update subscriber active status
+     *
+     * @param int $id Subscriber ID
+     * @param bool $isActive New status
+     * @return array{success: bool, message?: string, error?: string}
+     */
+    public function updateSubscriberStatus(int $id, bool $isActive): array;
 }

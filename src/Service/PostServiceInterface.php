@@ -67,4 +67,25 @@ interface PostServiceInterface
      * @return array{data: array<int, array<string, mixed>>, total: int}
      */
     public function getPostsWithAuthor(int $limit, int $offset): array;
+
+    /**
+     * Update draft-only fields for a post
+     *
+     * @param int $id Post ID
+     * @param array<string, mixed> $payload Draft field data
+     * @return array{success: bool, error?: string}
+     */
+    public function updateDraftFields(int $id, array $payload): array;
+
+    /**
+     * Increment post metrics
+     *
+     * @param int $postId Post ID
+     * @param int $impressionInc Impression increment
+     * @param int $uniqueImpressionInc Unique impression increment
+     * @param int $viewInc View increment
+     * @param int $uniqueViewInc Unique view increment
+     * @return array{success: bool, error?: string}
+     */
+    public function incrementMetrics(int $postId, int $impressionInc, int $uniqueImpressionInc, int $viewInc, int $uniqueViewInc): array;
 }

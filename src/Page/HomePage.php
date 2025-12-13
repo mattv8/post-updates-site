@@ -6,8 +6,8 @@ namespace PostPortal\Page;
 
 use mysqli;
 use PostPortal\Container\ServiceContainer;
-use PostPortal\Service\MediaService;
-use PostPortal\Service\PostService;
+use PostPortal\Service\MediaServiceInterface;
+use PostPortal\Service\PostServiceInterface;
 use PostPortal\Repository\SettingsRepository;
 use PostPortal\Lib\MediaProcessor;
 
@@ -15,16 +15,14 @@ require_once __DIR__ . '/../lib/MediaProcessor.php';
 
 class HomePage
 {
-    private ServiceContainer $container;
     private mysqli $db;
     private string $defaultLogo;
-    private PostService $postService;
-    private MediaService $mediaService;
+    private PostServiceInterface $postService;
+    private MediaServiceInterface $mediaService;
     private SettingsRepository $settingsRepository;
 
     public function __construct(ServiceContainer $container, mysqli $db, string $defaultLogo)
     {
-        $this->container = $container;
         $this->db = $db;
         $this->defaultLogo = $defaultLogo;
         $this->postService = $container->getPostService();
@@ -129,6 +127,7 @@ class HomePage
     }
 
     /**
+     * @param int|string|null $mediaId
      * @return array<string, string>
      */
     private function buildMediaSrcsets($mediaId): array

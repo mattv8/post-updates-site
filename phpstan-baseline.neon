@@ -1,0 +1,26 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 4
+			path: src/api/admin/branding.php
+
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 4
+			path: src/api/admin/media.php
+
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 4
+			path: src/api/admin/newsletter.php
+
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 4
+			path: src/api/admin/posts.php
+
+		-
+			message: "#^Unreachable statement \\- code above always terminates\\.$#"
+			count: 2
+			path: src/api/admin/settings.php
