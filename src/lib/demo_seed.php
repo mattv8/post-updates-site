@@ -45,6 +45,31 @@ mysqli_set_charset($db, 'utf8mb4');
 
 $siteTitle = 'Post Portal Demo';
 
+/**
+ * Landscape photo IDs from Unsplash.
+ * Full IDs with timestamp prefix required for CDN access.
+ */
+define('PHOTO_IDS', [
+    '1469854523086-cc02fe5d8800', // road trip desert highway
+    '1472396961693-142e6e269027', // canyon overlook
+    '1506905925346-21bda4d32df4', // arches national park
+    '1527489377706-5bf97e608852', // monument valley
+    '1559128010-7c1ad6e1b6a5', // bryce canyon hoodoos
+    '1518098268026-4e89f1a2cd8e', // zion national park
+    '1533587851505-d119e13fa0d7', // dead horse point
+    '1504280390367-361c6d9f38f4', // canyonlands sunset
+    '1542314831-068cd1dbfeeb', // mesa arch sunrise
+    '1589802829985-817e51171b92', // antelope canyon
+]);
+
+function buildRandomUnsplashUrl(string $size = '1600x900'): string
+{
+    // Pick a random photo from a Utah collection
+    $photoId = PHOTO_IDS[array_rand(PHOTO_IDS)];
+    [$width, $height] = explode('x', $size);
+    return "https://images.unsplash.com/photo-{$photoId}?w={$width}&h={$height}&fit=crop&q=80";
+}
+
 function clearUploadsDirectory(string $uploadsDir): void
 {
     if (!is_dir($uploadsDir)) {
@@ -58,9 +83,8 @@ function clearUploadsDirectory(string $uploadsDir): void
 
     foreach ($iterator as $fileInfo) {
         $path = $fileInfo->getPathname();
-        if ($fileInfo->isDir()) {
-            @rmdir($path);
-        } else {
+        // Only delete files, preserve directory structure
+        if ($fileInfo->isFile()) {
             @unlink($path);
         }
     }
@@ -201,19 +225,19 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
     $footerId = $mediaIds['footer'] ?? null;
 
     $heroHtml = '<h1>Post Portal Demo</h1>' .
-        '<p>Resets every 12 hours to keep things tidy. Feel free to edit; we will refresh periodically.</p>' .
-        '<p class="mb-0 small text-light">Built for a friend who needed one place to share health updates. Self-hosted so you stay in control.</p>';
+        '<p>This environment refreshes twice a day with new photos from Unsplash.</p>' .
+        '<p class="mb-0 small text-light">Edit anything to try the flow—content, media, newsletter, or donation blocks.</p>';
 
-    $bioHtml = '<p>Post Portal is a lightweight, self-hosted update blog. Originally built for a friend going through a health issue who needed a single place to update people without social media.</p>' .
-        '<p>No fluff: Docker deploy, WYSIWYG posts with hero + gallery, newsletter signup, donation links, and simple analytics.</p>';
+    $bioHtml = '<p>Post Portal is a lean, self-hosted update blog. It ships with WYSIWYG editing, responsive media, analytics, newsletter signup, and donation links.</p>' .
+        '<p>Use this demo as a tour: each reset swaps in fresh images so you can preview how layouts adapt.</p>';
 
-    $donateHtml = '<h3>Support</h3><p>If this project helps you, consider tossing a few bucks toward hosting or coffee.</p>';
-    $donationInstructions = '<p>Demo mode: this link is just an example.</p>';
+    $donateHtml = '<h3>Support the project</h3><p>If this tool helps you share updates, feel free to send thanks or file issues.</p>';
+    $donationInstructions = '<p>Demo mode: donation links are illustrative only.</p>';
 
-    $mailingListHtml = '<p>Subscribe to see how the flow works. In demo mode, signups are cleared when the site resets.</p>';
+    $mailingListHtml = '<p>Subscribe to see the double opt-in flow. Entries are cleared on each reset so you can retry safely.</p>';
 
-    $footerCol1 = '<h4>About</h4><p>Self-hosted updates with no platform lock-in. MIT licensed.</p>';
-    $footerCol2 = '<h4>Links</h4><ul class="mb-0"><li><a href="https://github.com/mattv8/post-portal" target="_blank">GitHub</a></li><li><a href="#updates">Latest posts</a></li></ul>';
+    $footerCol1 = '<h4>What you are seeing</h4><p>Fresh Unsplash photos each cycle, seeded posts that highlight editing and analytics, and a minimal Bootstrap 5 UI.</p>';
+    $footerCol2 = '<h4>Jump to</h4><ul class="mb-0"><li><a href="https://github.com/mattv8/post-portal" target="_blank">GitHub</a></li><li><a href="#updates">Latest posts</a></li></ul>';
 
     $stmt = mysqli_prepare($db, 'UPDATE settings SET
         site_title = ?,
@@ -306,24 +330,31 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
 {
     $posts = [
         [
-            'title' => 'Set up the demo in minutes',
-            'body' => '<p>This demo refreshes every 12 hours so you can poke around without worrying about breaking anything.</p><ul><li>Docker-first deploy</li><li>WYSIWYG editor with hero + gallery</li><li>Newsletter + donation section</li><li>Built for a friend who needed one private update hub</li></ul><p>Edit anything; it will reset on the next cycle.</p>',
+            'title' => 'Take the tour (what is here)',
+            'body' => '<p>This site refreshes twice a day with new photos so you always see fresh layouts. Everything you see is editable: hero overlay, CTA, donation block, and footer columns.</p><ul><li>Bootstrap 5 UI, no external framework</li><li>WYSIWYG editor with hero height, overlay, and gallery controls</li><li>Newsletter signup with double opt-in and unsubscribe endpoints</li><li>View and impression counts (hidden from visitors by default)</li></ul>',
             'hero' => 'hero',
             'gallery' => ['hero', 'workspace'],
+            'published_at' => date('Y-m-d H:i:s', strtotime('-6 hours')),
+        ],
+        [
+            'title' => 'Draft → review → publish',
+            'body' => '<p>Create or edit in draft, preview changes, then publish when ready. Draft values (title, hero, overlay, gallery) stay separate until you hit publish.</p><p>After each reset you get a clean slate—perfect for testing editorial workflows without cleaning up afterward.</p>',
+            'hero' => 'workspace',
+            'gallery' => ['workspace', 'coffee'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
         ],
         [
-            'title' => 'Why I built this (short version)',
-            'body' => '<p>A friend was going through a health issue and needed a single place to keep friends and family updated. Social media felt wrong. WordPress felt heavy. Ghost/Substack were more platform than tool.</p><p>So this is a small, self-hosted portal: fast to deploy, easy to edit, and simple to fork.</p>',
-            'hero' => 'workspace',
-            'gallery' => ['workspace', 'coffee'],
+            'title' => 'Media handling and alt text',
+            'body' => '<p>Uploads are processed into responsive sizes and stored locally. Alt text is saved alongside each image so galleries stay accessible. Try swapping a hero image and adjusting overlay opacity to see readability changes.</p>',
+            'hero' => 'coffee',
+            'gallery' => ['workspace', 'coffee', 'footer'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
         ],
         [
-            'title' => 'What ships out of the box',
-            'body' => '<p>Posts with hero images and galleries, mailing list signup, donation links, and a footer you can tweak. Responsive variants are generated automatically for media. View counts are tracked (but hidden in this demo).</p><p>MIT licensed. If you want something changed, fork it or open an issue.</p>',
+            'title' => 'Email, privacy, and analytics',
+            'body' => '<p>Newsletter signups are rate-limited and double opt-in. Each post can trigger an email blast (disabled in this demo). View and impression counts are tracked with admin traffic ignored by default.</p><p>If you self-host, wire up SMTP in settings and toggle whether to include post bodies in emails.</p>',
             'hero' => 'footer',
-            'gallery' => ['coffee', 'hero'],
+            'gallery' => ['hero', 'footer'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
         ],
     ];
@@ -411,30 +442,30 @@ try {
     $mediaIds = seedMedia($db, [
         [
             'key' => 'hero',
-            'url' => 'https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=1600&q=80',
-            'name' => 'laptop-desk.jpg',
-            'alt' => 'Laptop on a clean desk',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'landscape-1.jpg',
+            'alt' => 'Scenic canyon and desert landscape',
             'user' => 'admin',
         ],
         [
             'key' => 'workspace',
-            'url' => 'https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?auto=format&fit=crop&w=1600&q=80',
-            'name' => 'workspace.jpg',
-            'alt' => 'Notebook and keyboard on a desk',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'landscape-2.jpg',
+            'alt' => 'Rock formations and scenic terrain',
             'user' => 'admin',
         ],
         [
             'key' => 'coffee',
-            'url' => 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80',
-            'name' => 'coffee.jpg',
-            'alt' => 'Coffee mug near a laptop',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'landscape-3.jpg',
+            'alt' => 'Desert scenery and natural arches',
             'user' => 'admin',
         ],
         [
             'key' => 'footer',
-            'url' => 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80',
-            'name' => 'cityscape.jpg',
-            'alt' => 'City skyline at dusk',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'landscape-4.jpg',
+            'alt' => 'Wilderness and outdoor vista',
             'user' => 'admin',
         ],
     ], $uploadsDir);

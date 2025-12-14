@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `audit` (
   `to` text DEFAULT NULL COMMENT 'New value (if applicable)',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `sites` (
   `SiteName` varchar(64) NOT NULL COMMENT '[IDX] Site Name',
   PRIMARY KEY (`SiteId`),
   KEY `SiteName` (`SiteName`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -57,12 +57,12 @@ CREATE TABLE IF NOT EXISTS `users` (
   `siteMemberships` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL DEFAULT NULL,
   `email` varchar(32) NOT NULL,
   PRIMARY KEY (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`username`, `password`, `first`, `last`, `isadmin`, `active`, `siteMemberships`, `email`) VALUES
+INSERT IGNORE INTO `users` (`username`, `password`, `first`, `last`, `isadmin`, `active`, `siteMemberships`, `email`) VALUES
 ('admin', '$2y$10$7r0PbAyV26hG73/abtso0uoBmVvs59OfEnmmAI58ShlrAaWejyuMe', 'Matt', 'Visnovsky', 1, 1, '[]', 'matt@visnovsky.us');
 COMMIT;

@@ -252,6 +252,9 @@ reset_database() {
         return 0
     fi
 
+    # Disable foreign key checks before dropping tables
+    execute_sql "SET FOREIGN_KEY_CHECKS=0" "Disable foreign key checks" || true
+
     # Clear migration tracker
     execute_sql "DELETE FROM migrations" "Clear migration history" || true
 
@@ -265,6 +268,9 @@ reset_database() {
             warn "Failed to drop table: $table"
         fi
     done
+
+    # Re-enable foreign key checks
+    execute_sql "SET FOREIGN_KEY_CHECKS=1" "Re-enable foreign key checks" || true
 
     log "Database reset completed"
     return 0
