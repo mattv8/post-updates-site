@@ -49,6 +49,11 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    RECAPTCHA_SITE_KEY=
    RECAPTCHA_SECRET_KEY=
 
+   # Timezone Configuration (Optional)
+   # Set the timezone for displaying dates/times (default: UTC)
+   # See: https://www.php.net/manual/en/timezones.php
+   TZ=America/Denver
+
    # PHP Configuration (Optional)
    # Customize PHP runtime settings (uses sensible defaults if not set)
    PHP_UPLOAD_MAX_FILESIZE=20M
