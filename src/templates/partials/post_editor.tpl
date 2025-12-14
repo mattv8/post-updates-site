@@ -152,6 +152,40 @@
     </div>
   </div>
 
+  {* Post Date Section *}
+  <div class="mb-3 post-date-section">
+    <label class="form-label">Post Date</label>
+    <div class="row g-2">
+      <div class="col-auto">
+        <input type="datetime-local" class="form-control post-published-date" />
+      </div>
+      <div class="col-auto d-flex align-items-center">
+        <button type="button" class="btn btn-outline-secondary btn-reset-date" title="Reset to current time">
+          <i class="bi bi-clock-history me-1"></i>Now
+        </button>
+      </div>
+    </div>
+    <small class="form-text text-muted post-date-help">
+      Set when this post appears in the timeline.
+    </small>
+  </div>
+  <script>
+  (function() {
+    // Initialize post date input with current time as default
+    const container = document.currentScript.closest('.post-editor');
+    const dateInput = container ? container.querySelector('.post-published-date') : null;
+    const helpText = container ? container.querySelector('.post-date-help') : null;
+    if (dateInput && !dateInput.value) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      dateInput.value = `${ now.getFullYear() }-${ pad(now.getMonth() + 1) }-${ pad(now.getDate()) }T${ pad(now.getHours()) }:${ pad(now.getMinutes()) }`;
+      if (helpText) {
+        helpText.textContent = `Defaulting to current time. Change to set when this post appears in the timeline.`;
+      }
+    }
+  })();
+  </script>
+
   {**
     Status control is intentionally hidden from the UI.
     The buttons control publish vs draft:
@@ -163,6 +197,9 @@
 
   <div class="mt-3 d-flex gap-2 justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
+    <button type="button" class="btn btn-outline-warning btn-unpublish-post" style="display: none;" title="Revert to draft status">
+      <i class="bi bi-arrow-counterclockwise me-1"></i>Unpublish
+    </button>
     <button type="button" class="btn btn-outline-primary btn-save-draft">Save Draft</button>
     <button type="button" class="btn btn-primary btn-save-post">Save and Publish</button>
   </div>

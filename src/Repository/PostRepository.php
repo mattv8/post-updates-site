@@ -251,6 +251,26 @@ class PostRepository extends BaseRepository implements PostRepositoryInterface
     }
 
     /**
+     * Get posts with media for admin timeline (includes drafts).
+     * Returns published posts plus draft posts, ordered by date.
+     * Drafts use their draft content fields for display.
+     */
+    public function getPostsWithMediaIncludingDrafts(int $limit, int $offset): array
+    {
+        $sql = 'SELECT p.*,
+                       m.variants_json AS hero_variants,
+                       u.first AS author_first, u.last AS author_last, u.username AS author_username
+                FROM posts p
+                LEFT JOIN media m ON COALESCE(p.hero_media_id_draft, p.hero_media_id) = m.id
+                LEFT JOIN users u ON p.created_by_user_id = u.username
+                WHERE p.deleted_at IS NULL
+                ORDER BY COALESCE(p.published_at, p.created_at) DESC
+                LIMIT ? OFFSET ?';
+
+        return $this->fetchAll($sql, [$limit, $offset]);
+    }
+
+    /**
      * Get a single post with author info.
      */
     public function findWithAuthor(int $id): ?array

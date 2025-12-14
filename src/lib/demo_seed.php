@@ -225,11 +225,11 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
     $footerId = $mediaIds['footer'] ?? null;
 
     $heroHtml = '<h1>Post Portal Demo</h1>' .
-        '<p>This environment refreshes twice a day with new photos from Unsplash.</p>' .
+        '<p>This environment refreshes twice a day.</p>' .
         '<p class="mb-0 small text-light">Edit anything to try the flow—content, media, newsletter, or donation blocks.</p>';
 
     $bioHtml = '<p>Post Portal is a lean, self-hosted update blog. It ships with WYSIWYG editing, responsive media, analytics, newsletter signup, and donation links.</p>' .
-        '<p>Use this demo as a tour: each reset swaps in fresh images so you can preview how layouts adapt.</p>';
+        '<p>Use this demo as a tour: play around with posts and hero images so you can see how layouts adapt.</p>';
 
     $donateHtml = '<h3>Support the project</h3><p>If this tool helps you share updates, feel free to send thanks or file issues.</p>';
     $donationInstructions = '<p>Demo mode: donation links are illustrative only.</p>';
@@ -357,6 +357,14 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
             'gallery' => ['hero', 'footer'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
         ],
+        [
+            'title' => 'This is a draft post',
+            'body' => '<p>Draft posts are only visible to logged-in admins. They appear greyed-out in the timeline with a "Draft" badge. You can edit them, set a publish date, and publish when ready.</p><p>Try clicking "Edit" to see the draft editing experience, or use the "Publish" button on this card to make it live.</p>',
+            'hero' => 'hero',
+            'gallery' => ['coffee', 'workspace'],
+            'published_at' => date('Y-m-d H:i:s'), // Current date as default for drafts
+            'status' => 'draft',
+        ],
     ];
 
     $stmt = mysqli_prepare($db, 'INSERT INTO posts (
@@ -381,7 +389,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
         hero_title_overlay_draft,
         hero_overlay_opacity_draft
     ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, "published", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )');
 
     foreach ($posts as $post) {
@@ -393,6 +401,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
         $galleryJson = json_encode($galleryIds);
         $excerpt = summarizeExcerpt($post['body']);
         $publishedAt = $post['published_at'];
+        $status = $post['status'] ?? 'published';
 
         $heroHeight = 30;
         $heroCrop = 1;
@@ -401,7 +410,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
 
         mysqli_stmt_bind_param(
             $stmt,
-            'sssssiissssiiidiiid',
+            'sssssiisissiiidiiid',
             $post['title'],
             $post['body'],
             $post['body'],
@@ -411,6 +420,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
             $heroId,
             $galleryJson,
             $galleryJson,
+            $status,
             $publishedAt,
             $author,
             $heroHeight,

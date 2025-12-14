@@ -335,6 +335,46 @@
   // Expose cache purge globally for other scripts (branding.js, newsletter-admin.js)
   window.purgeSiteCache = purgeCache;
 
+  /**
+   * Unpublish a post (revert to draft status)
+   * @param {number|string} postId - The ID of the post to unpublish
+   * @param {Object} options - Optional callbacks
+   * @param {Function} options.onSuccess - Called on success
+   * @param {Function} options.onError - Called on error with error message
+   * @returns {Promise<boolean>} - True if successful
+   */
+  async function unpublishPost(postId, options = {}) {
+    try {
+      const payload = {
+        status: 'draft',
+        published_at: null
+      };
+
+      const result = await api('/api/admin/posts.php?id=' + postId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (result.success) {
+        purgeCache();
+        if (options.onSuccess) options.onSuccess();
+        return true;
+      } else {
+        const errorMsg = result.error || 'Unknown error';
+        if (options.onError) options.onError(errorMsg);
+        return false;
+      }
+    } catch (err) {
+      console.error('Error unpublishing post:', err);
+      if (options.onError) options.onError(err.message || 'An error occurred');
+      return false;
+    }
+  }
+
+  // Expose unpublish function globally for reuse
+  window.unpublishPost = unpublishPost;
+
   // Dashboard
   function loadDashboard() {
     // Check if dashboard elements exist before loading
@@ -1479,34 +1519,20 @@
         });
       } else {
         // Toggling to draft - no confirmation needed
-        const payload = {
-          status: 'draft',
-          published_at: null
-        };
-
-        api('/api/admin/posts.php?id=' + postId, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).then(j => {
-          if (j.success) {
-            // Purge cache when unpublishing
-            api('/api/admin/cache-purge.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            }).catch(() => {}); // Silent failure is ok
-
+        unpublishPost(postId, {
+          onSuccess: () => {
             loadPosts();
-          } else {
-            alert('Error updating post status: ' + (j.error || 'Unknown error'));
+          },
+          onError: (errorMsg) => {
+            alert('Error updating post status: ' + errorMsg);
             e.target.checked = true;
             e.target.disabled = false;
           }
-        }).catch(err => {
-          console.error('Error toggling publish status:', err);
-          alert('An error occurred while updating the post');
-          e.target.checked = true;
-          e.target.disabled = false;
+        }).then(success => {
+          if (!success) {
+            e.target.checked = true;
+            e.target.disabled = false;
+          }
         });
       }
     }
@@ -1553,6 +1579,39 @@
 
   // Cancel button in post editor - use Bootstrap's dismiss
   postEditorContainer.querySelector('.btn-cancel-post').setAttribute('data-bs-dismiss', 'modal');
+
+  // Unpublish button in post editor
+  const unpublishBtnAdmin = postEditorContainer.querySelector('.btn-unpublish-post');
+  if (unpublishBtnAdmin) {
+    unpublishBtnAdmin.addEventListener('click', async function () {
+      if (!editingId) return;
+
+      const btn = this;
+      const originalText = btn.innerHTML;
+
+      // Use the centralized confirmation module
+      await window.unpublishConfirmation.confirmAndUnpublish(editingId, {
+        onStart: () => {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Unpublishing...';
+        },
+        onSuccess: () => {
+          showNotification('Post unpublished and reverted to draft.', 'info');
+          loadPosts();
+          // Close the modal
+          const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+          if (modalEl) modalEl.hide();
+        },
+        onError: (errorMsg) => {
+          alert('Error unpublishing post: ' + errorMsg);
+        },
+        onComplete: () => {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+    });
+  }
 
   // Save button in post editor
   postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function () {
@@ -1737,6 +1796,7 @@
       postEditorContainer: postEditorContainer,
       getPostBodyEditor: () => postBodyEditor,
       getEditingId: () => editingId,
+      setEditingId: (id) => { editingId = id; },
       getGalleryMediaIds: () => galleryMediaIds,
       refreshPostsList: loadPosts,
       api: api
@@ -2053,6 +2113,40 @@
     }
   });
 
+  // Hide Draft Previews toggle functionality
+  const hideDraftPreviewsToggle = document.getElementById('hideDraftPreviews');
+  const LS_HIDE_DRAFTS_KEY = 'pp_hide_draft_previews';
+
+  if (hideDraftPreviewsToggle) {
+    // Restore saved preference
+    try {
+      hideDraftPreviewsToggle.checked = localStorage.getItem(LS_HIDE_DRAFTS_KEY) === '1';
+    } catch (e) {
+      hideDraftPreviewsToggle.checked = false;
+    }
+
+    // Handle toggle changes
+    hideDraftPreviewsToggle.addEventListener('change', function () {
+      const hide = this.checked;
+      try {
+        localStorage.setItem(LS_HIDE_DRAFTS_KEY, hide ? '1' : '0');
+      } catch (e) {
+        console.warn('Failed to save draft visibility preference:', e);
+      }
+
+      // Update visibility of draft posts on the home page if visible
+      document.querySelectorAll('.timeline-item-draft').forEach(el => {
+        if (hide) {
+          el.classList.add('draft-hidden');
+        } else {
+          el.classList.remove('draft-hidden');
+        }
+      });
+
+      showNotification(hide ? 'Draft previews will be hidden in the timeline.' : 'Draft previews will be shown in the timeline.', 'info');
+    });
+  }
+
   // Restore last active tab from sessionStorage or default to Posts
   const lastActiveTab = sessionStorage.getItem('adminActiveTab') || '#pane-posts';
   const tabButton = document.querySelector(`button[data-bs-target="${lastActiveTab}"]`);
@@ -2359,11 +2453,12 @@
         postEditorContainer._cropManager = window.initPostEditorCrop(postEditorContainer, CSRF);
       }
 
-      // Show or hide Save Draft button based on edit vs new
-      // Show for NEW posts (no editingId), hide for editing existing posts
+      // Show Save button for both new and existing posts
+      // Label changes based on context: "Save Draft" for new, "Save" for existing
       const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
       if (saveDraftBtn) {
-        saveDraftBtn.style.display = editingId ? 'none' : 'inline-block';
+        saveDraftBtn.style.display = 'inline-block';
+        saveDraftBtn.textContent = editingId ? 'Save' : 'Save Draft';
       }
 
       // Status control is always hidden; Save Draft / Save and Publish determine intent
@@ -2685,10 +2780,16 @@
                 }
               }
 
-              // Hide Save Draft button for existing posts
+              // Update Save button label for existing posts
               const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
               if (saveDraftBtn) {
-                saveDraftBtn.style.display = 'none';
+                saveDraftBtn.textContent = 'Save';
+              }
+
+              // Show/hide Unpublish button based on post status
+              const unpublishBtn = postEditorContainer.querySelector('.btn-unpublish-post');
+              if (unpublishBtn) {
+                unpublishBtn.style.display = post.status === 'published' ? 'inline-block' : 'none';
               }
             }
           });
@@ -2696,10 +2797,17 @@
           // New post - clear the form
           postEditorContainer.querySelector('.post-title').value = '';
 
-          // For new posts, show Save Draft button (ensure visible)
+          // For new posts, show Save Draft button with appropriate label
           const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
           if (saveDraftBtn) {
             saveDraftBtn.style.display = '';
+            saveDraftBtn.textContent = 'Save Draft';
+          }
+
+          // Hide Unpublish button for new posts
+          const unpublishBtn = postEditorContainer.querySelector('.btn-unpublish-post');
+          if (unpublishBtn) {
+            unpublishBtn.style.display = 'none';
           }
           if (postBodyEditor) {
             window.clearQuillEditor(postBodyEditor);

@@ -410,7 +410,7 @@
 .timeline::before {
   content: '';
   position: absolute;
-  left: 60px;
+  left: 55px;
   top: 0;
   bottom: 0;
   width: 3px;
@@ -977,4 +977,94 @@ footer .col-12.text-center ol {
 .footer-text-col2 ol {
   font-size: 0.6rem !important;
   line-height: 1.2 !important;
+}
+
+/* =============================================
+   Draft Post Styling (Admin Only)
+   ============================================= */
+
+/* Draft timeline item - greyed out appearance */
+.timeline-item-draft {
+  opacity: 0.65;
+}
+
+.timeline-item-draft:hover {
+  opacity: 0.85;
+}
+
+/* Draft post card styling */
+.post-card-draft {
+  background-color: #f8f9fa;
+  border: 2px dashed #6c757d;
+  position: relative;
+}
+
+.post-card-draft::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(108, 117, 125, 0.03) 10px,
+    rgba(108, 117, 125, 0.03) 20px
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.post-card-draft .card-body {
+  position: relative;
+  z-index: 2;
+}
+
+.post-card-draft .hero-image-container {
+  position: relative;
+  z-index: 2;
+  filter: grayscale(30%);
+}
+
+/* Draft badge container */
+.draft-badge-container {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+}
+
+.draft-badge {
+  font-size: 0.7rem;
+  padding: 0.35em 0.65em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Draft timeline date styling */
+.timeline-date-draft {
+  background: #f8f9fa !important;
+  border: 2px dashed #6c757d;
+}
+
+.timeline-date-draft::after {
+  background: radial-gradient(circle at center, #6c757d 35%, transparent 36%) !important;
+  box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.7), 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.timeline-draft-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6c757d;
+  letter-spacing: 1px;
+  padding: 0.5rem 0;
+}
+
+/* Hide draft posts when preference is set (controlled via JS) */
+.timeline-item-draft.draft-hidden {
+  display: none !important;
 }

@@ -40,7 +40,14 @@ class HomePage
         $settings = $this->settingsRepository->getSettings() ?? [];
         $settings = $this->applyDefaults($settings);
 
-        $posts = $this->postService->getPublishedPosts(5, 0);
+        $isAuthenticated = !empty($_SESSION['authenticated']);
+
+        // For admins, include draft posts; for public, only published
+        if ($isAuthenticated) {
+            $posts = $this->postService->getPostsIncludingDrafts(5, 0);
+        } else {
+            $posts = $this->postService->getPublishedPosts(5, 0);
+        }
         $posts = $this->attachPostSrcsets($posts);
 
         $heroSrcsets = $this->buildMediaSrcsets($settings['hero_media_id'] ?? null);
@@ -69,7 +76,7 @@ class HomePage
             'favicon_192' => $faviconUrls['favicon_192'],
             'favicon_512' => $faviconUrls['favicon_512'],
             'page_title' => $settings['site_title'] ?? '',
-            'is_authenticated' => !empty($_SESSION['authenticated']),
+            'is_authenticated' => $isAuthenticated,
         ];
     }
 

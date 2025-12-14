@@ -66,6 +66,16 @@
     return (str || '').replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s]));
   }
 
+  // Check if draft posts should be hidden in timeline
+  const LS_HIDE_DRAFTS_KEY = 'pp_hide_draft_previews';
+  function shouldHideDrafts() {
+    try {
+      return localStorage.getItem(LS_HIDE_DRAFTS_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
   function renderPostCard(post, isAuth) {
     const hasHero = !!(post.hero_srcset_jpg || post.hero_srcset_webp);
     const showTitleOverlay = (post.hero_title_overlay == 1) || (post.hero_title_overlay === undefined);
@@ -73,9 +83,18 @@
     const title = escapeHtml(post.title || '');
     const canSeeViews = SHOW_VIEW_COUNTS || isAuth;
     const canSeeImpressions = SHOW_IMPRESSION_COUNTS || isAuth;
+    const isDraft = post.status === 'draft';
+    const hideDrafts = shouldHideDrafts();
 
     const author = [post.author_first, post.author_last].filter(Boolean).join(' ').trim();
     const authorHtml = author ? `<p class="text-muted small mb-2"><em>By ${escapeHtml(author)}</em></p>` : '';
+
+    // Draft badge for draft posts
+    const draftBadge = isDraft ? `
+      <div class="draft-badge-container">
+        <span class="badge bg-secondary draft-badge"><i class="bi bi-pencil-square"></i> Draft</span>
+      </div>
+    ` : '';
 
     const heroPicture = hasHero ? `
       <div class="hero-image-container" style="max-height: 600px; overflow: hidden; position: relative;">
@@ -122,15 +141,57 @@
       </small>
     `;
 
+    // Timeline date content - show DRAFT label for drafts, otherwise show date
+    // Timeline date content - drafts show date too (published_at if set, otherwise current date)
+    let dateContent = '';
+    if (isDraft) {
+      if (post.published_at) {
+        dateContent = formatTimelineDate(post.published_at);
+      } else {
+        // Use current date for drafts without published_at
+        const now = new Date();
+        const month = now.toLocaleString(undefined, { month: 'short' });
+        const day = now.getDate();
+        const year = now.getFullYear();
+        dateContent = `
+          <div class="timeline-month">${month}</div>
+          <div class="timeline-day">${day}</div>
+          <div class="timeline-year">${year}</div>
+        `;
+      }
+    } else {
+      dateContent = post.published_at ? formatTimelineDate(post.published_at) : '';
+    }
+
+    // Build class names for draft styling
+    const timelineItemClasses = ['timeline-item'];
+    if (isDraft) {
+      timelineItemClasses.push('timeline-item-draft');
+      if (hideDrafts) {
+        timelineItemClasses.push('draft-hidden');
+      }
+    }
+
+    const dateContentClasses = ['timeline-date-content'];
+    if (isDraft) {
+      dateContentClasses.push('timeline-date-draft');
+    }
+
+    const postCardClasses = ['card', 'post-card'];
+    if (isDraft) {
+      postCardClasses.push('post-card-draft');
+    }
+
     return `
-      <div class="timeline-item" id="post-${post.id}" data-post-id="${post.id}">
+      <div class="${timelineItemClasses.join(' ')}" id="post-${post.id}" data-post-id="${post.id}" data-status="${post.status || 'published'}">
         <div class="timeline-date">
-          <div class="timeline-date-content">
-            ${post.published_at ? formatTimelineDate(post.published_at) : ''}
+          <div class="${dateContentClasses.join(' ')}">
+            ${dateContent}
           </div>
         </div>
         <div class="timeline-content">
-          <div class="card post-card">
+          <div class="${postCardClasses.join(' ')}">
+            ${draftBadge}
             ${heroPicture}
             <div class="card-body">
               ${titleInBody}
@@ -190,6 +251,19 @@
     if (editBtn) {
       editBtn.style.display = 'block';
       editBtn.setAttribute('data-post-id', post.id);
+    }
+
+    // Show publish draft button if post is a draft
+    const publishDraftBtn = qs('#overlay-publish-draft');
+    if (publishDraftBtn) {
+      if (post.status === 'draft') {
+        publishDraftBtn.classList.remove('d-none');
+        publishDraftBtn.style.display = 'block';
+        publishDraftBtn.setAttribute('data-post-id', post.id);
+      } else {
+        publishDraftBtn.classList.add('d-none');
+        publishDraftBtn.style.display = 'none';
+      }
     }
 
     // Metrics badges (admins always see; public only if enabled per setting)
@@ -627,6 +701,83 @@
       });
     }
 
+    // Publish Draft button in overlay
+    const publishDraftBtn = qs('#overlay-publish-draft');
+    if (publishDraftBtn) {
+      publishDraftBtn.addEventListener('click', async () => {
+        const postId = publishDraftBtn.getAttribute('data-post-id');
+        if (!postId) return;
+
+        const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const originalText = publishDraftBtn.textContent;
+
+        try {
+          publishDraftBtn.disabled = true;
+          publishDraftBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Publishing...';
+
+          // Use the publish confirmation flow if available
+          if (typeof window.showPublishConfirmation === 'function') {
+            const proceeded = await window.showPublishConfirmation(
+              postId,
+              CSRF,
+              async () => {
+                // Publish with email
+                const response = await fetch(`/api/admin/posts.php?action=publish&id=${postId}`, {
+                  method: 'GET',
+                  headers: { 'X-CSRF-Token': CSRF }
+                });
+                const data = await response.json();
+                if (!data.success) {
+                  throw new Error(data.error || 'Failed to publish');
+                }
+              },
+              async () => {
+                // Publish without email
+                const response = await fetch(`/api/admin/posts.php?action=publish&id=${postId}&skip_email=1`, {
+                  method: 'GET',
+                  headers: { 'X-CSRF-Token': CSRF }
+                });
+                const data = await response.json();
+                if (!data.success) {
+                  throw new Error(data.error || 'Failed to publish');
+                }
+              }
+            );
+
+            if (proceeded) {
+              hideOverlay();
+              window.location.reload();
+            } else {
+              // User cancelled
+              publishDraftBtn.disabled = false;
+              publishDraftBtn.innerHTML = '<i class="bi bi-send me-1"></i> Publish';
+            }
+          } else {
+            // Fallback: direct publish without confirmation
+            const response = await fetch(`/api/admin/posts.php?action=publish&id=${postId}`, {
+              method: 'GET',
+              headers: { 'X-CSRF-Token': CSRF }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+              hideOverlay();
+              window.location.reload();
+            } else {
+              alert('Error publishing post: ' + (data.error || 'Unknown error'));
+              publishDraftBtn.disabled = false;
+              publishDraftBtn.innerHTML = '<i class="bi bi-send me-1"></i> Publish';
+            }
+          }
+        } catch (err) {
+          console.error('Error publishing draft:', err);
+          alert('Error publishing post: ' + err.message);
+          publishDraftBtn.disabled = false;
+          publishDraftBtn.innerHTML = '<i class="bi bi-send me-1"></i> Publish';
+        }
+      });
+    }
+
     // Edit button in overlay - handler is set up in post editor scope below
 
     // Confirm delete button
@@ -1010,9 +1161,25 @@
   window.postPortalRecordView = recordView;
   window.observeTimelineItems = observeTimelineItems;
 
+  // Apply initial draft visibility based on saved preference
+  function applyDraftVisibility() {
+    const hideDrafts = shouldHideDrafts();
+    document.querySelectorAll('.timeline-item-draft').forEach(el => {
+      if (hideDrafts) {
+        el.classList.add('draft-hidden');
+      } else {
+        el.classList.remove('draft-hidden');
+      }
+    });
+  }
+
+  // Expose for other modules
+  window.applyDraftVisibility = applyDraftVisibility;
+
   document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     observeTimelineItems(document);
+    applyDraftVisibility(); // Apply draft visibility on page load
   });
 })();
 
@@ -1081,6 +1248,36 @@ document.addEventListener('DOMContentLoaded', function () {
           buildPayload: (content) => ({ body_html: content }),
           statusElementId: 'post-autosave-status-home-edit',
           fieldName: `post ${postId} draft`
+        });
+      }
+
+      // Helper function to format date for datetime-local input
+      function formatDatetimeLocal(date) {
+        const pad = (n) => String(n).padStart(2, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      // Helper function to convert datetime-local value to server format
+      function formatDatetimeForServer(datetimeLocalValue) {
+        if (!datetimeLocalValue) return null;
+        // datetime-local format: YYYY-MM-DDTHH:MM
+        // Convert to: YYYY-MM-DD HH:MM:SS
+        return datetimeLocalValue.replace('T', ' ') + ':00';
+      }
+
+      // Set up "Now" button for post date
+      const resetDateBtn = postEditorContainer.querySelector('.btn-reset-date');
+      if (resetDateBtn) {
+        resetDateBtn.addEventListener('click', () => {
+          const postDateInput = postEditorContainer.querySelector('.post-published-date');
+          if (postDateInput) {
+            postDateInput.value = formatDatetimeLocal(new Date());
+          }
         });
       }
 
@@ -1192,11 +1389,18 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
 
-        // Show/hide Save Draft button based on whether we're editing or creating
-        // Show for NEW posts (no editingPostId), hide for editing existing posts
+        // Show Save button for both new and existing posts
+        // Label changes based on context: "Save Draft" for new, "Save" for existing
         const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
         if (saveDraftBtn) {
-          saveDraftBtn.style.display = editingPostId ? 'none' : 'inline-block';
+          saveDraftBtn.style.display = 'inline-block';
+          saveDraftBtn.textContent = editingPostId ? 'Save' : 'Save Draft';
+        }
+
+        // Hide Unpublish button initially (will be shown when loading published posts)
+        const unpublishBtn = postEditorContainer.querySelector('.btn-unpublish-post');
+        if (unpublishBtn) {
+          unpublishBtn.style.display = 'none';
         }
 
         // Initialize editor if not already done
@@ -1283,6 +1487,16 @@ document.addEventListener('DOMContentLoaded', function () {
           galleryPreview.classList.add('empty');
         }
         galleryMediaIds = [];
+
+        // Set post date to current date/time for new posts
+        const postDateInput = postEditorContainer.querySelector('.post-published-date');
+        const postDateHelp = postEditorContainer.querySelector('.post-date-help');
+        if (postDateInput) {
+          postDateInput.value = formatDatetimeLocal(new Date());
+          if (postDateHelp) {
+            postDateHelp.textContent = 'Defaulting to current time. Change to set when this post appears in the timeline.';
+          }
+        }
 
         // Clear auto-save
         if (postAutoSave) {
@@ -1429,10 +1643,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
               }
 
-              // Hide Save Draft button for existing posts (draft button is only for brand new posts)
+              // Load post date
+              const postDateInput = postEditorContainer.querySelector('.post-published-date');
+              const postDateHelp = postEditorContainer.querySelector('.post-date-help');
+              if (postDateInput) {
+                if (post.published_at) {
+                  // Convert server date to local datetime-local format
+                  const serverDate = new Date(post.published_at.replace(' ', 'T'));
+                  postDateInput.value = formatDatetimeLocal(serverDate);
+                  if (postDateHelp) {
+                    postDateHelp.textContent = 'Currently set to first publish time. Change to reorder in timeline.';
+                  }
+                } else {
+                  // For unpublished posts, default to current time
+                  postDateInput.value = formatDatetimeLocal(new Date());
+                  if (postDateHelp) {
+                    postDateHelp.textContent = 'Defaulting to current time. Change to set when this post appears in the timeline.';
+                  }
+                }
+              }
+
+              // Update Save button label for existing posts
               const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
               if (saveDraftBtn) {
-                saveDraftBtn.style.display = 'none';
+                saveDraftBtn.textContent = 'Save';
+              }
+
+              // Show/hide Unpublish button based on post status
+              const unpublishBtn = postEditorContainer.querySelector('.btn-unpublish-post');
+              if (unpublishBtn) {
+                unpublishBtn.style.display = post.status === 'published' ? 'inline-block' : 'none';
               }
             }
 
@@ -1976,6 +2216,8 @@ document.addEventListener('DOMContentLoaded', function () {
           const heroCropOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-crop-overlay').checked ? 1 : 0) : 0;
           const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
           const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
+          const postDateInput = postEditorContainer.querySelector('.post-published-date');
+          const publishedAtValue = postDateInput ? formatDatetimeForServer(postDateInput.value) : null;
 
           const payload = {
             title: postEditorContainer.querySelector('.post-title').value,
@@ -1986,7 +2228,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hero_crop_overlay: heroCropOverlayValue,
             hero_title_overlay: heroTitleOverlayValue,
             hero_overlay_opacity: heroOverlayOpacityValue,
-            gallery_media_ids: galleryMediaIds
+            gallery_media_ids: galleryMediaIds,
+            published_at: publishedAtValue
           };
 
           if (editingPostId) {
@@ -2105,6 +2348,7 @@ document.addEventListener('DOMContentLoaded', function () {
           postEditorContainer: postEditorContainer,
           getPostBodyEditor: () => postBodyEditor,
           getEditingId: () => editingPostId,
+          setEditingId: (id) => { editingPostId = id; },
           getGalleryMediaIds: () => galleryMediaIds,
           refreshPostsList: window.refreshPostsList,
           api: api
@@ -2116,6 +2360,45 @@ document.addEventListener('DOMContentLoaded', function () {
         const bsModal = bootstrap.Modal.getInstance(modal);
         if (bsModal) bsModal.hide();
       });
+
+      // Unpublish button handler
+      const unpublishBtnHome = postEditorContainer.querySelector('.btn-unpublish-post');
+      if (unpublishBtnHome) {
+        unpublishBtnHome.addEventListener('click', async function () {
+          if (!editingPostId) return;
+
+          const btn = this;
+          const originalText = btn.innerHTML;
+
+          // Use the centralized confirmation module
+          if (typeof window.unpublishConfirmation?.confirmAndUnpublish === 'function') {
+            await window.unpublishConfirmation.confirmAndUnpublish(editingPostId, {
+              onStart: () => {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Unpublishing...';
+              },
+              onSuccess: () => {
+                if (typeof window.showNotification === 'function') {
+                  window.showNotification('Post unpublished and reverted to draft.', 'info');
+                }
+                if (window.refreshPostsList) {
+                  window.refreshPostsList();
+                }
+                // Close the modal
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) bsModal.hide();
+              },
+              onError: (errorMsg) => {
+                alert('Error unpublishing post: ' + errorMsg);
+              },
+              onComplete: () => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+              }
+            });
+          }
+        });
+      }
 
       // Clean up on modal hide
       modal.addEventListener('hidden.bs.modal', function () {

@@ -29,6 +29,11 @@ class AdminPage
     {
         $settings = $this->container->getSettingsRepository()->getSettings() ?? [];
 
+        // Format datetime fields to local timezone for display
+        if (!empty($settings['last_cache_purge'])) {
+            $settings['last_cache_purge'] = \formatDateTimeLocal($settings['last_cache_purge']);
+        }
+
         $activeSubscriberCount = $this->container->getNewsletterRepository()->getActiveSubscriberCount();
         $totalSubscriberCount = $this->container->getNewsletterRepository()->getTotalSubscriberCount();
 

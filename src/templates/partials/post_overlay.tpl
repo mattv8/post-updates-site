@@ -10,6 +10,9 @@
     {* Action buttons stay pinned to the header while content scrolls *}
     <div class="overlay-actions">
       {if $is_authenticated|default:false}
+        <button type="button" class="btn btn-sm btn-success d-none" id="overlay-publish-draft" style="display: none;">
+          <i class="bi bi-send me-1"></i> Publish
+        </button>
         <button type="button" class="btn btn-sm btn-outline-light" id="overlay-edit" style="display: none;">
           <i class="bi bi-pencil"></i> Edit
         </button>

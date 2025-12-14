@@ -74,6 +74,34 @@ function getDefaultDbConnection(): ?\mysqli
 }
 
 /**
+ * Format a datetime string from the database (assumed UTC) to the configured timezone.
+ *
+ * @param string|null $datetime The datetime string from the database (Y-m-d H:i:s format)
+ * @param string $format The output format (default: 'M j, Y g:i A')
+ * @return string|null Formatted datetime string or null if input is null/empty
+ */
+function formatDateTimeLocal(?string $datetime, string $format = 'M j, Y g:i A'): ?string
+{
+    if (empty($datetime)) {
+        return null;
+    }
+
+    try {
+        // Database stores in UTC
+        $date = new DateTime($datetime, new DateTimeZone('UTC'));
+
+        // Convert to configured timezone (default to UTC if not set)
+        $tz = getenv('TZ') ?: 'UTC';
+        $date->setTimezone(new DateTimeZone($tz));
+
+        return $date->format($format);
+    } catch (Exception $e) {
+        error_log('formatDateTimeLocal error: ' . $e->getMessage());
+        return $datetime; // Return original on error
+    }
+}
+
+/**
  * Registers a function to be called when the script execution ends.
  *
  * This function allows you to register a custom shutdown function
@@ -407,7 +435,8 @@ function updatePost(\mysqli $db_conn, int $id, array $data): array
 
         // Auto-set published_at when status changes to 'published'
         // Check current status and published_at from database
-        if ($status === 'published') {
+        // Only auto-set if no published_at is provided by the user
+        if ($status === 'published' && is_null($published_at)) {
             $stmt_check = mysqli_prepare($db_conn, "SELECT status, published_at FROM posts WHERE id = ?");
             if (!$stmt_check) {
                 throw new \Exception('Failed to prepare check statement: ' . mysqli_error($db_conn));

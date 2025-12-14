@@ -18,11 +18,44 @@ ApiHandler::handle(function (): void {
         ErrorResponse::json(405, 'Method not allowed');
     }
 
+    // Check if user is authenticated (admin)
+    $isAuthenticated = !empty($_SESSION['authenticated']);
+
     if (isset($_GET['id'])) {
         $id = (int) $_GET['id'];
         $post = $postService->getPost($id);
-        if (!$post || ($post['status'] ?? '') !== 'published') {
+
+        // Allow admins to view draft posts, but public only sees published
+        $isDraft = ($post['status'] ?? '') === 'draft';
+        if (!$post || (!$isAuthenticated && $isDraft) || ($post['status'] ?? '') !== 'published' && !$isAuthenticated) {
             ErrorResponse::notFound('Not found');
+        }
+
+        // For draft posts, use draft content fields for display
+        if ($isDraft && $isAuthenticated) {
+            if (!empty($post['title_draft'])) {
+                $post['title'] = $post['title_draft'];
+            }
+            if (!empty($post['body_html_draft'])) {
+                $post['body_html'] = $post['body_html_draft'];
+            }
+            // Use draft hero media ID - allow null to clear the image
+            if (array_key_exists('hero_media_id_draft', $post)) {
+                $post['hero_media_id'] = $post['hero_media_id_draft'];
+            }
+            if (isset($post['hero_image_height_draft'])) {
+                $post['hero_image_height'] = $post['hero_image_height_draft'];
+            }
+            if (isset($post['hero_overlay_opacity_draft'])) {
+                $post['hero_overlay_opacity'] = $post['hero_overlay_opacity_draft'];
+            }
+            if (isset($post['hero_title_overlay_draft'])) {
+                $post['hero_title_overlay'] = $post['hero_title_overlay_draft'];
+            }
+            // Use draft gallery media IDs - allow empty array to clear gallery
+            if (array_key_exists('gallery_media_ids_draft', $post)) {
+                $post['gallery_media_ids'] = $post['gallery_media_ids_draft'];
+            }
         }
 
         $post['hero_srcset_jpg'] = '';
@@ -61,7 +94,13 @@ ApiHandler::handle(function (): void {
 
     $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 10;
     $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
-    $posts = $postService->getPublishedPosts($limit, $offset);
+
+    // For admins, include draft posts; for public, only published
+    if ($isAuthenticated) {
+        $posts = $postService->getPostsIncludingDrafts($limit, $offset);
+    } else {
+        $posts = $postService->getPublishedPosts($limit, $offset);
+    }
 
     foreach ($posts as &$p) {
         $p['hero_srcset_jpg'] = '';

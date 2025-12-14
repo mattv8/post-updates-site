@@ -3,11 +3,23 @@
 {assign var=webp_srcset value=$post.hero_srcset_webp}
 {assign var=can_see_views value=($show_view_counts|default:0 || $is_authenticated|default:false)}
 {assign var=can_see_impressions value=($show_impression_counts|default:0 || $is_authenticated|default:false)}
+{assign var=is_draft value=($post.status|default:'published' == 'draft')}
 
-<div class="timeline-item" id="post-{$post.id}" data-post-id="{$post.id}">
+<div class="timeline-item{if $is_draft} timeline-item-draft{/if}" id="post-{$post.id}" data-post-id="{$post.id}" data-status="{$post.status|default:'published'}">
   <div class="timeline-date">
-    <div class="timeline-date-content">
-      {if $post.published_at}
+    <div class="timeline-date-content{if $is_draft} timeline-date-draft{/if}">
+      {if $is_draft}
+        {* Draft posts show date (published_at if set, otherwise current date) *}
+        {if $post.published_at}
+          <div class="timeline-month">{$post.published_at|date_format:"%b"}</div>
+          <div class="timeline-day">{$post.published_at|date_format:"%e"}</div>
+          <div class="timeline-year">{$post.published_at|date_format:"%Y"}</div>
+        {else}
+          <div class="timeline-month">{$smarty.now|date_format:"%b"}</div>
+          <div class="timeline-day">{$smarty.now|date_format:"%e"}</div>
+          <div class="timeline-year">{$smarty.now|date_format:"%Y"}</div>
+        {/if}
+      {elseif $post.published_at}
         <div class="timeline-month">{$post.published_at|date_format:"%b"}</div>
         <div class="timeline-day">{$post.published_at|date_format:"%e"}</div>
         <div class="timeline-year">{$post.published_at|date_format:"%Y"}</div>
@@ -15,7 +27,12 @@
     </div>
   </div>
   <div class="timeline-content">
-    <div class="card post-card">
+    <div class="card post-card{if $is_draft} post-card-draft{/if}">
+      {if $is_draft}
+        <div class="draft-badge-container">
+          <span class="badge bg-secondary draft-badge"><i class="bi bi-pencil-square"></i> Draft</span>
+        </div>
+      {/if}
       {if $jpg_srcset || $webp_srcset}
         <div class="hero-image-container" style="max-height: 600px; overflow: hidden; position: relative;">
           <picture style="display: block; height: 0; padding-bottom: {$post.hero_image_height|default:100}%; position: relative; overflow: hidden;">

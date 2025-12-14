@@ -10,6 +10,7 @@
  * @param {HTMLElement} config.postEditorContainer - Container for post editor fields
  * @param {Function} config.getPostBodyEditor - Function that returns the Quill editor instance
  * @param {Function} config.getEditingId - Function that returns current editing post ID
+ * @param {Function} config.setEditingId - Function to set the editing post ID (optional)
  * @param {Function} config.getGalleryMediaIds - Function that returns gallery media IDs array
  * @param {Function} config.refreshPostsList - Function to refresh the posts list after saving
  * @param {Function} config.api - API helper function
@@ -20,6 +21,7 @@ function setupSaveDraftHandler(config) {
     postEditorContainer,
     getPostBodyEditor,
     getEditingId,
+    setEditingId,
     getGalleryMediaIds,
     refreshPostsList,
     api
@@ -40,15 +42,8 @@ function setupSaveDraftHandler(config) {
     try {
       const editingId = getEditingId();
 
-      // Save Draft is for NEW posts only - creating a draft without publishing
-      if (editingId) {
-        // Already has an ID, shouldn't be using Save Draft
-        alert('This post already exists. Use "Save and Publish" to update it.');
-        return;
-      }
-
       saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving draft...';
+      saveBtn.textContent = 'Saving...';
 
       // Note: Hero image uploads are now handled by ImageCropManager
       // Images are uploaded immediately after cropping, not on save
@@ -109,33 +104,80 @@ function setupSaveDraftHandler(config) {
       const heroTitleOverlayValue = uploadedHeroId ? (postEditorContainer.querySelector('.post-hero-title-overlay').checked ? 1 : 0) : 1;
       const heroOverlayOpacityValue = uploadedHeroId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity').value) : 0.70;
 
+      // Get post date value
+      const postDateInput = postEditorContainer.querySelector('.post-published-date');
+      const publishedAtValue = postDateInput && postDateInput.value
+        ? postDateInput.value.replace('T', ' ') + ':00'
+        : null;
+
       // Get the current Quill editor instance
       const postBodyEditor = getPostBodyEditor ? getPostBodyEditor() : null;
 
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,
         body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-        status: 'draft', // Always draft when using Save Draft button
         hero_media_id: uploadedHeroId,
         hero_image_height: heroImageHeightValue,
         hero_crop_overlay: heroCropOverlayValue,
         hero_title_overlay: heroTitleOverlayValue,
         hero_overlay_opacity: heroOverlayOpacityValue,
-        gallery_media_ids: galleryMediaIds
+        gallery_media_ids: galleryMediaIds,
+        published_at: publishedAtValue
       };
 
-      // Create new draft post (POST request)
-      const draftSave = await api('/api/admin/posts.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
+      if (editingId) {
+        // Existing post: save to draft fields without publishing
+        saveBtn.textContent = 'Saving changes...';
 
-      if (!draftSave.success) {
-        alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-        return;
+        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (!draftSave.success) {
+          alert('Error saving: ' + (draftSave.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        // Purge cache so draft preview updates immediately
+        if (typeof window.purgeSiteCache === 'function') {
+          window.purgeSiteCache();
+        }
+
+        // Show success notification
+        if (typeof window.showNotification === 'function') {
+          window.showNotification('Changes saved (not published).', 'info');
+        }
+      } else {
+        // New post: create as draft
+        saveBtn.textContent = 'Creating draft...';
+        payload.status = 'draft';
+
+        const draftSave = await api('/api/admin/posts.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (!draftSave.success) {
+          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+
+        // Set the editing ID so subsequent saves go to the existing post
+        if (setEditingId && draftSave.id) {
+          setEditingId(draftSave.id);
+        }
+
+        // Show success notification
+        if (typeof window.showNotification === 'function') {
+          window.showNotification('Draft created.', 'info');
+        }
       }
 
       // Close modal and refresh list (no publish, no email)

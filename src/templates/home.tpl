@@ -163,6 +163,7 @@
 
     {* Publish Confirmation Modal *}
     {include file='templates/partials/publish_confirmation_modal.tpl'}
+    {include file='templates/partials/unpublish_confirmation_modal.tpl'}
 
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
 
@@ -179,6 +180,7 @@
   {* Page-specific JS - loaded for all users *}
   <script src="js/newsletter-signup.js"></script>
   <script src="js/publish-confirmation.js"></script>
+  <script src="js/unpublish-confirmation.js"></script>
   <script src="js/post-draft-handler.js"></script>
   <script>
     window.POST_PORTAL_VIEW_SETTINGS = {

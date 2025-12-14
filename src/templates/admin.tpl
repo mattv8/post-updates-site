@@ -41,7 +41,15 @@
     <div class="tab-pane fade" id="pane-posts" role="tabpanel">
       <div class="d-flex justify-content-between align-items-center mt-3">
         <h5 class="mb-0">Posts</h5>
-        <button class="btn btn-sm btn-success" id="btnNewPost" data-bs-toggle="modal" data-bs-target="#postEditorModal">New Post</button>
+        <div class="d-flex align-items-center gap-3">
+          <div class="form-check form-switch" title="Toggle visibility of draft post previews in the timeline">
+            <input class="form-check-input" type="checkbox" id="hideDraftPreviews">
+            <label class="form-check-label small text-muted" for="hideDraftPreviews">
+              Hide draft previews in timeline
+            </label>
+          </div>
+          <button class="btn btn-sm btn-success" id="btnNewPost" data-bs-toggle="modal" data-bs-target="#postEditorModal">New Post</button>
+        </div>
       </div>
       <div id="postsList" class="mt-3"></div>
     </div>
@@ -525,7 +533,7 @@
           <span id="cacheStatus" class="ms-2 text-muted small"
             {if $settings.last_cache_purge}data-last-purge="{$settings.last_cache_purge}"{/if}>
             {if $settings.last_cache_purge}
-              Last purged: <span id="lastPurgeTime">{$settings.last_cache_purge|date_format:"%b %e, %Y %l:%M %p"}</span>
+              Last purged: <span id="lastPurgeTime">{$settings.last_cache_purge}</span>
             {else}
               Never purged
             {/if}
@@ -649,6 +657,7 @@
 
 {* Publish Confirmation Modal *}
 {include file='templates/partials/publish_confirmation_modal.tpl'}
+{include file='templates/partials/unpublish_confirmation_modal.tpl'}
 
 {* Post Delete Confirmation Modal *}
 <div class="modal fade" id="deletePostModal" tabindex="-1" aria-labelledby="deletePostModalLabel" aria-hidden="true">
@@ -738,6 +747,7 @@
 <script src="/js/image-crop-manager.js"></script>
 <script src="/js/admin-crop-init.js"></script>
 <script src="/js/publish-confirmation.js"></script>
+<script src="/js/unpublish-confirmation.js"></script>
 <script src="/js/post-draft-handler.js"></script>
 <script src="/js/branding.js"></script>
 <script src="/js/admin.js"></script>

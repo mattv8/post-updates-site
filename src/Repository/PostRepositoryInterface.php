@@ -119,6 +119,14 @@ interface PostRepositoryInterface
     public function getPublishedWithMedia(int $limit, int $offset): array;
 
     /**
+     * Get posts with media for admin timeline (includes drafts).
+     * Returns published posts plus draft posts, ordered by date.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPostsWithMediaIncludingDrafts(int $limit, int $offset): array;
+
+    /**
      * Increment view/impression metrics for a post.
      */
     public function incrementMetrics(int $postId, int $impressionInc, int $uniqueImpressionInc, int $viewInc, int $uniqueViewInc): bool;

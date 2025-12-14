@@ -78,6 +78,15 @@ interface PostServiceInterface
     public function updateDraftFields(int $id, array $payload): array;
 
     /**
+     * Get posts for admin timeline (includes both published and drafts)
+     *
+     * @param int $limit Number of posts
+     * @param int $offset Offset for pagination
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPostsIncludingDrafts(int $limit = 10, int $offset = 0): array;
+
+    /**
      * Increment post metrics
      *
      * @param int $postId Post ID

@@ -121,6 +121,63 @@ class PostService implements PostServiceInterface
     }
 
     /**
+     * Get posts for admin timeline (includes both published and drafts).
+     * Draft posts use their draft content fields for display.
+     *
+     * @param int $limit Number of posts
+     * @param int $offset Offset for pagination
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPostsIncludingDrafts(int $limit = 10, int $offset = 0): array
+    {
+        try {
+            if (method_exists($this->postRepository, 'getPostsWithMediaIncludingDrafts')) {
+                $posts = $this->postRepository->getPostsWithMediaIncludingDrafts($limit, $offset);
+
+                // For draft posts, use draft content fields for display
+                foreach ($posts as &$post) {
+                    if (($post['status'] ?? '') === 'draft') {
+                        // Use draft title if available
+                        if (!empty($post['title_draft'])) {
+                            $post['title'] = $post['title_draft'];
+                        }
+                        // Use draft body if available
+                        if (!empty($post['body_html_draft'])) {
+                            $post['body_html'] = $post['body_html_draft'];
+                        }
+                        // Use draft hero media ID - allow null to clear the image
+                        // Check if draft field exists and is different from published (including null)
+                        if (array_key_exists('hero_media_id_draft', $post)) {
+                            $post['hero_media_id'] = $post['hero_media_id_draft'];
+                        }
+                        if (isset($post['hero_image_height_draft'])) {
+                            $post['hero_image_height'] = $post['hero_image_height_draft'];
+                        }
+                        if (isset($post['hero_overlay_opacity_draft'])) {
+                            $post['hero_overlay_opacity'] = $post['hero_overlay_opacity_draft'];
+                        }
+                        if (isset($post['hero_title_overlay_draft'])) {
+                            $post['hero_title_overlay'] = $post['hero_title_overlay_draft'];
+                        }
+                        // Use draft gallery media IDs - allow empty array to clear gallery
+                        if (array_key_exists('gallery_media_ids_draft', $post)) {
+                            $post['gallery_media_ids'] = $post['gallery_media_ids_draft'];
+                        }
+                    }
+                }
+                unset($post);
+
+                return $posts;
+            }
+
+            return $this->postRepository->findAll($limit, $offset);
+        } catch (\Throwable $e) {
+            error_log('PostService::getPostsIncludingDrafts error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Delete a post (soft delete)
      *
      * @param int $id Post ID
@@ -185,6 +242,7 @@ class PostService implements PostServiceInterface
                 'hero_title_overlay_draft',
                 'hero_overlay_opacity_draft',
                 'gallery_media_ids_draft',
+                'published_at', // Allow updating published_at directly (not a draft field)
             ];
 
             $data = [];
@@ -212,6 +270,10 @@ class PostService implements PostServiceInterface
             if (isset($payload['gallery_media_ids'])) {
                 $galleryIds = is_array($payload['gallery_media_ids']) ? $payload['gallery_media_ids'] : [];
                 $data['gallery_media_ids_draft'] = json_encode($galleryIds);
+            }
+            // Handle published_at directly (affects timeline ordering)
+            if (array_key_exists('published_at', $payload)) {
+                $data['published_at'] = $payload['published_at'];
             }
 
             $data = array_filter(
