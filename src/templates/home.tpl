@@ -29,6 +29,13 @@
 
   <div class="row g-4">
     <div class="col-12 col-lg-8">
+      {* Newsletter section above timeline when position is 'above_timeline' *}
+      {if $settings.show_mailing_list && $settings.newsletter_position == 'above_timeline'}
+        {* Show on mobile always when above_timeline, show on desktop only if scope is all_devices *}
+        <div class="mb-4 {if $settings.newsletter_position_scope != 'all_devices'}d-lg-none{/if}">
+          {include file='templates/partials/mailing_list_section.tpl'}
+        </div>
+      {/if}
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">Updates</h2>
         {if $is_authenticated|default:false}
@@ -70,7 +77,10 @@
           </div>
         {/if}
         {if $settings.show_mailing_list}
-          {include file='templates/partials/mailing_list_section.tpl'}
+          {* On mobile: hide if position is above_timeline. On desktop: hide only if above_timeline AND scope is all_devices *}
+          <div class="{if $settings.newsletter_position == 'above_timeline'}{if $settings.newsletter_position_scope == 'all_devices'}d-none{else}d-none d-lg-block{/if}{/if}">
+            {include file='templates/partials/mailing_list_section.tpl'}
+          </div>
         {/if}
         {if $settings.show_donation}
           <div class="position-relative">

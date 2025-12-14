@@ -98,6 +98,8 @@ class HomePage
             'footer_column2_html' => '',
             'show_mailing_list' => 1,
             'mailing_list_html' => '<p>Subscribe to get notified when we post updates.</p>',
+            'newsletter_position' => 'sidebar',
+            'newsletter_position_scope' => 'mobile_only',
             'show_view_counts' => 0,
             'show_impression_counts' => 0,
             'ignore_admin_tracking' => 1,

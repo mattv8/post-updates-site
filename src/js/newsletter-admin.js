@@ -302,6 +302,9 @@
   // Load mailing list visibility setting
   async function loadMailingListVisibility() {
     const toggle = document.getElementById('show_mailing_list');
+    const positionToggle = document.getElementById('newsletter_position_toggle');
+    const scopeToggle = document.getElementById('newsletter_position_scope_toggle');
+    const scopeWrapper = document.getElementById('newsletter_position_scope_wrapper');
     const notifyToggle = document.getElementById('notify_subscribers_on_post');
     const includeBodyToggle = document.getElementById('email_include_post_body');
     const rateLimitInput = document.getElementById('smtp_rate_limit');
@@ -318,7 +321,7 @@
     const smtpFromEmailInput = document.getElementById('smtp_from_email');
     const smtpFromNameInput = document.getElementById('smtp_from_name');
 
-    if (!toggle && !notifyToggle && !includeBodyToggle && !rateLimitInput && !smtpHostInput) return;
+    if (!toggle && !positionToggle && !notifyToggle && !includeBodyToggle && !rateLimitInput && !smtpHostInput) return;
 
     try {
       const response = await fetch('/api/admin/settings.php', {
@@ -333,6 +336,16 @@
       if (result.success && result.data) {
         if (toggle) {
           toggle.checked = result.data.show_mailing_list == 1;
+        }
+        if (positionToggle) {
+          positionToggle.checked = result.data.newsletter_position === 'above_timeline';
+          // Show/hide scope wrapper based on position toggle state
+          if (scopeWrapper) {
+            scopeWrapper.classList.toggle('d-none', !positionToggle.checked);
+          }
+        }
+        if (scopeToggle) {
+          scopeToggle.checked = result.data.newsletter_position_scope === 'all_devices';
         }
         if (notifyToggle) {
           notifyToggle.checked = result.data.notify_subscribers_on_post == 1;
@@ -686,6 +699,92 @@
           // Revert toggle on error
           this.checked = !this.checked;
           showNotification('Error updating mailing list visibility', 'error');
+        }
+      });
+    }
+
+    // Newsletter position toggle
+    const newsletterPositionToggle = document.getElementById('newsletter_position_toggle');
+    const newsletterScopeWrapper = document.getElementById('newsletter_position_scope_wrapper');
+    if (newsletterPositionToggle) {
+      newsletterPositionToggle.addEventListener('change', async function() {
+        const payload = { newsletter_position: this.checked ? 'above_timeline' : 'sidebar' };
+
+        // Show/hide scope wrapper based on position toggle state
+        if (newsletterScopeWrapper) {
+          newsletterScopeWrapper.classList.toggle('d-none', !this.checked);
+        }
+
+        try {
+          const response = await fetch('/api/admin/settings.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Purge cache so visitors see the newsletter position change
+            if (window.purgeSiteCache) window.purgeSiteCache();
+            showNotification('Newsletter position saved successfully', 'success');
+          } else {
+            console.error('Error updating newsletter position:', result.error);
+            // Revert toggle on error
+            this.checked = !this.checked;
+            if (newsletterScopeWrapper) {
+              newsletterScopeWrapper.classList.toggle('d-none', !this.checked);
+            }
+            showNotification('Error: ' + (result.error || 'Failed to update newsletter position'), 'error');
+          }
+        } catch (error) {
+          console.error('Error updating newsletter position:', error);
+          // Revert toggle on error
+          this.checked = !this.checked;
+          if (newsletterScopeWrapper) {
+            newsletterScopeWrapper.classList.toggle('d-none', !this.checked);
+          }
+          showNotification('Error updating newsletter position', 'error');
+        }
+      });
+    }
+
+    // Newsletter position scope toggle (mobile only vs all devices)
+    const newsletterScopeToggle = document.getElementById('newsletter_position_scope_toggle');
+    if (newsletterScopeToggle) {
+      newsletterScopeToggle.addEventListener('change', async function() {
+        const payload = { newsletter_position_scope: this.checked ? 'all_devices' : 'mobile_only' };
+
+        try {
+          const response = await fetch('/api/admin/settings.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Purge cache so visitors see the newsletter position change
+            if (window.purgeSiteCache) window.purgeSiteCache();
+            showNotification('Newsletter scope saved successfully', 'success');
+          } else {
+            console.error('Error updating newsletter scope:', result.error);
+            // Revert toggle on error
+            this.checked = !this.checked;
+            showNotification('Error: ' + (result.error || 'Failed to update newsletter scope'), 'error');
+          }
+        } catch (error) {
+          console.error('Error updating newsletter scope:', error);
+          // Revert toggle on error
+          this.checked = !this.checked;
+          showNotification('Error updating newsletter scope', 'error');
         }
       });
     }

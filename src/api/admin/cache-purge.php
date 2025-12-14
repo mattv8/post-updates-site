@@ -26,9 +26,9 @@ ApiHandler::handle(function (): void {
         ErrorResponse::internalError('Failed to purge cache');
     }
 
-    // Record the cache purge timestamp in the database
+    // Record the cache purge timestamp in the database (store in UTC)
     $settingsRepo = $context['container']->getSettingsRepository();
-    $settingsRepo->update(['last_cache_purge' => date('Y-m-d H:i:s')]);
+    $settingsRepo->update(['last_cache_purge' => gmdate('Y-m-d H:i:s')]);
 
     ErrorResponse::success([
         'message' => 'Cache purged successfully',

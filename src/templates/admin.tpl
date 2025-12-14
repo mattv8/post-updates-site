@@ -102,13 +102,31 @@
     <div class="tab-pane fade" id="pane-newsletter" role="tabpanel">
       <div class="mt-3">
         <div class="mb-4">
-          <div class="form-check form-switch">
+          <div class="form-check form-switch mb-2">
             <input class="form-check-input" type="checkbox" id="show_mailing_list" />
             <label class="form-check-label" for="show_mailing_list">
               <strong>Show mailing list section on home page</strong>
             </label>
           </div>
-          <small class="text-muted">Toggle visibility of the newsletter signup section in the sidebar</small>
+          <small class="text-muted d-block mb-3">Toggle visibility of the newsletter signup section</small>
+
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="newsletter_position_toggle" />
+            <label class="form-check-label" for="newsletter_position_toggle">
+              <strong>Display newsletter above post timeline</strong>
+            </label>
+          </div>
+          <small class="text-muted d-block mb-2">Show newsletter signup above posts instead of in the sidebar</small>
+
+          <div class="ms-4 mt-2 d-none" id="newsletter_position_scope_wrapper">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="newsletter_position_scope_toggle" />
+              <label class="form-check-label" for="newsletter_position_scope_toggle">
+                <strong>Apply to desktop as well</strong>
+              </label>
+            </div>
+            <small class="text-muted">When off, only mobile devices will see the newsletter above the timeline. Desktop will keep it in the sidebar.</small>
+          </div>
         </div>
 
         <ul class="nav nav-pills mb-3" id="newsletterSubTabs" role="tablist">
