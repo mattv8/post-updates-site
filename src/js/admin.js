@@ -61,6 +61,8 @@
   let donateEditor = null;
   let donationInstructionsEditor = null;
   let postBodyEditor = null;
+  let footerCol1Editor = null;
+  let footerCol2Editor = null;
 
   // Shared hero preview text updater (used by settings page hero preview)
   function updateHeroTextPreview(html) {
@@ -251,6 +253,8 @@
   let donateAutoSave = null;
   let donationInstructionsAutoSave = null;
   let postAutoSave = null;
+  let footerCol1AutoSave = null;
+  let footerCol2AutoSave = null;
 
   // Helper function to setup auto-save for settings fields
   function setupSettingsAutoSave(editor, fieldName) {
@@ -260,7 +264,9 @@
       'hero_html': 'hero-autosave-status',
       'site_bio_html': 'about-autosave-status',
       'donate_text_html': 'donation-autosave-status',
-      'donation_instructions_html': 'donation-instructions-autosave-status'
+      'donation_instructions_html': 'donation-instructions-autosave-status',
+      'footer_column1_html': 'footer-col1-autosave-status',
+      'footer_column2_html': 'footer-col2-autosave-status'
     };
 
     const statusEl = document.getElementById(statusMap[fieldName]);
@@ -558,7 +564,96 @@
       if (smtpPasswordElement) smtpPasswordElement.value = j.data.smtp_password || '';
       if (smtpFromEmailElement) smtpFromEmailElement.value = j.data.smtp_from_email || '';
       if (smtpFromNameElement) smtpFromNameElement.value = j.data.smtp_from_name || '';
+
+      // Load footer layout
+      const footerLayoutSingle = document.getElementById('footer_layout_single');
+      const footerLayoutDouble = document.getElementById('footer_layout_double');
+      if (j.data.footer_layout === 'single' && footerLayoutSingle) {
+        footerLayoutSingle.checked = true;
+      } else if (footerLayoutDouble) {
+        footerLayoutDouble.checked = true;
+      }
+      updateFooterColumn2Visibility();
+
+      // Load footer media ID
+      const footerMediaSelect = document.getElementById('footer_media_id');
+      if (footerMediaSelect) {
+        footerMediaSelect.value = j.data.footer_media_id || '';
+        if (j.data.footer_media_id) {
+          footerMediaSelect.dispatchEvent(new Event('change'));
+        }
+      }
+
+      // Load footer height
+      const footerHeightSlider = document.getElementById('footer_height');
+      const footerHeightValue = document.querySelector('.footer-height-value');
+      const footerHeight = j.data.footer_height || 30;
+      if (footerHeightSlider) {
+        footerHeightSlider.value = footerHeight;
+        if (footerHeightValue) footerHeightValue.textContent = footerHeight;
+        const footerPreview = document.querySelector('.footer-preview');
+        if (footerPreview) footerPreview.style.paddingBottom = footerHeight + '%';
+      }
+
+      // Load footer overlay settings
+      const footerOpacitySlider = document.getElementById('footer_overlay_opacity');
+      const footerOpacityValue = document.querySelector('.footer-overlay-opacity-value');
+      const footerOpacity = j.data.footer_overlay_opacity || 0.5;
+      if (footerOpacitySlider) {
+        footerOpacitySlider.value = footerOpacity;
+        if (footerOpacityValue) footerOpacityValue.textContent = parseFloat(footerOpacity).toFixed(2);
+        const footerOverlay = document.querySelector('.footer-overlay');
+        if (footerOverlay) footerOverlay.style.opacity = footerOpacity;
+      }
+
+      const footerColorPicker = document.getElementById('footer_overlay_color');
+      const footerColorHex = document.getElementById('footer_overlay_color_hex');
+      const footerColor = j.data.footer_overlay_color || '#000000';
+      if (footerColorPicker) {
+        footerColorPicker.value = footerColor;
+        if (footerColorHex) footerColorHex.value = footerColor;
+        const footerOverlay = document.querySelector('.footer-overlay');
+        if (footerOverlay) footerOverlay.style.backgroundColor = footerColor;
+      }
+
+      // Load footer column HTML into editors (use draft content)
+      if (footerCol1Editor) {
+        window.setQuillHTML(footerCol1Editor, j.data.footer_column1_html_editing || '');
+        updateFooterTextPreview();
+      }
+      if (footerCol2Editor) {
+        window.setQuillHTML(footerCol2Editor, j.data.footer_column2_html_editing || '');
+        updateFooterTextPreview();
+      }
     });
+  }
+
+  // Helper to update footer column 2 visibility based on layout
+  function updateFooterColumn2Visibility() {
+    const layoutSingle = document.getElementById('footer_layout_single');
+    const col2Container = document.getElementById('footer_column2_container');
+    if (col2Container) {
+      col2Container.style.display = layoutSingle?.checked ? 'none' : 'block';
+    }
+  }
+
+  // Helper to update footer text preview
+  function updateFooterTextPreview() {
+    const footerPreviewManager = window.adminFooterPreviewManager;
+    if (!footerPreviewManager || !footerCol1Editor) return;
+
+    const layoutSingle = document.getElementById('footer_layout_single');
+    if (layoutSingle?.checked) {
+      footerPreviewManager.setLayout('single');
+      const col1HTML = window.getQuillHTML(footerCol1Editor);
+      footerPreviewManager.updateTextContent(col1HTML);
+    } else {
+      footerPreviewManager.setLayout('double');
+      const col1HTML = window.getQuillHTML(footerCol1Editor);
+      const col2HTML = footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : '';
+      footerPreviewManager.updateColumn1(col1HTML);
+      footerPreviewManager.updateColumn2(col2HTML);
+    }
   }
 
   // Save hero/settings
@@ -705,6 +800,64 @@
 
     purgeCache();
     showNotification('Donation section saved successfully', 'success');
+    showNotification('Donation settings saved successfully', 'success');
+  });
+
+  // Save footer settings
+  document.getElementById('footerForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const layoutSingle = document.getElementById('footer_layout_single');
+    const payload = {
+      show_footer: document.getElementById('show_footer')?.checked ? 1 : 0,
+      footer_layout: layoutSingle?.checked ? 'single' : 'double',
+      footer_media_id: document.getElementById('footer_media_id')?.value || null,
+      footer_height: parseInt(document.getElementById('footer_height')?.value) || 30,
+      footer_overlay_opacity: parseFloat(document.getElementById('footer_overlay_opacity')?.value || 0.5),
+      footer_overlay_color: document.getElementById('footer_overlay_color')?.value || '#000000',
+      footer_column1_html: footerCol1Editor ? window.getQuillHTML(footerCol1Editor) : '',
+      footer_column2_html: footerCol2Editor ? window.getQuillHTML(footerCol2Editor) : '',
+    };
+
+    // Save to draft first
+    const draftResult = await api('/api/admin/settings-draft.php', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!draftResult.success) {
+      alert('Error saving draft: ' + draftResult.error);
+      return;
+    }
+
+    // Publish the draft
+    const publishResult = await api('/api/admin/settings.php?action=publish', { method: 'GET' });
+
+    if (!publishResult.success) {
+      alert('Error publishing: ' + publishResult.error);
+      return;
+    }
+
+    // Save non-draft fields
+    const saveResult = await api('/api/admin/settings.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        show_footer: payload.show_footer,
+        footer_layout: payload.footer_layout,
+        footer_media_id: payload.footer_media_id,
+        footer_height: payload.footer_height,
+        footer_overlay_opacity: payload.footer_overlay_opacity,
+        footer_overlay_color: payload.footer_overlay_color
+      })
+    });
+
+    if (saveResult.success) {
+      showNotification('Footer settings saved successfully', 'success');
+    } else {
+      showNotification('Error saving footer: ' + (saveResult.error || 'Unknown error'), 'error');
+    }
   });
 
   document.getElementById('settingsForm').addEventListener('submit', function (e) {
@@ -2026,7 +2179,86 @@
       loadSettings();
     }
 
-    // Load media options for image/QR code selector on admin page
+    // Footer Column 1 editor
+    const footerCol1Container = document.getElementById('footer_column1_html');
+    if (footerCol1Container) {
+      footerCol1Editor = window.initQuillEditor(footerCol1Container, {
+        placeholder: 'Enter footer column 1 content...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
+
+      // Set up auto-save
+      footerCol1AutoSave = setupSettingsAutoSave(footerCol1Editor, 'footer_column1_html');
+
+      // Update text preview when content changes
+      footerCol1Editor.on('text-change', () => {
+        updateFooterTextPreview();
+      });
+    }
+
+    // Footer Column 2 editor
+    const footerCol2Container = document.getElementById('footer_column2_html');
+    if (footerCol2Container) {
+      footerCol2Editor = window.initQuillEditor(footerCol2Container, {
+        placeholder: 'Enter footer column 2 content...',
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'link'],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          [{ 'align': [] }],
+          ['blockquote', 'image'],
+          ['clean']
+        ]
+      });
+
+      // Set up auto-save
+      footerCol2AutoSave = setupSettingsAutoSave(footerCol2Editor, 'footer_column2_html');
+
+      // Update text preview when content changes
+      footerCol2Editor.on('text-change', () => {
+        updateFooterTextPreview();
+      });
+    }
+
+    // Initialize footer BackgroundPreviewManager
+    if (window.BackgroundPreviewManager) {
+      window.adminFooterPreviewManager = new window.BackgroundPreviewManager('footer');
+      window.adminFooterPreviewManager.init();
+    }
+
+    // Footer layout radio buttons
+    const footerLayoutSingle = document.getElementById('footer_layout_single');
+    const footerLayoutDouble = document.getElementById('footer_layout_double');
+    if (footerLayoutSingle) {
+      footerLayoutSingle.addEventListener('change', () => {
+        updateFooterColumn2Visibility();
+        updateFooterTextPreview();
+      });
+    }
+    if (footerLayoutDouble) {
+      footerLayoutDouble.addEventListener('change', () => {
+        updateFooterColumn2Visibility();
+        updateFooterTextPreview();
+      });
+    }
+
+    // Load media options for footer media selector
+    const footerMediaSelect = document.getElementById('footer_media_id');
+    if (footerMediaSelect && typeof SettingsManager !== 'undefined') {
+      SettingsManager.loadMediaOptions(footerMediaSelect);
+    }
+
+    // Reload settings to populate footer editors
+    if (footerCol1Container || footerCol2Container) {
+      loadSettings();
+    }
     const qrMediaSelect = document.getElementById('donation_qr_media_id');
     let mediaOptionsLoaded = Promise.resolve(); // Default resolved promise
 
@@ -2867,5 +3099,7 @@
     if (heroAutoSave) clearInterval(heroAutoSave);
     if (bioAutoSave) clearInterval(bioAutoSave);
     if (donateAutoSave) clearInterval(donateAutoSave);
+    if (footerCol1AutoSave) clearInterval(footerCol1AutoSave);
+    if (footerCol2AutoSave) clearInterval(footerCol2AutoSave);
   });
 })();

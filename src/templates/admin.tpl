@@ -85,16 +85,10 @@
     </div>
 
     <div class="tab-pane fade" id="pane-footer" role="tabpanel">
-      <div class="mt-3">
-        <h5 class="mb-4">Footer Settings</h5>
-        <div class="mb-3 form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="show_footer" />
-          <label class="form-check-label" for="show_footer">
-            <strong>Show footer section on home page</strong>
-          </label>
-          <div class="form-text">Toggle visibility of the footer section at the bottom of the page</div>
-        </div>
-      </div>
+      <form id="footerForm" class="mt-3">
+        {include file='templates/partials/footer_form.tpl'}
+        <button type="submit" class="btn btn-primary mt-3">Save Footer</button>
+      </form>
     </div>
 
     <div class="tab-pane fade" id="pane-newsletter" role="tabpanel">

@@ -95,7 +95,7 @@
         </label>
         <div class="d-flex align-items-center gap-2">
           <input type="color" class="form-control form-control-color {$prefix}-overlay-color-picker" id="{$prefix}_overlay_color" value="#000000" title="Choose overlay color">
-          <input type="text" class="form-control form-control-sm {$prefix}-overlay-color-hex" id="{$prefix}_overlay_color_hex" value="#000000" pattern="^#[0-9A-Fa-f]{6}$" style="width: 100px;">
+          <input type="text" class="form-control form-control-sm {$prefix}-overlay-color-hex" id="{$prefix}_overlay_color_hex" value="#000000" maxlength="7" style="width: 100px;">
         </div>
       </div>
       {/if}
