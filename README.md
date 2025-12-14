@@ -130,11 +130,34 @@ Docker volumes persist:
 Backup commands:
 ```bash
 # Backup database
-docker exec post-portal mysqldump -u postportal -p postportal > backup.sql
+docker exec post-portal sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
 
 # Backup uploads
 tar -czf uploads-backup.tar.gz ./storage/
 ```
+
+### Updating
+
+To update to the latest version:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Database migrations run automatically on container startup. Your data is preserved—migrations only add or modify schema as needed.
+
+#### If a Migration Fails
+
+In rare cases, a migration may fail due to schema drift (e.g., manual database changes or a previously interrupted migration). If this happens, you can reset the migration tracking and reapply:
+
+```bash
+docker exec post-portal migrate --accept-data-loss
+```
+
+Despite the name, `--accept-data-loss` does **not** delete your data. It resets the migration history table and reapplies all migrations from scratch. Since migrations are idempotent (they check if changes already exist), your existing data remains intact. The flag exists to confirm you understand the migration state is being reset.
+
+> 💡 **Tip:** If you're unsure, [export a backup](#exporting-the-database) first.
 
 ## Environment Variables
 
@@ -184,7 +207,13 @@ Migrations are automatically applied on container startup from the `migrations/`
 To manually run migrations:
 ```bash
 docker exec post-portal migrate
+```
 
+#### Exporting the Database
+
+Export your database using the container's built-in credentials:
+```bash
+docker exec post-portal sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
 ```
 
 ### Importing a SQL Dump
@@ -192,10 +221,18 @@ docker exec post-portal migrate
 Import database dumps using the built-in `import` command:
 
 ```bash
-cat /path/to/dump.sql | sudo docker exec -i post-portal import -
+cat /path/to/dump.sql | docker exec -i post-portal import -
 ```
 
 The import command automatically handles connection cleanup, database recreation with utf8mb4, and verification.
+
+### Restoring from Backup
+
+To restore a previously exported backup:
+
+```bash
+cat backup.sql | docker exec -i post-portal import -
+```
 
 ### Migrating Media Files
 
