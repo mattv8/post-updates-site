@@ -6,6 +6,7 @@ echo "==> Starting Post Portal Container"
 # Create symlinks for convenience commands
 ln -sf /docker-scripts/import-database.sh /usr/local/bin/import
 ln -sf /docker-scripts/run-migrations.sh /usr/local/bin/migrate
+ln -sf /docker-scripts/cache-purge.sh /usr/local/bin/cache-purge
 
 # Create a drop command wrapper
 cat > /usr/local/bin/drop <<'EOF'
@@ -103,13 +104,42 @@ if [ "${DEMO_MODE,,}" = "true" ]; then
     php /var/www/html/lib/demo_seed.php --force || echo "Warning: demo seed failed"
 fi
 
-# Update admin password if hash was generated during init
+# Update admin password if hash was generated during init (fresh database)
 if [ -f /tmp/admin_password_hash ]; then
     echo "==> Updating admin password from initial setup..."
     ADMIN_HASH=$(cat /tmp/admin_password_hash)
     mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "UPDATE users SET password = '${ADMIN_HASH}' WHERE username = 'admin';" || echo "Warning: Failed to update admin password"
     rm -f /tmp/admin_password_hash
     echo "==> Admin password updated successfully"
+fi
+
+# Sync admin password with DEFAULT_ADMIN_PASSWORD on every startup
+# This ensures password changes in .env take effect after container restart
+if [ -n "${DEFAULT_ADMIN_PASSWORD}" ]; then
+    echo "==> Checking admin password sync..."
+
+    # Get current hash from database
+    CURRENT_HASH=$(mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -N -e "SELECT password FROM users WHERE username = 'admin' LIMIT 1;" 2>/dev/null)
+
+    # Verify if current hash matches the expected password
+    HASH_MATCHES=$(php -r "echo password_verify('${DEFAULT_ADMIN_PASSWORD}', '${CURRENT_HASH}') ? 'yes' : 'no';" 2>/dev/null)
+
+    if [ "$HASH_MATCHES" = "no" ]; then
+        echo "==> Admin password out of sync, updating..."
+        NEW_HASH=$(php -r "echo password_hash('${DEFAULT_ADMIN_PASSWORD}', PASSWORD_DEFAULT);")
+        if [ -n "$NEW_HASH" ]; then
+            mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "UPDATE users SET password = '${NEW_HASH}' WHERE username = 'admin';" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo "==> Admin password synced with DEFAULT_ADMIN_PASSWORD"
+            else
+                echo "Warning: Failed to sync admin password"
+            fi
+        else
+            echo "Warning: Failed to generate password hash"
+        fi
+    else
+        echo "==> Admin password already in sync"
+    fi
 fi
 
 # Stop temporary MariaDB

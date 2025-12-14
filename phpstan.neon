@@ -10,3 +10,5 @@ parameters:
   excludePaths:
     - src/lib/demo_seed.php
     - src/lib/regenerate-variants.php
+    - src/cache/*
+    - src/templates_c/*

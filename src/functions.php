@@ -109,6 +109,54 @@ register_shutdown_function(function () {
 // ==============================
 
 /**
+ * Purge the nginx FastCGI cache.
+ * Called automatically when content is published to ensure visitors see fresh content.
+ *
+ * @return bool True if purge succeeded or cache not available, false on error
+ */
+function purgeFastCgiCache(): bool
+{
+    $cacheDir = '/var/cache/nginx/fastcgi';
+
+    // If cache directory doesn't exist, caching is not enabled
+    if (!is_dir($cacheDir)) {
+        return true;
+    }
+
+    // Try using the purge script if available
+    if (is_executable('/docker-scripts/cache-purge.sh')) {
+        $output = [];
+        $returnCode = 0;
+        exec('/docker-scripts/cache-purge.sh 2>&1', $output, $returnCode);
+        if ($returnCode === 0) {
+            error_log('FastCGI cache purged successfully');
+            return true;
+        }
+        error_log('FastCGI cache purge script failed: ' . implode("\n", $output));
+    }
+
+    // Fallback: try direct deletion (requires www-data permissions)
+    try {
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($cacheDir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($files as $file) {
+            if ($file->isDir()) {
+                @rmdir($file->getPathname());
+            } else {
+                @unlink($file->getPathname());
+            }
+        }
+        error_log('FastCGI cache purged via direct deletion');
+        return true;
+    } catch (Throwable $e) {
+        error_log('FastCGI cache purge failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Basic HTML sanitization with allowlist and attribute scrubbing
  * Allows empty HTML content - returns empty string for empty inputs
  * This ensures users can erase default content if desired
@@ -576,6 +624,9 @@ function publishDraft(\mysqli $db_conn, int $id): array
             mysqli_stmt_execute($stmt_clear);
         }
 
+        // Purge FastCGI cache so visitors see the new content immediately
+        purgeFastCgiCache();
+
         return ['success' => true];
     } catch (\Throwable $e) {
         error_log('publishDraft error: ' . $e->getMessage());
@@ -615,6 +666,9 @@ function publishSettingsDraft(\mysqli $db_conn): array
         if (!mysqli_stmt_execute($stmt)) {
             throw new \Exception('Failed to execute statement: ' . mysqli_error($db_conn));
         }
+
+        // Purge FastCGI cache so visitors see updated content immediately
+        purgeFastCgiCache();
 
         return ['success' => true];
     } catch (\Throwable $e) {

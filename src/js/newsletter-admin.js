@@ -672,6 +672,8 @@
           const result = await response.json();
 
           if (result.success) {
+            // Purge cache so visitors see the mailing list visibility change
+            if (window.purgeSiteCache) window.purgeSiteCache();
             showNotification('Setting saved successfully', 'success');
           } else {
             console.error('Error updating mailing list visibility:', result.error);

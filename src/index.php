@@ -16,8 +16,6 @@ require_once __DIR__ . '/Page/HomePage.php';
 require_once __DIR__ . '/Page/AdminPage.php';
 require_once __DIR__ . '/config.php';
 
-ensureSession();
-
 // Defaults (centralized)
 $defaults = getAppDefaults();
 $authType = $defaults['auth_type'];
@@ -27,8 +25,18 @@ $jsConfig = $defaults['js_config'];
 
 // Determine requested page and defaults.
 $page = $_GET['page'] ?? $defaultPage;
-$isAuthenticated = !empty($_SESSION['authenticated']);
-$isAdmin = !empty($_SESSION['isadmin']);
+
+// Only start session if:
+// 1. User already has a session cookie (returning/authenticated user), OR
+// 2. User is accessing login or admin pages (need session for auth)
+// This allows anonymous home page visits to be cached by nginx
+$needsSession = isset($_COOKIE[session_name()]) || in_array($page, ['login', 'admin'], true);
+if ($needsSession) {
+    ensureSession();
+}
+
+$isAuthenticated = $needsSession && !empty($_SESSION['authenticated']);
+$isAdmin = $needsSession && !empty($_SESSION['isadmin']);
 
 // Build common services.
 $db = getDefaultDbConnection();
@@ -46,8 +54,8 @@ $baseData = [
 	'auth_type' => $authType,
 	'authenticated' => $isAuthenticated,
 	'isadmin' => $isAdmin,
-	'currentUser' => $_SESSION['username'] ?? null,
-	'displayname' => $_SESSION['displayname'] ?? ($_SESSION['username'] ?? ''),
+	'currentUser' => $needsSession ? ($_SESSION['username'] ?? null) : null,
+	'displayname' => $needsSession ? ($_SESSION['displayname'] ?? ($_SESSION['username'] ?? '')) : '',
 	'default_page' => $defaultPage,
 	'default_admin_password' => $default_admin_password ?? '',
 	'js_config' => $jsConfig,

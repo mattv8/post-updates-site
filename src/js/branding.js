@@ -110,6 +110,8 @@
 
           if (result.success) {
             showNotification('Logo display setting updated', 'success');
+            // Purge cache so visitors see the logo visibility change
+            if (window.purgeSiteCache) window.purgeSiteCache();
             // Reload the navbar brand without full page reload
             reloadNavbarBrand();
           } else {
@@ -331,6 +333,8 @@
           cancelLogoCrop();
           loadBranding();
           showNotification('Logo uploaded successfully', 'success');
+          // Purge cache so visitors see the new logo
+          if (window.purgeSiteCache) window.purgeSiteCache();
           // Reload navbar brand without full page reload
           reloadNavbarBrand();
         } else {
@@ -384,6 +388,8 @@
         if (result.success) {
           cancelFaviconCrop();
           loadBranding();
+          // Purge cache so visitors see the new favicon
+          if (window.purgeSiteCache) window.purgeSiteCache();
           // Reload to show changes in header (favicon requires full reload)
           setTimeout(() => window.location.reload(), 500);
         } else {
@@ -456,6 +462,8 @@
         if (result.success) {
           loadBranding();
           showNotification('Logo removed successfully', 'success');
+          // Purge cache so visitors see the logo removal
+          if (window.purgeSiteCache) window.purgeSiteCache();
           // Reload navbar brand without full page reload
           reloadNavbarBrand();
         } else {
@@ -498,6 +506,8 @@
 
         if (result.success) {
           loadBranding();
+          // Purge cache so visitors see the favicon removal
+          if (window.purgeSiteCache) window.purgeSiteCache();
           // Reload to show changes in header
           setTimeout(() => window.location.reload(), 500);
         } else {

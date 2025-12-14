@@ -318,6 +318,17 @@
     return fetch(url, opts).then(r => r.json());
   };
 
+  // Silent cache purge helper - purges cache without user notification
+  function purgeCache() {
+    api('/api/admin/cache-purge.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }).catch(() => {}); // Silent failure is ok
+  }
+
+  // Expose cache purge globally for other scripts (branding.js, newsletter-admin.js)
+  window.purgeSiteCache = purgeCache;
+
   // Dashboard
   function loadDashboard() {
     // Check if dashboard elements exist before loading
@@ -595,6 +606,7 @@
       })
     });
 
+    purgeCache();
     showNotification('Hero banner saved successfully', 'success');
   });
 
@@ -633,6 +645,9 @@
         show_about: payload.show_about
       })
     });
+
+    purgeCache();
+    showNotification('About section saved successfully', 'success');
   });
 
   document.getElementById('donationForm').addEventListener('submit', async function (e) {
@@ -687,6 +702,9 @@
         donation_qr_media_id: payload.donation_qr_media_id
       })
     });
+
+    purgeCache();
+    showNotification('Donation section saved successfully', 'success');
   });
 
   document.getElementById('settingsForm').addEventListener('submit', function (e) {
@@ -710,7 +728,10 @@
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
       }
-      if (!j.success) {
+      if (j.success) {
+        purgeCache();
+        showNotification('Settings saved successfully', 'success');
+      } else {
         alert('Error: ' + j.error);
       }
     });
@@ -728,6 +749,50 @@
     });
   }
 
+  // Purge cache button handler
+  const purgeCacheBtn = document.getElementById('btnPurgeCache');
+  if (purgeCacheBtn) {
+    purgeCacheBtn.addEventListener('click', function () {
+      const statusEl = document.getElementById('cacheStatus');
+      const originalText = this.innerHTML;
+
+      // Disable button and show loading state
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Purging...';
+
+      api('/api/admin/cache-purge.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }).then(j => {
+        if (j.success) {
+          showNotification('Cache purged successfully', 'success');
+          if (statusEl) {
+            // Format the time nicely
+            const purgedAt = j.purged_at ? new Date(j.purged_at) : new Date();
+            const formattedTime = purgedAt.toLocaleString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+            statusEl.innerHTML = 'Last purged: <span id="lastPurgeTime">' + formattedTime + '</span>';
+          }
+        } else {
+          showNotification('Error: ' + (j.error || 'Failed to purge cache'), 'error');
+        }
+      }).catch(error => {
+        console.error('Error purging cache:', error);
+        showNotification('Error purging cache', 'error');
+      }).finally(() => {
+        // Re-enable button
+        this.disabled = false;
+        this.innerHTML = originalText;
+      });
+    });
+  }
+
   // Auto-save visibility toggles when changed
   const showHeroCheckbox = document.getElementById('show_hero');
   if (showHeroCheckbox) {
@@ -739,6 +804,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating hero visibility:', j.error);
@@ -764,6 +830,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating about visibility:', j.error);
@@ -789,6 +856,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating donation visibility:', j.error);
@@ -814,6 +882,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating donate button visibility:', j.error);
@@ -839,6 +908,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating view count visibility:', j.error);
@@ -863,6 +933,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating impression count visibility:', j.error);
@@ -911,6 +982,7 @@
         body: JSON.stringify(payload)
       }).then(j => {
         if (j.success) {
+          purgeCache();
           showNotification('Setting saved successfully', 'success');
         } else {
           console.error('Error updating footer visibility:', j.error);
@@ -1229,6 +1301,12 @@
               showNotification('Post published successfully.', 'success');
             }
 
+            // Purge cache silently (publishing triggers auto-purge on server, but ensure UI reflects it)
+            api('/api/admin/cache-purge.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            }).catch(() => {}); // Silent failure is ok
+
             // Reload the posts list to show updated date
             loadPosts();
           } else {
@@ -1259,6 +1337,12 @@
           body: JSON.stringify(payload)
         }).then(j => {
           if (j.success) {
+            // Purge cache when unpublishing
+            api('/api/admin/cache-purge.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            }).catch(() => {}); // Silent failure is ok
+
             loadPosts();
           } else {
             alert('Error updating post status: ' + (j.error || 'Unknown error'));

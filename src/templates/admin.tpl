@@ -32,6 +32,9 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">AI Settings</button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-caching" data-bs-toggle="tab" data-bs-target="#pane-caching" type="button" role="tab">Caching</button>
+    </li>
   </ul>
 
   <div class="tab-content border border-top-0 p-3 bg-white" id="adminTabContent" style="visibility: hidden;">
@@ -50,22 +53,22 @@
       </form>
     </div>
 
-      {* Media Crop UI *}
-      <div id="mediaCropContainer" class="mt-3" style="display: none;">
-        <label class="form-label">Crop Image</label>
-        <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
-          <img id="mediaCropImage" src="" style="max-width: 100%; display: block;" />
-        </div>
-        <div class="mt-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaAutoDetect">
-            <i class="bi bi-magic"></i> Auto-Detect Bounds
-          </button>
-          <button type="button" class="btn btn-sm btn-primary" id="mediaUploadBtn">
-            <i class="bi bi-upload"></i> Upload & Apply
-          </button>
-          <button type="button" class="btn btn-sm btn-secondary" id="mediaCancelBtn">Cancel</button>
-        </div>
+    {* Media Crop UI *}
+    <div id="mediaCropContainer" class="mt-3" style="display: none;">
+      <label class="form-label">Crop Image</label>
+      <div class="border rounded p-2 bg-light" style="max-height: 500px; overflow: auto;">
+        <img id="mediaCropImage" src="" style="max-width: 100%; display: block;" />
       </div>
+      <div class="mt-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaAutoDetect">
+          <i class="bi bi-magic"></i> Auto-Detect Bounds
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" id="mediaUploadBtn">
+          <i class="bi bi-upload"></i> Upload & Apply
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" id="mediaCancelBtn">Cancel</button>
+      </div>
+    </div>
 
     <div class="tab-pane fade" id="pane-about" role="tabpanel">
       <form id="aboutForm" class="mt-3">
@@ -511,6 +514,30 @@
         </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
       </form>
+    </div>
+
+    <div class="tab-pane fade" id="pane-caching" role="tabpanel">
+      <h5 class="mb-4 mt-3">Page Cache</h5>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        Clears the server-side page cache. Use this if visitors are seeing stale content after publishing changes.
+        The cache automatically clears when you publish posts or settings.
+      </div>
+      <div class="mb-3">
+        <div>
+          <button type="button" class="btn btn-outline-warning" id="btnPurgeCache">
+            <i class="bi bi-trash"></i> Purge Cache
+          </button>
+          <span id="cacheStatus" class="ms-2 text-muted small"
+            {if $settings.last_cache_purge}data-last-purge="{$settings.last_cache_purge}"{/if}>
+            {if $settings.last_cache_purge}
+              Last purged: <span id="lastPurgeTime">{$settings.last_cache_purge|date_format:"%b %e, %Y %l:%M %p"}</span>
+            {else}
+              Never purged
+            {/if}
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

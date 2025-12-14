@@ -52,6 +52,11 @@ RUN sed -i 's/;daemonize = yes/daemonize = no/g' /etc/php/8.1/fpm/php-fpm.conf
 # Configure nginx
 RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 
+# Create nginx cache directory for FastCGI caching
+RUN mkdir -p /var/cache/nginx/fastcgi \
+    && chown -R www-data:www-data /var/cache/nginx \
+    && chmod -R 755 /var/cache/nginx
+
 # Create application directory structure
 RUN mkdir -p /var/www/html \
     && mkdir -p /var/www/html/storage/uploads/originals \
@@ -71,6 +76,7 @@ RUN mkdir -p /var/www/html \
 
 # Copy nginx configuration
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
+COPY docker/nginx/fastcgi-cache.conf /etc/nginx/conf.d/fastcgi-cache.conf
 
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock /var/www/html/
@@ -91,6 +97,7 @@ COPY docker/scripts/init-database.sh /docker-scripts/init-database.sh
 COPY docker/scripts/run-migrations.sh /docker-scripts/run-migrations.sh
 COPY docker/scripts/import-database.sh /docker-scripts/import-database.sh
 COPY docker/scripts/demo-reset.sh /docker-scripts/demo-reset.sh
+COPY docker/scripts/cache-purge.sh /docker-scripts/cache-purge.sh
 RUN dos2unix /docker-scripts/*.sh && chmod +x /docker-scripts/*.sh
 
 # Configure supervisord
