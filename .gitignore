@@ -4,6 +4,7 @@ vendor/
 
 # Cache/build artifacts
 var/
+.phpunit.result.cache
 
 # Application directories
 src/cache/

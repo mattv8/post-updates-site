@@ -1,1 +1,0 @@
-{"version":2,"defects":{"PostServiceTest::testIncrementMetricsWithInvalidIdFails":8,"PostServiceTest::testIncrementMetricsDelegatesToRepository":8},"times":{"MediaServiceTest::testUsageMergesSettingsFlags":0.001,"PostServiceTest::testIncrementMetricsWithInvalidIdFails":0,"PostServiceTest::testIncrementMetricsDelegatesToRepository":0.006}}
