@@ -24,14 +24,6 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    # Web Server Configuration
    PORT=8020
 
-   # Debug mode (set to 'true' for development, 'false' for production)
-   DEBUG=false
-   SMARTY_DEBUG=false
-
-   # Optional: override reset cadence (seconds). Default is 43200 (12 hours) when DEMO_MODE=true
-   DEMO_MODE=true
-   DEMO_RESET_INTERVAL_SECONDS=43200
-
    # Database Configuration (MariaDB)
    MYSQL_DATABASE=postportal
    MYSQL_USER=postportal
@@ -60,6 +52,18 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    PHP_POST_MAX_SIZE=25M
    PHP_MEMORY_LIMIT=256M
    PHP_MAX_EXECUTION_TIME=60
+
+   ############################################################
+   # Developer Only - Typically do not modify below this line #
+   ############################################################
+
+   # Debug mode (set to 'true' for development, 'false' for production)
+   DEBUG=false
+   SMARTY_DEBUG=false
+
+   # Optional: override reset cadence (seconds). Default is 43200 (12 hours) when DEMO_MODE=true
+   DEMO_MODE=false
+   DEMO_RESET_INTERVAL_SECONDS=43200
 
    # Development service ports (not needed unless you're wanting to run the development environment)
    PHPMA_PORT=8021
