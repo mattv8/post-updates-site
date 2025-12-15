@@ -83,8 +83,8 @@ function clearUploadsDirectory(string $uploadsDir): void
 
     foreach ($iterator as $fileInfo) {
         $path = $fileInfo->getPathname();
-        // Only delete files, preserve directory structure
-        if ($fileInfo->isFile()) {
+        // Only delete files, preserve directory structure and .gitkeep files
+        if ($fileInfo->isFile() && $fileInfo->getFilename() !== '.gitkeep') {
             @unlink($path);
         }
     }
@@ -221,8 +221,8 @@ function chooseAuthor(mysqli $db): string
 
 function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
 {
-    $heroId = $mediaIds['hero'] ?? null;
-    $footerId = $mediaIds['footer'] ?? null;
+    $heroId = $mediaIds['site_hero'] ?? null;
+    $footerId = $mediaIds['site_footer'] ?? null;
 
     $heroHtml = '<h1>Post Portal Demo</h1>' .
         '<p>This environment refreshes twice a day.</p>' .
@@ -332,36 +332,36 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
         [
             'title' => 'Take the tour (what is here)',
             'body' => '<p>This site refreshes twice a day with new photos so you always see fresh layouts. Everything you see is editable: hero overlay, CTA, donation block, and footer columns.</p><ul><li>Bootstrap 5 UI, no external framework</li><li>WYSIWYG editor with hero height, overlay, and gallery controls</li><li>Newsletter signup with double opt-in and unsubscribe endpoints</li><li>View and impression counts (hidden from visitors by default)</li></ul>',
-            'hero' => 'hero',
-            'gallery' => ['hero', 'workspace'],
+            'hero' => 'post1_hero',
+            'gallery' => ['gallery1', 'gallery2'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-6 hours')),
         ],
         [
             'title' => 'Draft → review → publish',
             'body' => '<p>Create or edit in draft, preview changes, then publish when ready. Draft values (title, hero, overlay, gallery) stay separate until you hit publish.</p><p>After each reset you get a clean slate—perfect for testing editorial workflows without cleaning up afterward.</p>',
-            'hero' => 'workspace',
-            'gallery' => ['workspace', 'coffee'],
+            'hero' => 'post2_hero',
+            'gallery' => ['post1_hero', 'gallery1'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
         ],
         [
             'title' => 'Media handling and alt text',
             'body' => '<p>Uploads are processed into responsive sizes and stored locally. Alt text is saved alongside each image so galleries stay accessible. Try swapping a hero image and adjusting overlay opacity to see readability changes.</p>',
-            'hero' => 'coffee',
-            'gallery' => ['workspace', 'coffee', 'footer'],
+            'hero' => 'post3_hero',
+            'gallery' => ['post2_hero', 'gallery2'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
         ],
         [
             'title' => 'Email, privacy, and analytics',
             'body' => '<p>Newsletter signups are rate-limited and double opt-in. Each post can trigger an email blast (disabled in this demo). View and impression counts are tracked with admin traffic ignored by default.</p><p>If you self-host, wire up SMTP in settings and toggle whether to include post bodies in emails.</p>',
-            'hero' => 'footer',
-            'gallery' => ['hero', 'footer'],
+            'hero' => 'post4_hero',
+            'gallery' => ['post3_hero', 'post1_hero'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
         ],
         [
             'title' => 'This is a draft post',
             'body' => '<p>Draft posts are only visible to logged-in admins. They appear greyed-out in the timeline with a "Draft" badge. You can edit them, set a publish date, and publish when ready.</p><p>Try clicking "Edit" to see the draft editing experience, or use the "Publish" button on this card to make it live.</p>',
-            'hero' => 'hero',
-            'gallery' => ['coffee', 'workspace'],
+            'hero' => 'post5_hero',
+            'gallery' => ['post4_hero', 'gallery1'],
             'published_at' => date('Y-m-d H:i:s'), // Current date as default for drafts
             'status' => 'draft',
         ],
@@ -410,7 +410,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
 
         mysqli_stmt_bind_param(
             $stmt,
-            'sssssiisissiiidiiid',
+            'sssssiisssssiiidiiid',
             $post['title'],
             $post['body'],
             $post['body'],
@@ -450,32 +450,70 @@ try {
     clearUploadsDirectory($uploadsDir);
 
     $mediaIds = seedMedia($db, [
+        // Site header and footer (unique, not reused in posts)
         [
-            'key' => 'hero',
+            'key' => 'site_hero',
             'url' => buildRandomUnsplashUrl(),
-            'name' => 'landscape-1.jpg',
+            'name' => 'site-hero.jpg',
             'alt' => 'Scenic canyon and desert landscape',
             'user' => 'admin',
         ],
         [
-            'key' => 'workspace',
+            'key' => 'site_footer',
             'url' => buildRandomUnsplashUrl(),
-            'name' => 'landscape-2.jpg',
-            'alt' => 'Rock formations and scenic terrain',
-            'user' => 'admin',
-        ],
-        [
-            'key' => 'coffee',
-            'url' => buildRandomUnsplashUrl(),
-            'name' => 'landscape-3.jpg',
-            'alt' => 'Desert scenery and natural arches',
-            'user' => 'admin',
-        ],
-        [
-            'key' => 'footer',
-            'url' => buildRandomUnsplashUrl(),
-            'name' => 'landscape-4.jpg',
+            'name' => 'site-footer.jpg',
             'alt' => 'Wilderness and outdoor vista',
+            'user' => 'admin',
+        ],
+        // Post heroes (each post gets a unique hero)
+        [
+            'key' => 'post1_hero',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'post1-hero.jpg',
+            'alt' => 'Road trip desert highway',
+            'user' => 'admin',
+        ],
+        [
+            'key' => 'post2_hero',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'post2-hero.jpg',
+            'alt' => 'Canyon overlook vista',
+            'user' => 'admin',
+        ],
+        [
+            'key' => 'post3_hero',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'post3-hero.jpg',
+            'alt' => 'Natural stone arches',
+            'user' => 'admin',
+        ],
+        [
+            'key' => 'post4_hero',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'post4-hero.jpg',
+            'alt' => 'Monument valley formations',
+            'user' => 'admin',
+        ],
+        [
+            'key' => 'post5_hero',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'post5-hero.jpg',
+            'alt' => 'Bryce canyon hoodoos',
+            'user' => 'admin',
+        ],
+        // Gallery images (unique per gallery slot)
+        [
+            'key' => 'gallery1',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'gallery1.jpg',
+            'alt' => 'Zion national park',
+            'user' => 'admin',
+        ],
+        [
+            'key' => 'gallery2',
+            'url' => buildRandomUnsplashUrl(),
+            'name' => 'gallery2.jpg',
+            'alt' => 'Dead horse point overlook',
             'user' => 'admin',
         ],
     ], $uploadsDir);

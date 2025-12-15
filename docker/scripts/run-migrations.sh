@@ -342,6 +342,7 @@ run_migration() {
     fi
 
     # Check if this migration has been applied
+    local is_modified="false"
     if migration_exists "$filename"; then
         local stored_checksum=$(get_stored_checksum "$filename")
         if [ "$current_checksum" = "$stored_checksum" ]; then
@@ -354,8 +355,10 @@ run_migration() {
 
             if [ "$FORCE_RESET" = "true" ]; then
                 warn "Force reset enabled - migration will be reapplied"
+                is_modified="true"
             elif [ "$ACCEPT_DATA_LOSS" = "true" ]; then
-                warn "Accepting data loss - will attempt to apply migration"
+                warn "Re-running modified migration (idempotent errors will be ignored)"
+                is_modified="true"
             else
                 warn "Skipping to prevent data loss. Use --accept-data-loss or --force-reset to override."
                 return 0
@@ -391,8 +394,26 @@ run_migration() {
         echo "-------------- End SQL Content --------------"
 
         # Apply migration with better error handling
-        if ! $MYSQL_CMD < "$filepath" 2>&1; then
-            local exit_code=$?
+        # Capture both stdout and stderr for error analysis
+        local output
+        local exit_code=0
+        output=$($MYSQL_CMD < "$filepath" 2>&1) || exit_code=$?
+
+        if [ $exit_code -ne 0 ]; then
+            # Check if error is an idempotent/ignorable error
+            # These errors indicate the schema already has what the migration adds
+            if echo "$output" | grep -qE "(Duplicate column name|Duplicate key name|Duplicate entry.*for key 'PRIMARY'|Table.*already exists|Can't DROP.*check that|DROP INDEX.*check that)"; then
+                if [ "$is_modified" = "true" ] || [ "$ACCEPT_DATA_LOSS" = "true" ]; then
+                    warn "Migration produced idempotent errors (schema already up-to-date):"
+                    echo "$output" | grep -E "(ERROR|Duplicate|already exists|check that)" | head -5
+                    warn "Updating checksum and continuing..."
+                    record_migration "$filename" "$current_checksum"
+                    log "Migration $filename checksum updated (idempotent errors ignored)"
+                    return 0
+                fi
+            fi
+            # Non-idempotent error
+            echo "$output"
             handle_migration_failure "$filepath" "MySQL execution failed with exit code $exit_code"
             return 1
         fi

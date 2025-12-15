@@ -84,8 +84,8 @@ CREATE TABLE IF NOT EXISTS `settings` (
   CONSTRAINT `fk_settings_hero_media` FOREIGN KEY (`hero_media_id`) REFERENCES `media` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insert default settings row
-INSERT INTO `settings` (
+-- Insert default settings row (use INSERT IGNORE to be idempotent)
+INSERT IGNORE INTO `settings` (
   `id`,
   `site_title`,
   `hero_html`,
