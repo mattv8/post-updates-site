@@ -22,7 +22,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
 
    ```bash
    # Web Server Configuration
-   PORT=80
+   PORT=8020
 
    # Debug mode (set to 'true' for development, 'false' for production)
    DEBUG=false
@@ -62,8 +62,8 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    PHP_MAX_EXECUTION_TIME=60
 
    # Development service ports (not needed unless you're wanting to run the development environment)
-   PHPMA_PORT=82
-   MAILPIT_PORT=83
+   PHPMA_PORT=8021
+   MAILPIT_PORT=8022
    MYSQL_PORT=3306
    ```
 
