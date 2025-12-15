@@ -7,7 +7,9 @@ declare(strict_types=1);
 */
 require_once(__DIR__ . '/vendor/autoload.php'); // Composer autoload
 require_once(__DIR__ . '/lib/MediaProcessor.php');
+require_once(__DIR__ . '/Http/ViewRenderer.php');
 
+use PostPortal\Http\ViewRenderer;
 use PostPortal\Lib\MediaProcessor;
 
 // Default AI system prompt for title generation
@@ -1306,11 +1308,18 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
     $smtp_from_name = $settings['smtp_from_name'] ?? 'Post Portal';
 
     // Debug: Log SMTP configuration (without exposing password)
-    error_log("SMTP Config - Host: {$smtp_host}, Port: {$smtp_port}, Secure: {$smtp_secure}, Auth: " . ($smtp_auth ? 'true' : 'false') . ", Username: {$smtp_username}, Password Length: " . strlen($smtp_password));
+    error_log("SMTP Config - Host: {$smtp_host}, Port: {$smtp_port}, Secure: {$smtp_secure}, Auth: " . ($smtp_auth ? 'true' : 'false') . ", Username: {$smtp_username}, Password Length: " . strlen($smtp_password) . ", From Email: {$smtp_from_email}, From Name: {$smtp_from_name}");
 
     // Validate required SMTP settings
-    if (!$smtp_host || !$smtp_from_email) {
-        return ['success' => false, 'error' => 'SMTP configuration incomplete. Please configure SMTP settings in Admin > Newsletter > Email Settings.'];
+    $missingFields = [];
+    if (!$smtp_host) {
+        $missingFields[] = 'SMTP Host';
+    }
+    if (!$smtp_from_email) {
+        $missingFields[] = 'From Email';
+    }
+    if (!empty($missingFields)) {
+        return ['success' => false, 'error' => 'SMTP configuration incomplete. Missing: ' . implode(', ', $missingFields) . '. Please configure in Admin > Newsletter > Email Settings.'];
     }
 
     // Get post details
@@ -1373,13 +1382,8 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
     // Link directly to post detail overlay: /?page=home&post_id=X
     $postUrl = "{$baseUrl}/?page=home&post_id={$postId}";
 
-    // Build HTML email body using Smarty templates without relying on globals
-    $emailView = new \Smarty\Smarty();
-    $emailView->setTemplateDir(__DIR__ . '/templates');
-    $emailView->setCompileDir(__DIR__ . '/cache');
-    $emailView->setCacheDir(__DIR__ . '/cache');
-    // Disable auto-escaping since we're handling HTML content
-    $emailView->escape_html = false;
+    // Build HTML email body using ViewRenderer for consistent Smarty configuration
+    $emailView = ViewRenderer::fromSmarty(null, false)->getSmarty();
 
     $includePostBody = (bool)$settings['email_include_post_body'];
 

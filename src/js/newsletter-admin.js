@@ -19,7 +19,9 @@
     smtp_secure: 'none',
     smtp_auth: 0,
     smtp_username: '',
-    smtp_password: ''
+    smtp_password: '',
+    smtp_from_email: 'noreply@mailpit.local',
+    smtp_from_name: 'Post Portal (Dev)'
   };
 
   let originalSmtpSnapshot = null;
@@ -130,7 +132,7 @@
   }
 
   function setSmtpFieldsDisabled(disabled) {
-    ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_auth', 'smtp_username', 'smtp_password'].forEach(id => {
+    ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_auth', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.disabled = disabled;
     });
@@ -991,17 +993,11 @@
 
     const mailpitToggle = document.getElementById('smtp_mailpit_toggle');
     if (mailpitToggle && isDebugMode) {
-      const fromEmailEl = document.getElementById('smtp_from_email');
-      const fromNameEl = document.getElementById('smtp_from_name');
 
       const applyMailpitState = (checked) => {
         if (checked) {
-          const withFrom = {
-            ...MAILPIT_DEFAULTS,
-            smtp_from_email: fromEmailEl?.value || '',
-            smtp_from_name: fromNameEl?.value || ''
-          };
-          applySmtpConfigToForm(withFrom);
+          // Use Mailpit defaults including default from email/name
+          applySmtpConfigToForm(MAILPIT_DEFAULTS);
           setSmtpFieldsDisabled(true);
         } else {
           setSmtpFieldsDisabled(false);
@@ -1025,11 +1021,8 @@
               originalSmtpSnapshot = captureCurrentSmtpConfig();
             }
 
-            const payload = buildSmtpPayload({
-              ...MAILPIT_DEFAULTS,
-              smtp_from_email: fromEmailEl?.value || '',
-              smtp_from_name: fromNameEl?.value || ''
-            });
+            // Use Mailpit defaults including default from email/name
+            const payload = buildSmtpPayload(MAILPIT_DEFAULTS);
 
             applyMailpitState(true);
 
