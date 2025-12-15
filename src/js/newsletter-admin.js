@@ -1011,7 +1011,8 @@
         }
       };
 
-      if (isMailpitConfigActive()) {
+      // Apply initial state if mailpit config is active OR toggle is already checked (from template)
+      if (isMailpitConfigActive() || mailpitToggle.checked) {
         mailpitToggle.checked = true;
         applyMailpitState(true);
       }

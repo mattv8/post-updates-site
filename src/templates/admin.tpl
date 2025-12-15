@@ -198,7 +198,7 @@
             <h6 class="mb-3">SMTP Configuration</h6>
             {if $debug|default:false}
               <div class="form-check form-switch mb-3" id="smtpMailpitToggleRow">
-                <input class="form-check-input" type="checkbox" id="smtp_mailpit_toggle">
+                <input class="form-check-input" type="checkbox" id="smtp_mailpit_toggle" checked>
                 <label class="form-check-label" for="smtp_mailpit_toggle">
                   Use Mailpit (dev override)
                 </label>
