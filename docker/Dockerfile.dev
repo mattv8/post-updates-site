@@ -46,6 +46,14 @@ RUN echo "" >> /etc/php/8.1/fpm/pool.d/www.conf \
     && echo "; Pass environment variables to PHP" >> /etc/php/8.1/fpm/pool.d/www.conf \
     && echo "clear_env = no" >> /etc/php/8.1/fpm/pool.d/www.conf
 
+# Configure PHP for large file uploads (backup/restore)
+RUN echo "; Custom PHP settings for backup/restore" > /etc/php/8.1/fpm/conf.d/99-custom.ini \
+    && echo "upload_max_filesize = 500M" >> /etc/php/8.1/fpm/conf.d/99-custom.ini \
+    && echo "post_max_size = 512M" >> /etc/php/8.1/fpm/conf.d/99-custom.ini \
+    && echo "max_execution_time = 600" >> /etc/php/8.1/fpm/conf.d/99-custom.ini \
+    && echo "max_input_time = 600" >> /etc/php/8.1/fpm/conf.d/99-custom.ini \
+    && echo "memory_limit = 512M" >> /etc/php/8.1/fpm/conf.d/99-custom.ini
+
 # Configure PHP-FPM to not daemonize
 RUN sed -i 's/;daemonize = yes/daemonize = no/g' /etc/php/8.1/fpm/php-fpm.conf
 

@@ -127,24 +127,11 @@ Docker volumes persist:
 - **Uploads:** User-uploaded images (`./storage` mount)
 - **Logs:** Application logs (`./logs` mount)
 
-#### Backup commands:
-```bash
-# Backup database
-docker exec post-portal export > backup.sql
+#### Backup & Restore
 
-# Backup uploads
-tar -czf uploads-backup.tar.gz ./storage/
-```
+The easiest way to backup and restore is through the Admin panel. Navigate to **Admin → Backup** to download a complete `.tar.gz` archive containing both the database and all uploaded media. You can restore from any backup archive using the same interface.
 
-#### Restoring from Backup
-
-```bash
-# Restore database
-docker exec -i post-portal import - < backup.sql
-
-# Restore uploads
-tar -xzf uploads-backup.tar.gz
-```
+> 🗒️ **Note:** For command-line backup and restore options, see the [Contributing Guide](CONTRIBUTING.md#backup--restore).
 
 ### Updating
 
@@ -154,7 +141,7 @@ To update to the latest version:
 docker compose pull
 docker compose up -d
 ```
-> 💡 **Tip:** [Export a backup](#exporting-the-database) first.
+> 💡 **Tip:** [Create a backup](#gui-backup--restore) first.
 
 #### If a Database Migration Fails
 

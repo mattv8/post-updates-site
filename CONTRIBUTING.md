@@ -125,6 +125,40 @@ docker exec postportal-dev seed --force
 
 The `--force` flag bypasses the `DEMO_MODE` check, allowing you to seed content without enabling the automatic reset loop.
 
+## Backup & Restore
+
+### GUI Method
+
+The Admin panel provides a complete backup and restore interface at **Admin → Backup**. This creates a `.tar.gz` archive containing both the database dump and all uploaded media files.
+
+### CLI Method
+
+#### Backup
+
+```bash
+# Export database only
+docker exec postportal-dev export > backup.sql
+
+# Backup uploads only
+tar -czf uploads-backup.tar.gz ./storage/
+
+# Full backup (database + uploads)
+docker exec postportal-dev export > backup.sql && tar -czf full-backup.tar.gz backup.sql ./storage/
+```
+
+#### Restore
+
+```bash
+# Restore database only
+docker exec -i postportal-dev import - < backup.sql
+
+# Restore uploads only
+tar -xzf uploads-backup.tar.gz
+
+# Full restore
+tar -xzf full-backup.tar.gz && docker exec -i postportal-dev import - < backup.sql
+```
+
 ## CI/CD
 
 The project uses GitHub Actions to:

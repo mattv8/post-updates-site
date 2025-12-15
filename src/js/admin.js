@@ -986,6 +986,170 @@
     });
   }
 
+  // Backup button handler
+  const createBackupBtn = document.getElementById('btnCreateBackup');
+  if (createBackupBtn) {
+    createBackupBtn.addEventListener('click', function () {
+      const statusEl = document.getElementById('backupStatus');
+      const originalText = this.innerHTML;
+
+      // Disable button and show loading state
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Creating backup...';
+      if (statusEl) statusEl.textContent = '';
+
+      // Create a form and submit it to trigger the download
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/api/admin/backup.php';
+      form.style.display = 'none';
+
+      // Add CSRF token
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrf_token';
+      csrfInput.value = CSRF;
+      form.appendChild(csrfInput);
+
+      document.body.appendChild(form);
+
+      // Use an iframe to handle the download without navigating away
+      const iframe = document.createElement('iframe');
+      iframe.name = 'backupDownloadFrame';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      form.target = 'backupDownloadFrame';
+      form.submit();
+
+      // Re-enable button after a delay (since we can't detect download completion)
+      setTimeout(() => {
+        this.disabled = false;
+        this.innerHTML = originalText;
+        if (statusEl) {
+          const now = new Date().toLocaleString(undefined, {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          statusEl.textContent = 'Backup initiated: ' + now;
+        }
+        // Cleanup
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+      }, 3000);
+    });
+  }
+
+  // Restore file input handler
+  const restoreFileInput = document.getElementById('restoreFile');
+  const restoreBackupBtn = document.getElementById('btnRestoreBackup');
+  if (restoreFileInput && restoreBackupBtn) {
+    restoreFileInput.addEventListener('change', function () {
+      restoreBackupBtn.disabled = !this.files || this.files.length === 0;
+    });
+  }
+
+  // Restore backup modal and confirmation handler
+  const restoreBackupModalEl = document.getElementById('restoreBackupModal');
+  if (restoreBackupModalEl && restoreBackupModalEl.parentElement !== document.body) {
+    document.body.appendChild(restoreBackupModalEl);
+  }
+  const restoreBackupModal = restoreBackupModalEl ? new bootstrap.Modal(restoreBackupModalEl) : null;
+  const confirmRestoreBackupBtn = document.getElementById('confirmRestoreBackup');
+
+  // Restore button handler - shows confirmation modal
+  if (restoreBackupBtn) {
+    restoreBackupBtn.addEventListener('click', function () {
+      const fileInput = document.getElementById('restoreFile');
+
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showNotification('Please select a backup file', 'warning');
+        return;
+      }
+
+      // Show filename in modal
+      const filenameEl = document.getElementById('restoreBackupFilename');
+      if (filenameEl) {
+        filenameEl.textContent = fileInput.files[0].name;
+      }
+
+      // Show confirmation modal
+      if (restoreBackupModal) {
+        restoreBackupModal.show();
+      }
+    });
+  }
+
+  // Confirm restore button handler - performs actual restore
+  if (confirmRestoreBackupBtn) {
+    confirmRestoreBackupBtn.addEventListener('click', function () {
+      const fileInput = document.getElementById('restoreFile');
+      const statusEl = document.getElementById('restoreStatus');
+      const restoreBtn = document.getElementById('btnRestoreBackup');
+
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        return;
+      }
+
+      // Hide modal
+      if (restoreBackupModal) {
+        restoreBackupModal.hide();
+      }
+
+      const originalText = restoreBtn ? restoreBtn.innerHTML : '';
+
+      // Disable button and show loading state
+      if (restoreBtn) {
+        restoreBtn.disabled = true;
+        restoreBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Restoring...';
+      }
+      if (statusEl) statusEl.textContent = '';
+
+      const formData = new FormData();
+      formData.append('backup', fileInput.files[0]);
+
+      fetch('/api/admin/restore.php', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': CSRF
+        },
+        body: formData
+      })
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) {
+          showNotification('Backup restored successfully! Reloading page...', 'success');
+          if (statusEl) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Restored successfully</span>';
+          }
+          // Reload page after a short delay to show the restored data
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          showNotification('Error: ' + (j.error || 'Failed to restore backup'), 'error');
+          if (statusEl) {
+            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (j.error || 'Restore failed') + '</span>';
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error restoring backup:', error);
+        showNotification('Error restoring backup', 'error');
+        if (statusEl) {
+          statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Error occurred</span>';
+        }
+      })
+      .finally(() => {
+        // Re-enable button
+        if (restoreBtn) {
+          restoreBtn.disabled = false;
+          restoreBtn.innerHTML = originalText;
+        }
+      });
+    });
+  }
+
   // Auto-save visibility toggles when changed
   const showHeroCheckbox = document.getElementById('show_hero');
   if (showHeroCheckbox) {

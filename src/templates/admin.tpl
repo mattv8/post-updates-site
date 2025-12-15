@@ -35,6 +35,9 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-caching" data-bs-toggle="tab" data-bs-target="#pane-caching" type="button" role="tab">Caching</button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-backup" data-bs-toggle="tab" data-bs-target="#pane-backup" type="button" role="tab">Backup</button>
+    </li>
   </ul>
 
   <div class="tab-content border border-top-0 p-3 bg-white" id="adminTabContent" style="visibility: hidden;">
@@ -559,6 +562,42 @@
         </div>
       </div>
     </div>
+
+    <div class="tab-pane fade" id="pane-backup" role="tabpanel">
+      <h5 class="mb-4 mt-3">Backup &amp; Restore</h5>
+
+      {* Backup Section *}
+      <h6 class="mb-3"><i class="bi bi-download me-2"></i>Create Backup</h6>
+      <p class="text-muted mb-3">
+        Download a complete backup of your site including the database and all uploaded media.
+        The backup is compressed as a <code>.tar.gz</code> archive.
+      </p>
+      <div class="mb-4">
+        <button type="button" class="btn btn-primary" id="btnCreateBackup">
+          <i class="bi bi-cloud-download"></i> Download Backup
+        </button>
+        <span id="backupStatus" class="ms-2 text-muted small"></span>
+      </div>
+
+      {* Restore Section *}
+      <h6 class="mb-3"><i class="bi bi-upload me-2"></i>Restore from Backup</h6>
+      <div class="alert alert-warning mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>Warning:</strong> Restoring a backup will replace all current data including posts, media, and settings.
+        This action cannot be undone.
+      </div>
+      <div class="mb-3">
+        <label for="restoreFile" class="form-label">Select backup file</label>
+        <input type="file" class="form-control" id="restoreFile" accept=".tar.gz,.tgz">
+        <div class="form-text">Upload a <code>.tar.gz</code> backup file created by this system.</div>
+      </div>
+      <div class="mb-3">
+        <button type="button" class="btn btn-danger" id="btnRestoreBackup" disabled>
+          <i class="bi bi-cloud-upload"></i> Restore Backup
+        </button>
+        <span id="restoreStatus" class="ms-2 text-muted small"></span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -605,6 +644,30 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" id="confirmDeleteSubscriber">Archive Subscriber</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{* Restore Backup Confirmation Modal *}
+<div class="modal fade" id="restoreBackupModal" tabindex="-1" aria-labelledby="restoreBackupModalLabel" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="restoreBackupModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Restore</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to restore from this backup?</p>
+        <p class="fw-bold mb-2" id="restoreBackupFilename"></p>
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-exclamation-circle-fill me-1"></i>
+          This will <strong>permanently replace</strong> all current data including posts, media, and settings. This action cannot be undone.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmRestoreBackup"><i class="bi bi-cloud-upload me-1"></i>Yes, Restore Backup</button>
       </div>
     </div>
   </div>
