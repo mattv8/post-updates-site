@@ -120,20 +120,30 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
 
    Default credentials: `admin` / (set via `DEFAULT_ADMIN_PASSWORD` in `.env`)
 
-### Data Persistence
+### Backup and Restore
 
 Docker volumes persist:
 - **Database:** MariaDB data (`db_data` volume)
 - **Uploads:** User-uploaded images (`./storage` mount)
 - **Logs:** Application logs (`./logs` mount)
 
-Backup commands:
+#### Backup commands:
 ```bash
 # Backup database
-docker exec post-portal sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
+docker exec post-portal export > backup.sql
 
 # Backup uploads
 tar -czf uploads-backup.tar.gz ./storage/
+```
+
+#### Restoring from Backup
+
+```bash
+# Restore database
+docker exec -i post-portal import - < backup.sql
+
+# Restore uploads
+tar -xzf uploads-backup.tar.gz
 ```
 
 ### Updating
@@ -144,10 +154,9 @@ To update to the latest version:
 docker compose pull
 docker compose up -d
 ```
+> 💡 **Tip:** [Export a backup](#exporting-the-database) first.
 
-Database migrations run automatically on container startup. Your data is preserved—migrations only add or modify schema as needed.
-
-#### If a Migration Fails
+#### If a Database Migration Fails
 
 In rare cases, a migration may fail due to schema drift (e.g., manual database changes or a previously interrupted migration). If this happens, you can reset the migration tracking and reapply:
 
@@ -156,8 +165,6 @@ docker exec post-portal migrate --accept-data-loss
 ```
 
 Despite the name, `--accept-data-loss` does **not** delete your data. It resets the migration history table and reapplies all migrations from scratch. Since migrations are idempotent (they check if changes already exist), your existing data remains intact. The flag exists to confirm you understand the migration state is being reset.
-
-> 💡 **Tip:** If you're unsure, [export a backup](#exporting-the-database) first.
 
 ## Environment Variables
 
@@ -190,55 +197,6 @@ Note: MySQL root password is auto-generated for security.
 
 ### Web Server
 - `PORT` - Host port to expose (default: `80`)
-
-## Database
-
-### Schema
-
-- **`media`** - Uploaded images with responsive variants and metadata
-- **`posts`** - User posts with hero images and gallery references
-- **`settings`** - Site configuration (hero, bio, donation settings)
-- **`users`**, **`sites`**, **`audit`** - Legacy tables retained for compatibility with existing data
-
-### Migrations
-
-Migrations are automatically applied on container startup from the `migrations/` folder.
-
-To manually run migrations:
-```bash
-docker exec post-portal migrate
-```
-
-#### Exporting the Database
-
-Export your database using the container's built-in credentials:
-```bash
-docker exec post-portal sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
-```
-
-### Importing a SQL Dump
-
-Import database dumps using the built-in `import` command:
-
-```bash
-cat /path/to/dump.sql | docker exec -i post-portal import -
-```
-
-The import command automatically handles connection cleanup, database recreation with utf8mb4, and verification.
-
-### Restoring from Backup
-
-To restore a previously exported backup:
-
-```bash
-cat backup.sql | docker exec -i post-portal import -
-```
-
-### Migrating Media Files
-
-Media files (uploaded images and their responsive variants) are stored in the `storage/uploads/` directory, which is mounted from the host filesystem. To migrate media from another installation, simply copy the files to your local `storage/uploads/` directory and ensure they have the correct permissions (owned by `www-data` with `775` permissions). Files copied to the host path are immediately available in the container since the directory is mounted as a volume.
-
-The media directory structure includes `originals/` for uploaded files and `variants/` with subdirectories for different responsive sizes (400px, 800px, 1600px, and thumbnails).
 
 ## License
 

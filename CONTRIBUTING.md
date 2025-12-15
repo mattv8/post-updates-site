@@ -1,6 +1,6 @@
 # Contributing to Post Portal
 
-Contributions welcome! Please submit pull requests to the appropriate branch.
+Contributions welcome!
 
 ## Development Setup
 
@@ -21,7 +21,7 @@ Contributions welcome! Please submit pull requests to the appropriate branch.
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` and set your values (ports, database, SMTP, etc.).
+   Edit `.env` and set your values (ports, database, etc.).
 
 3. **Start development stack:**
 
@@ -37,10 +37,9 @@ Contributions welcome! Please submit pull requests to the appropriate branch.
    ```
 
 4. **Access development services:**
-   - Public site: http://localhost:81 (default `PORT` in dev)
-   - Admin panel: http://localhost:81/?page=admin (auto-filled in debug mode)
-   - PHPMyAdmin: http://localhost:82
-   - Mailpit (email testing): http://localhost:83
+   - Public site: http://localhost:8020 (default `PORT` in dev)
+   - PHPMyAdmin: http://localhost:8021
+   - Mailpit (email testing): http://localhost:8022
 
 ### Making Changes
 
@@ -60,16 +59,57 @@ All source code is in the `src/` directory:
 
 Changes are immediately reflected (no rebuild required).
 
-### Reset Development Database
+#### Media File Uploads
+
+Media files (uploaded images and their responsive variants) are stored in the `storage/uploads/` directory, which is mounted from the host filesystem. To migrate media from another installation, simply copy the files to your local `storage/uploads/` directory and ensure they have the correct permissions (owned by `www-data` with `775` permissions). Files copied to the host path are immediately available in the container since the directory is mounted as a volume.
+
+The media directory structure includes `originals/` for uploaded files and `variants/` with subdirectories for different responsive sizes (400px, 800px, 1600px, and thumbnails).
+
+## Database
+
+### Schema
+
+- **`posts`** - User posts with hero images and gallery references
+- **`media`** - Uploaded images with responsive variants and metadata
+- **`settings`** - Site configuration (hero, bio, donation, footer, SMTP settings)
+- **`newsletter_subscribers`** - Mailing list subscribers with verification status
+- **`users`** - Admin user accounts
+- **`migrations`** - Tracks applied database migrations
+- **`sites`**, **`audit`** - Legacy tables retained for compatibility
+
+### Database Migrations
+
+Migrations are automatically applied on container startup from the `migrations/` folder. A new migration script must be created for each new added field. Migration scripts **must be idempotent**.
+
+To manually run migrations:
+```bash
+docker exec post-portal migrate
+```
+
+#### Reset & Seed Development Database
 
 ```bash
 # Quick reset (drops and recreates database, re-runs migrations)
-sudo docker exec postportal-dev /docker-scripts/import-database.sh --drop
+docker exec postportal-dev drop
 
 # Full reset (destroys volume, rebuilds container)
 cd docker
 sudo docker compose -f docker-compose.dev.yml down -v
 sudo docker compose -f docker-compose.dev.yml up --build
+```
+#### Exporting the Database
+
+Export your database to a file on your local machine:
+```bash
+docker exec postportal-dev export > backup.sql
+```
+
+### Importing a SQL Dump
+
+Import a SQL dump from your local machine:
+
+```bash
+docker exec -i postportal-dev import - < backup.sql
 ```
 
 ### Demo Mode
@@ -80,11 +120,7 @@ sudo docker compose -f docker-compose.dev.yml up --build
 
 **Manually run the seed script:**
 ```bash
-# In development container
-sudo docker exec postportal-dev php /var/www/html/lib/demo_seed.php --force
-
-# In production container
-docker exec post-portal php /var/www/html/lib/demo_seed.php --force
+docker exec postportal-dev seed --force
 ```
 
 The `--force` flag bypasses the `DEMO_MODE` check, allowing you to seed content without enabling the automatic reset loop.
@@ -93,7 +129,7 @@ The `--force` flag bypasses the `DEMO_MODE` check, allowing you to seed content 
 
 The project uses GitHub Actions to:
 1. Build container on every branch push
-2. Tag images with branch name (`:main`, `:stage`, `:feature-xyz`)
+2. Tag images with branch name (`:main`, `:feature-xyz`)
 3. Sign images with Cosign
 4. Push to Harbor registry at `hub.docker.visnovsky.us`
 5. Generate and attach SBOM (Software Bill of Materials)
