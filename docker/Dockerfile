@@ -100,6 +100,28 @@ COPY docker/scripts/demo-reset.sh /docker-scripts/demo-reset.sh
 COPY docker/scripts/cache-purge.sh /docker-scripts/cache-purge.sh
 RUN dos2unix /docker-scripts/*.sh && chmod +x /docker-scripts/*.sh
 
+# Create convenience command wrappers
+RUN ln -sf /docker-scripts/import-database.sh /usr/local/bin/import \
+    && ln -sf /docker-scripts/run-migrations.sh /usr/local/bin/migrate \
+    && ln -sf /docker-scripts/cache-purge.sh /usr/local/bin/cache-purge
+
+COPY <<EOF /usr/local/bin/export
+#!/bin/bash
+mysqldump -u"\$MYSQL_USER" -p"\$MYSQL_PASSWORD" "\$MYSQL_DATABASE" "\$@"
+EOF
+
+COPY <<EOF /usr/local/bin/drop
+#!/bin/bash
+/docker-scripts/import-database.sh --drop "\$@"
+EOF
+
+COPY <<EOF /usr/local/bin/seed
+#!/bin/bash
+php /var/www/html/lib/demo_seed.php "\$@"
+EOF
+
+RUN chmod +x /usr/local/bin/export /usr/local/bin/drop /usr/local/bin/seed
+
 # Configure supervisord
 COPY docker/scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

@@ -3,18 +3,6 @@ set -e
 
 echo "==> Starting Post Portal Container"
 
-# Create symlinks for convenience commands
-ln -sf /docker-scripts/import-database.sh /usr/local/bin/import
-ln -sf /docker-scripts/run-migrations.sh /usr/local/bin/migrate
-ln -sf /docker-scripts/cache-purge.sh /usr/local/bin/cache-purge
-
-# Create a drop command wrapper
-cat > /usr/local/bin/drop <<'EOF'
-#!/bin/bash
-/docker-scripts/import-database.sh --drop "$@"
-EOF
-chmod +x /usr/local/bin/drop
-
 # Generate secure root password automatically (user doesn't need to know this)
 if [ -z "${MYSQL_ROOT_PASSWORD}" ]; then
     export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
