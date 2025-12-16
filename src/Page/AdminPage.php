@@ -45,6 +45,7 @@ class AdminPage
             'page_title' => 'Admin',
             'csrf_token' => \generateCsrfToken(),
             'current_user' => $_SESSION['username'] ?? 'admin',
+            'demo_mode' => filter_var(getenv('DEMO_MODE') ?: 'false', FILTER_VALIDATE_BOOLEAN),
             'active_subscriber_count' => $activeSubscriberCount,
             'total_subscriber_count' => $totalSubscriberCount,
             'default_ai_prompt' => DEFAULT_AI_SYSTEM_PROMPT,

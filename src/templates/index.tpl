@@ -133,9 +133,11 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
+            {if $isAdmin}
             <li class="nav-item">
               <a class="nav-link" href="?page=admin"><i class="fa fa-fw fa-cog"></i> Admin Dashboard</a>
             </li>
+            {/if}
             <li class="nav-item">
               <button class="nav-link btn btn-link" data-bs-toggle="modal" data-bs-target="#createPostModal">
                 <i class="fa fa-fw fa-plus"></i> Create Post

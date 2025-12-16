@@ -9,12 +9,15 @@ use PostPortal\Repository\PostRepository;
 use PostPortal\Repository\MediaRepository;
 use PostPortal\Repository\NewsletterRepository;
 use PostPortal\Repository\SettingsRepository;
+use PostPortal\Repository\UserRepository;
 use PostPortal\Service\PostService;
 use PostPortal\Service\PostServiceInterface;
 use PostPortal\Service\MediaService;
 use PostPortal\Service\MediaServiceInterface;
 use PostPortal\Service\NewsletterService;
 use PostPortal\Service\NewsletterServiceInterface;
+use PostPortal\Service\UserService;
+use PostPortal\Service\UserServiceInterface;
 
 /**
  * Simple service container for dependency injection
@@ -142,6 +145,32 @@ class ServiceContainer
         }
         /** @var NewsletterServiceInterface */
         return $this->services['NewsletterService'];
+    }
+
+    /**
+     * Get UserRepository instance
+     */
+    public function getUserRepository(): UserRepository
+    {
+        if (!isset($this->services['UserRepository'])) {
+            $this->services['UserRepository'] = new UserRepository($this->db);
+        }
+        /** @var UserRepository */
+        return $this->services['UserRepository'];
+    }
+
+    /**
+     * Get UserService instance
+     */
+    public function getUserService(): UserServiceInterface
+    {
+        if (!isset($this->services['UserService'])) {
+            $this->services['UserService'] = new UserService(
+                $this->getUserRepository()
+            );
+        }
+        /** @var UserServiceInterface */
+        return $this->services['UserService'];
     }
 
     /**

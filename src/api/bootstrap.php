@@ -17,16 +17,20 @@ require_once __DIR__ . '/../Repository/NewsletterRepositoryInterface.php';
 require_once __DIR__ . '/../Repository/NewsletterRepository.php';
 require_once __DIR__ . '/../Repository/SettingsRepositoryInterface.php';
 require_once __DIR__ . '/../Repository/SettingsRepository.php';
+require_once __DIR__ . '/../Repository/UserRepositoryInterface.php';
+require_once __DIR__ . '/../Repository/UserRepository.php';
 
 // Service Interfaces
 require_once __DIR__ . '/../Service/PostServiceInterface.php';
 require_once __DIR__ . '/../Service/MediaServiceInterface.php';
 require_once __DIR__ . '/../Service/NewsletterServiceInterface.php';
+require_once __DIR__ . '/../Service/UserServiceInterface.php';
 
 // Services
 require_once __DIR__ . '/../Service/PostService.php';
 require_once __DIR__ . '/../Service/MediaService.php';
 require_once __DIR__ . '/../Service/NewsletterService.php';
+require_once __DIR__ . '/../Service/UserService.php';
 
 // Container and HTTP helpers
 require_once __DIR__ . '/../Container/ServiceContainer.php';

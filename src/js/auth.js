@@ -62,7 +62,8 @@
 
       const payload = await response.json().catch(() => ({}));
       if (response.ok && payload.success) {
-        window.location = '/?page=admin';
+        // Redirect admins to admin page, non-admins to homepage
+        window.location = payload.isadmin ? '/?page=admin' : '/';
         return;
       }
 
@@ -88,6 +89,45 @@
     }
   }
 
+  /**
+   * Open a Bootstrap modal by ID
+   * @param {string} modalId - The ID of the modal to open
+   * @param {HTMLElement} navButton - The button that triggered the modal (for styling)
+   * @param {Function} modalFunction - Optional callback function to run when modal opens
+   */
+  function openModal(modalId, navButton, modalFunction = null) {
+    const modalElement = document.getElementById(modalId);
+    if (!modalElement) {
+      console.warn('Modal not found:', modalId);
+      return;
+    }
+
+    // Add event listener for modal close/dismiss to reset button styling
+    modalElement.addEventListener('hidden.bs.modal', function handler() {
+      if (navButton) {
+        navButton.classList.add('btn-secondary');
+        navButton.classList.remove('btn-primary');
+      }
+      modalElement.removeEventListener('hidden.bs.modal', handler);
+    });
+
+    // Initialize and show the modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+
+    // Update button styling
+    if (navButton) {
+      navButton.classList.remove('btn-secondary');
+      navButton.classList.add('btn-primary');
+    }
+
+    // Call the modalFunction if provided
+    if (modalFunction && typeof modalFunction === 'function') {
+      modalFunction();
+    }
+  }
+
   window.handleLogin = handleLogin;
   window.logoff = logoff;
+  window.openModal = openModal;
 })();
