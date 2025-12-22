@@ -133,31 +133,21 @@ The Admin panel provides a complete backup and restore interface at **Admin → 
 
 ### CLI Method
 
+CLI backups are **fully compatible** with the GUI restore feature and vice versa. Both create the same archive structure with `database.sql`, `uploads/`, and `backup-meta.json`.
+
 #### Backup
 
 ```bash
-# Export database only
-docker exec postportal-dev export > backup.sql
-
-# Backup uploads only
-tar -czf uploads-backup.tar.gz ./storage/
-
-# Full backup (database + uploads)
-docker exec postportal-dev export > backup.sql && tar -czf full-backup.tar.gz backup.sql ./storage/
+docker exec postportal-dev backup > backup_$(date +%F).tar.gz
 ```
 
 #### Restore
 
 ```bash
-# Restore database only
-docker exec -i postportal-dev import - < backup.sql
-
-# Restore uploads only
-tar -xzf uploads-backup.tar.gz
-
-# Full restore
-tar -xzf full-backup.tar.gz && docker exec -i postportal-dev import - < backup.sql
+cat backup_$(date +%F).tar.gz | docker exec -i postportal-dev restore
 ```
+
+Use `--db-only` or `--media-only` flags to backup/restore selectively. Run with `--help` for details.
 
 ## CI/CD
 

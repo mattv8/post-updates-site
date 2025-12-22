@@ -106,6 +106,7 @@ COPY docker/scripts/run-migrations.sh /docker-scripts/run-migrations.sh
 COPY docker/scripts/import-database.sh /docker-scripts/import-database.sh
 COPY docker/scripts/demo-reset.sh /docker-scripts/demo-reset.sh
 COPY docker/scripts/cache-purge.sh /docker-scripts/cache-purge.sh
+COPY docker/scripts/backup-restore.sh /docker-scripts/backup-restore.sh
 RUN dos2unix /docker-scripts/*.sh && chmod +x /docker-scripts/*.sh
 
 # Create convenience command wrappers
@@ -128,7 +129,17 @@ COPY <<EOF /usr/local/bin/seed
 php /var/www/html/lib/demo_seed.php "\$@"
 EOF
 
-RUN chmod +x /usr/local/bin/export /usr/local/bin/drop /usr/local/bin/seed
+COPY <<EOF /usr/local/bin/backup
+#!/bin/bash
+/docker-scripts/backup-restore.sh backup "\$@"
+EOF
+
+COPY <<EOF /usr/local/bin/restore
+#!/bin/bash
+/docker-scripts/backup-restore.sh restore "\$@"
+EOF
+
+RUN chmod +x /usr/local/bin/export /usr/local/bin/drop /usr/local/bin/seed /usr/local/bin/backup /usr/local/bin/restore
 
 # Configure supervisord
 COPY docker/scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
