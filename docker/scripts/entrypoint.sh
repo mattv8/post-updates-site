@@ -134,18 +134,39 @@ fi
 echo "==> Stopping temporary MariaDB..."
 # Try graceful shutdown via Unix socket (since we used --skip-networking)
 if mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock shutdown 2>/dev/null; then
-    echo "==> MariaDB shutdown gracefully"
+    echo "==> MariaDB shutdown initiated, waiting for complete stop..."
+    # Wait for MariaDB to fully stop (up to 30 seconds)
+    for i in {30..0}; do
+        if ! pgrep -x mariadbd >/dev/null 2>&1 && ! pgrep -x mysqld >/dev/null 2>&1; then
+            echo "==> MariaDB stopped gracefully"
+            break
+        fi
+        sleep 1
+    done
+    if [ "$i" = 0 ]; then
+        echo "==> WARNING: MariaDB took too long to stop, forcing..."
+        pkill -9 mariadbd 2>/dev/null || true
+        pkill -9 mysqld 2>/dev/null || true
+    fi
 else
-    echo "==> Graceful shutdown failed, forcing stop..."
-    # Kill the mysqld_safe process group
+    echo "==> Graceful shutdown failed, trying SIGTERM..."
+    # Send TERM signal and wait for graceful shutdown
     pkill -TERM mysqld_safe 2>/dev/null || true
-    # Give it a moment to shut down gracefully
-    sleep 2
-    # Force kill any remaining processes
-    pkill -9 mariadbd 2>/dev/null || true
-    pkill -9 mysqld 2>/dev/null || true
+    pkill -TERM mariadbd 2>/dev/null || true
+    # Wait up to 15 seconds for graceful shutdown
+    for i in {15..0}; do
+        if ! pgrep -x mariadbd >/dev/null 2>&1 && ! pgrep -x mysqld >/dev/null 2>&1; then
+            echo "==> MariaDB stopped"
+            break
+        fi
+        sleep 1
+    done
+    if [ "$i" = 0 ]; then
+        echo "==> WARNING: Force killing MariaDB processes..."
+        pkill -9 mariadbd 2>/dev/null || true
+        pkill -9 mysqld 2>/dev/null || true
+    fi
 fi
-# Clean up PID tracking (no need to wait since we're using pkill)
 sleep 1
 
 # Start demo reset loop in background (12h by default)
