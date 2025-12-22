@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace PostPortal\Http;
 
+// Explicit require for development container where autoload paths differ
+if (!class_exists(\PostPortal\Lib\AssetHelper::class)) {
+    require_once dirname(__DIR__) . '/Lib/AssetHelper.php';
+}
+
+use PostPortal\Lib\AssetHelper;
 use Smarty\Smarty;
 
 /**
@@ -12,17 +18,21 @@ use Smarty\Smarty;
 class ViewRenderer
 {
     private Smarty $smarty;
+    private AssetHelper $assetHelper;
 
-    public function __construct(Smarty $smarty)
+    public function __construct(Smarty $smarty, ?AssetHelper $assetHelper = null)
     {
         $this->smarty = $smarty;
+        $this->assetHelper = $assetHelper ?? new AssetHelper();
     }
 
     public static function fromSmarty(?Smarty $smarty, bool $debug = false): self
     {
         if ($smarty instanceof Smarty) {
             $smarty->debugging = $debug;
-            return new self($smarty);
+            $renderer = new self($smarty);
+            $renderer->registerAssetHelpers();
+            return $renderer;
         }
         // Fall back to a new Composer-managed Smarty instance when none was provided.
         $instance = new Smarty();
@@ -38,7 +48,40 @@ class ViewRenderer
         $instance->registerPlugin('modifier', 'empty', function($val) { return empty($val); });
         $instance->registerPlugin('modifier', 'ucfirst', 'ucfirst');
 
-        return new self($instance);
+        $renderer = new self($instance);
+        $renderer->registerAssetHelpers();
+        return $renderer;
+    }
+
+    /**
+     * Register Smarty plugins for asset handling (cache-busting, bundles).
+     */
+    private function registerAssetHelpers(): void
+    {
+        $assetHelper = $this->assetHelper;
+
+        // {asset_js file="admin.js"} - outputs versioned JS URL
+        $this->smarty->registerPlugin('function', 'asset_js', function ($params) use ($assetHelper) {
+            $file = $params['file'] ?? '';
+            return $assetHelper->js($file);
+        });
+
+        // {asset_css file="custom.css"} - outputs versioned CSS URL
+        $this->smarty->registerPlugin('function', 'asset_css', function ($params) use ($assetHelper) {
+            $file = $params['file'] ?? '';
+            return $assetHelper->css($file);
+        });
+
+        // {bundle_url name="core.bundle.js"} - outputs bundle URL (production) or empty string (dev)
+        $this->smarty->registerPlugin('function', 'bundle_url', function ($params) use ($assetHelper) {
+            $name = $params['name'] ?? '';
+            $bundle = $assetHelper->bundle($name);
+            return $bundle['url'] ?? '';
+        });
+
+        // Make asset helper available as template variable for bundle logic
+        $this->smarty->assign('_assets', $assetHelper);
+        $this->smarty->assign('_bundle_mode', $assetHelper->isBundleMode());
     }
 
     /**
@@ -56,5 +99,13 @@ class ViewRenderer
     public function getSmarty(): Smarty
     {
         return $this->smarty;
+    }
+
+    /**
+     * Get the asset helper instance.
+     */
+    public function getAssetHelper(): AssetHelper
+    {
+        return $this->assetHelper;
     }
 }

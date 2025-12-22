@@ -5,8 +5,13 @@ inputs:
     description: "Newline-separated list of docker image repositories to clean (e.g., hub.example.com/org/app)"
     required: true
   tagPattern:
-    description: "Regex for tags to be considered for deletion (e.g., '(prod|stage)-[a-f0-9]{40}$' or '^[0-9]+$')"
-    required: true
+    description: "ERE regex for tags to be considered for deletion (e.g., '(prod|stage)-[a-f0-9]{40}$' or '^[0-9]+$'). Use '.' to match all tags."
+    required: false
+    default: "."
+  excludePattern:
+    description: "ERE regex for tags to exclude from deletion (e.g., '^latest$'). Leave empty to exclude nothing."
+    required: false
+    default: ""
   keep:
     description: "Number of newest matching tags to keep per repository"
     required: false
@@ -19,11 +24,13 @@ runs:
       env:
         REPOS: ${{ inputs.repositories }}
         PATTERN: ${{ inputs.tagPattern }}
+        EXCLUDE: ${{ inputs.excludePattern }}
         KEEP: ${{ inputs.keep }}
       run: |
         set -euo pipefail
         echo "Repositories to clean:\n$REPOS"
         echo "Tag pattern: $PATTERN"
+        echo "Exclude pattern: $EXCLUDE"
         echo "Keep newest: $KEEP"
 
         # Iterate repositories
@@ -31,8 +38,15 @@ runs:
           [ -z "$repo" ] && continue
           echo "\n--- Cleaning repository: $repo ---"
 
-          # List matching images for this repo
-          matches=$(docker images --filter "reference=$repo" --format "{{.Repository}}:{{.Tag}}" | grep -E "$PATTERN" || true)
+          # List matching images for this repo, apply include pattern then exclude pattern
+          if [ -n "$EXCLUDE" ]; then
+            matches=$(docker images --filter "reference=$repo" --format "{{.Repository}}:{{.Tag}}" \
+              | grep -E "$PATTERN" \
+              | grep -v -E "$EXCLUDE" || true)
+          else
+            matches=$(docker images --filter "reference=$repo" --format "{{.Repository}}:{{.Tag}}" \
+              | grep -E "$PATTERN" || true)
+          fi
           if [ -z "$matches" ]; then
             echo "No matching images found for $repo"
             continue

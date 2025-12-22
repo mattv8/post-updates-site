@@ -847,12 +847,17 @@
 {include file='templates/modals/user_management.tpl'}
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="/js/image-crop-manager.js"></script>
-<script src="/js/admin-crop-init.js"></script>
-<script src="/js/notifications.js"></script>
-<script src="/js/publish-confirmation.js"></script>
-<script src="/js/unpublish-confirmation.js"></script>
-<script src="/js/post-draft-handler.js"></script>
-<script src="/js/branding.js"></script>
-<script src="/js/admin.js"></script>
-<script src="/js/newsletter-admin.js"></script>
+{if $_bundle_mode}
+<script defer src="{bundle_url name='admin.bundle.js'}"></script>
+{else}
+{* Development mode: load individual admin scripts *}
+<script defer src="{asset_js file='image-crop-manager.js'}"></script>
+<script defer src="{asset_js file='admin-crop-init.js'}"></script>
+<script defer src="{asset_js file='notifications.js'}"></script>
+<script defer src="{asset_js file='publish-confirmation.js'}"></script>
+<script defer src="{asset_js file='unpublish-confirmation.js'}"></script>
+<script defer src="{asset_js file='post-draft-handler.js'}"></script>
+<script defer src="{asset_js file='branding.js'}"></script>
+<script defer src="{asset_js file='admin.js'}"></script>
+<script defer src="{asset_js file='newsletter-admin.js'}"></script>
+{/if}

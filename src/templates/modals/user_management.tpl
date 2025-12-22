@@ -145,4 +145,6 @@
   </div>
 </div>
 
-<script src="/js/user-management.js"></script>
+{if !$_bundle_mode}
+<script defer src="{asset_js file='user-management.js'}"></script>
+{/if}

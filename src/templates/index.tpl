@@ -14,12 +14,12 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-  {* App styles *}
-  <link rel="stylesheet" type="text/css" href="/css/global.css" />
-  <link rel="stylesheet" type="text/css" href="/css/custom.css" />
-  <link rel="stylesheet" type="text/css" href="/css/home.css" />
-  <link rel="stylesheet" type="text/css" href="/css/post_overlay.css" />
-  <link rel="stylesheet" type="text/css" href="/css/donation-modal.css" />
+  {* App styles with cache-busting *}
+  <link rel="stylesheet" type="text/css" href="{asset_css file='global.css'}" />
+  <link rel="stylesheet" type="text/css" href="{asset_css file='custom.css'}" />
+  <link rel="stylesheet" type="text/css" href="{asset_css file='home.css'}" />
+  <link rel="stylesheet" type="text/css" href="{asset_css file='post_overlay.css'}" />
+  <link rel="stylesheet" type="text/css" href="{asset_css file='donation-modal.css'}" />
 
   <script>
     "use strict";
@@ -172,8 +172,12 @@
     {include file='templates/modals/create_post.tpl'}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    <script src="/js/image-crop-manager.js"></script>
-    <script src="/js/post-modal.js"></script>
+    {if $_bundle_mode}
+    <script defer src="{bundle_url name='post-modal.bundle.js'}"></script>
+    {else}
+    <script defer src="{asset_js file='image-crop-manager.js'}"></script>
+    <script defer src="{asset_js file='post-modal.js'}"></script>
+    {/if}
 
   {* Authenticated/Admin layout *}
   {else}
@@ -194,6 +198,10 @@
     </div>
   {/if}
 
-  <script src="/js/auth.js"></script>
+  {if $_bundle_mode}
+  <script defer src="{bundle_url name='auth.bundle.js'}"></script>
+  {else}
+  <script defer src="{asset_js file='auth.js'}"></script>
+  {/if}
 </body>
 </html>

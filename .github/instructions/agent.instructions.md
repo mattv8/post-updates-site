@@ -41,6 +41,12 @@ applyTo: '**'
 - Event delegation: Use global `document` listeners for modal buttons.
 - Pattern: `e.target.closest` for button class, then `btn.closest` for modal ID.
 
+## JavaScript bundling and assets
+- **Production**: `docker/scripts/build-bundles.sh` concatenates + minifies JS into bundles in `js/bundles/`. Dockerfile runs this at build time.
+- **Development**: No bundles; individual files loaded with `defer` and cache-busting `?v=timestamp`.
+- **AssetHelper** (`src/Lib/AssetHelper.php`): Detects bundle mode, provides `{asset_js}`, `{asset_css}`, `{bundle_url}` Smarty functions.
+- Bundle definitions in `AssetHelper::BUNDLES` must match `build-bundles.sh`.
+
 ## File structure
 - `docker/` – Dockerfile(s), compose, nginx, scripts.
 - `src/` – PHP app (Service/, Repository/, Container/, Http/, Page/, templates/, lib/).

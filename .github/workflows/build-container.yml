@@ -99,9 +99,9 @@ jobs:
         with:
           repositories: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # Match all tags except 'latest' (keeps branch tags, cleans old ones)
-          # This pattern excludes 'latest' so it's never deleted
-          tagPattern: '^(?!latest$).*$'
+          # Match all tags, but exclude 'latest' from deletion
+          tagPattern: '.'
+          excludePattern: ':latest$'
           keep: '3'
 
   sign:

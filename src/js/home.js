@@ -290,14 +290,6 @@
           img.style.filter = `brightness(${opacity})`;
         }
 
-        // Add load event listener to verify image loads
-        img.addEventListener('load', () => {
-          console.log('Hero image loaded successfully!', img.naturalWidth, 'x', img.naturalHeight);
-        });
-        img.addEventListener('error', (e) => {
-          console.error('Hero image failed to load!', e);
-        });
-
         picture.appendChild(img);
       }
 

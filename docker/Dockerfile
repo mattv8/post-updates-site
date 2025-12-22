@@ -27,6 +27,9 @@ RUN apt-get update && apt-get install -y \
     pngquant \
     optipng \
     gifsicle \
+    # Node.js for JavaScript minification
+    nodejs \
+    npm \
     # Utilities
     supervisor \
     curl \
@@ -60,6 +63,15 @@ RUN sed -i 's/;daemonize = yes/daemonize = no/g' /etc/php/8.1/fpm/php-fpm.conf
 # Configure nginx
 RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 
+# Configure MariaDB for container environment (smaller buffer pool = faster shutdown)
+RUN echo "[mysqld]" > /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Smaller buffer pool for container environment" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_buffer_pool_size = 64M" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Faster shutdown (1 = fast, 0 = full purge)" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_fast_shutdown = 1" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Reduce log file size for faster recovery" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_log_file_size = 16M" >> /etc/mysql/mariadb.conf.d/99-container.cnf
+
 # Create nginx cache directory for FastCGI caching
 RUN mkdir -p /var/cache/nginx/fastcgi \
     && chown -R www-data:www-data /var/cache/nginx \
@@ -92,6 +104,23 @@ COPY composer.json composer.lock /var/www/html/
 # Copy application source code
 COPY src/ /var/www/html/
 RUN chown -R www-data:www-data /var/www/html
+
+# Install terser for JavaScript minification and bundling
+RUN npm install -g terser
+
+# Copy and run bundle build script to create optimized JS bundles
+COPY docker/scripts/build-bundles.sh /docker-scripts/build-bundles.sh
+RUN dos2unix /docker-scripts/build-bundles.sh && chmod +x /docker-scripts/build-bundles.sh
+
+# Build JavaScript bundles for production (concatenates + minifies related files)
+# This reduces HTTP requests by combining related scripts into single bundles
+RUN mkdir -p /var/www/html/js/bundles \
+    && cd /var/www/html \
+    && /docker-scripts/build-bundles.sh
+
+# Also minify individual JS files (for any not included in bundles)
+RUN find /var/www/html/js -maxdepth 1 -name "*.js" -type f -exec sh -c \
+    'terser "$1" -c -m --comments false -o "$1.min" && mv "$1.min" "$1"' _ {} \;
 
 # Install Composer dependencies
 WORKDIR /var/www/html

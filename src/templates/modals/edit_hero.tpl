@@ -35,5 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
   window.heroModalSettings = settings;
 });
 </script>
-<script src="js/edit-hero-modal.js"></script>
-</script>
+{if !$_bundle_mode}
+<script defer src="{asset_js file='edit-hero-modal.js'}"></script>
+{/if}
