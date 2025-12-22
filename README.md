@@ -88,6 +88,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
        image: hub.docker.visnovsky.us/library/post-portal:js-bundling
        container_name: post-portal
        restart: unless-stopped
+       stop_grace_period: 60s
        ports:
          - "${PORT}:80"
        env_file:
