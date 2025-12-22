@@ -144,12 +144,16 @@ function sendWelcomeEmail(ServiceContainer $container, array $userData, string $
         return [
             'success' => false,
             'error' => 'Failed to send email: ' . $e->getMessage(),
+            'actionRequired' => 'configure_smtp',
+            'actionLabel' => 'Configure Email Settings',
         ];
     } catch (\Throwable $e) {
         error_log('Welcome email error: ' . $e->getMessage());
         return [
             'success' => false,
             'error' => 'Failed to send email: ' . $e->getMessage(),
+            'actionRequired' => 'configure_smtp',
+            'actionLabel' => 'Configure Email Settings',
         ];
     }
 }

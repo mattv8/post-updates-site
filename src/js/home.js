@@ -690,8 +690,11 @@
             // User chose to send email
             hideOverlay();
             window.location.reload();
+          } else {
+            // User cancelled - reset button state
+            publishDraftBtn.disabled = false;
+            publishDraftBtn.innerHTML = publishDraftOriginalHTML;
           }
-          // Note: Cancel case is handled by the 'publish-confirmation:cancelled' event listener above
         } catch (err) {
           console.error('Error publishing draft:', err);
           // Don't show alert if error was already handled with actionable toast

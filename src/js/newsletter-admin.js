@@ -559,8 +559,8 @@
 
   // Initialize on DOM ready
   document.addEventListener('DOMContentLoaded', function() {
-    // Load show_mailing_list setting
-    loadMailingListVisibility();
+    // Load show_mailing_list setting, then initialize mailpit toggle state
+    loadMailingListVisibility().then(initMailpitToggleState);
 
     // Auto-enable SMTP auth when username or password is filled
     const smtpUsernameInput = document.getElementById('smtp_username');
@@ -943,20 +943,24 @@
     }
 
     const mailpitToggle = document.getElementById('smtp_mailpit_toggle');
-    if (mailpitToggle && isDebugMode) {
 
-      const applyMailpitState = (checked) => {
-        if (checked) {
-          // Use Mailpit defaults including default from email/name
-          applySmtpConfigToForm(MAILPIT_DEFAULTS);
-          setSmtpFieldsDisabled(true);
-        } else {
-          setSmtpFieldsDisabled(false);
-          if (originalSmtpSnapshot) {
-            applySmtpConfigToForm(originalSmtpSnapshot);
-          }
+    // Helper function to apply mailpit state - defined outside so initMailpitToggleState can use it
+    const applyMailpitState = (checked) => {
+      if (checked) {
+        // Use Mailpit defaults including default from email/name
+        applySmtpConfigToForm(MAILPIT_DEFAULTS);
+        setSmtpFieldsDisabled(true);
+      } else {
+        setSmtpFieldsDisabled(false);
+        if (originalSmtpSnapshot) {
+          applySmtpConfigToForm(originalSmtpSnapshot);
         }
-      };
+      }
+    };
+
+    // Initialize mailpit toggle state after settings are loaded
+    function initMailpitToggleState() {
+      if (!mailpitToggle || !isDebugMode) return;
 
       // Apply initial state only if mailpit config is actually active in the database
       if (isMailpitConfigActive()) {
@@ -965,7 +969,9 @@
       } else {
         mailpitToggle.checked = false;
       }
+    }
 
+    if (mailpitToggle && isDebugMode) {
       mailpitToggle.addEventListener('change', async function() {
         mailpitToggle.disabled = true;
         try {

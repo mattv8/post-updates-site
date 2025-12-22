@@ -65,8 +65,9 @@ ApiHandler::handle(function (): void {
                 }
 
                 // If user wants to send emails, verify email configuration BEFORE publishing
+                // Test connection here to catch SMTP issues before we publish the draft
                 if (!$skipEmail) {
-                    $emailCheckResult = checkEmailConfiguration($db);
+                    $emailCheckResult = checkEmailConfiguration($db, testConnection: true);
                     if (!$emailCheckResult['canSend']) {
                         // Don't publish - return error with actionable fix
                         ErrorResponse::json(400, $emailCheckResult['error'], [
@@ -101,13 +102,20 @@ ApiHandler::handle(function (): void {
                                 'message' => $emailResult['message'] ?? 'Notifications sent',
                             ];
                         } else {
-                            error_log('Post notification failed: ' . ($emailResult['error'] ?? 'Unknown error'));
-                            $response['email'] = [
-                                'sent' => false,
-                                'error' => $emailResult['error'] ?? 'Unknown error',
-                                'actionRequired' => $emailResult['actionRequired'] ?? null,
-                                'actionLabel' => $emailResult['actionLabel'] ?? null,
-                            ];
+                            // Email failed - rollback the publish by reverting to draft status
+                            error_log('Post notification failed, rolling back publish: ' . ($emailResult['error'] ?? 'Unknown error'));
+                            $postService->updatePost($id, ['status' => 'draft']);
+
+                            // Return error with actionable fix - post was NOT published
+                            ErrorResponse::json(400, $emailResult['error'] ?? 'Failed to send email notifications', [
+                                'email' => [
+                                    'sent' => false,
+                                    'error' => $emailResult['error'] ?? 'Unknown error',
+                                    'actionRequired' => $emailResult['actionRequired'] ?? null,
+                                    'actionLabel' => $emailResult['actionLabel'] ?? null,
+                                ],
+                                'publishRolledBack' => true,
+                            ]);
                         }
                     } else {
                         $response['email'] = [
@@ -168,31 +176,62 @@ ApiHandler::handle(function (): void {
             }
 
             $payload['created_by_user_id'] = $_SESSION['username'];
+
+            // If creating as published and user expects email, verify SMTP config BEFORE creating
+            $willSendEmail = false;
+            if (($payload['status'] ?? '') === 'published') {
+                parse_str($_SERVER['QUERY_STRING'] ?? '', $query);
+                $skipEmail = false;
+                if (isset($query['skip_email'])) {
+                    $val = strtolower((string) $query['skip_email']);
+                    $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+                } elseif (isset($payload['skip_email'])) {
+                    $val = strtolower((string) $payload['skip_email']);
+                    $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+                }
+
+                if (!$skipEmail) {
+                    $emailCheckResult = checkEmailConfiguration($db, testConnection: true);
+                    if (!$emailCheckResult['canSend']) {
+                        ErrorResponse::json(400, $emailCheckResult['error'], [
+                            'email' => [
+                                'sent' => false,
+                                'error' => $emailCheckResult['error'],
+                                'actionRequired' => $emailCheckResult['actionRequired'] ?? null,
+                                'actionLabel' => $emailCheckResult['actionLabel'] ?? null,
+                            ]
+                        ]);
+                    }
+                    $willSendEmail = true;
+                }
+            }
+
             $res = createPost($db, $payload);
             if ($res['success']) {
                 $postId = $res['id'];
 
-                if (($payload['status'] ?? '') === 'published') {
-                    parse_str($_SERVER['QUERY_STRING'] ?? '', $query);
-                    $skipEmail = false;
-                    if (isset($query['skip_email'])) {
-                        $val = strtolower((string) $query['skip_email']);
-                        $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
-                    } elseif (isset($payload['skip_email'])) {
-                        $val = strtolower((string) $payload['skip_email']);
-                        $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
-                    }
-
-                    if (!$skipEmail) {
-                        $emailResult = sendNewPostNotification($db, $postId);
-                        if ($emailResult['success']) {
-                            error_log('Post notification sent: ' . $emailResult['message']);
-                        } else {
-                            error_log('Post notification failed: ' . ($emailResult['error'] ?? 'Unknown error'));
-                        }
+                if ($willSendEmail) {
+                    $emailResult = sendNewPostNotification($db, $postId);
+                    if ($emailResult['success']) {
+                        error_log('Post notification sent: ' . $emailResult['message']);
                     } else {
-                        error_log('Post created and published without sending emails (user opted out)');
+                        // Email failed - rollback by deleting the newly created post or reverting to draft
+                        error_log('Post notification failed, rolling back publish: ' . ($emailResult['error'] ?? 'Unknown error'));
+                        $postService->updatePost($postId, ['status' => 'draft']);
+
+                        ErrorResponse::json(400, $emailResult['error'] ?? 'Failed to send email notifications', [
+                            'email' => [
+                                'sent' => false,
+                                'error' => $emailResult['error'] ?? 'Unknown error',
+                                'actionRequired' => $emailResult['actionRequired'] ?? null,
+                                'actionLabel' => $emailResult['actionLabel'] ?? null,
+                            ],
+                            'publishRolledBack' => true,
+                            'id' => $postId,
+                        ]);
                     }
+                } elseif (($payload['status'] ?? '') === 'published') {
+                    error_log('Post created and published without sending emails (user opted out)');
                 }
 
                 ErrorResponse::success(['id' => $postId]);
@@ -220,10 +259,26 @@ ApiHandler::handle(function (): void {
                 $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
             }
 
+            // Check if this will be a first publish (triggers email notification)
             if (($payload['status'] ?? '') === 'published') {
                 $currentPost = $postService->getPost($id);
                 if ($currentPost && is_null($currentPost['published_at'])) {
                     $sendNotification = true;
+                }
+            }
+
+            // If this is first publish and user expects email, verify SMTP config BEFORE updating
+            if ($sendNotification && !$skipEmail) {
+                $emailCheckResult = checkEmailConfiguration($db, testConnection: true);
+                if (!$emailCheckResult['canSend']) {
+                    ErrorResponse::json(400, $emailCheckResult['error'], [
+                        'email' => [
+                            'sent' => false,
+                            'error' => $emailCheckResult['error'],
+                            'actionRequired' => $emailCheckResult['actionRequired'] ?? null,
+                            'actionLabel' => $emailCheckResult['actionLabel'] ?? null,
+                        ]
+                    ]);
                 }
             }
 
@@ -235,7 +290,19 @@ ApiHandler::handle(function (): void {
                     if ($emailResult['success']) {
                         error_log('Post notification sent: ' . $emailResult['message']);
                     } else {
-                        error_log('Post notification failed: ' . ($emailResult['error'] ?? 'Unknown error'));
+                        // Email failed - rollback the publish by reverting to draft status
+                        error_log('Post notification failed, rolling back publish: ' . ($emailResult['error'] ?? 'Unknown error'));
+                        $postService->updatePost($id, ['status' => 'draft', 'published_at' => null]);
+
+                        ErrorResponse::json(400, $emailResult['error'] ?? 'Failed to send email notifications', [
+                            'email' => [
+                                'sent' => false,
+                                'error' => $emailResult['error'] ?? 'Unknown error',
+                                'actionRequired' => $emailResult['actionRequired'] ?? null,
+                                'actionLabel' => $emailResult['actionLabel'] ?? null,
+                            ],
+                            'publishRolledBack' => true,
+                        ]);
                     }
                 } elseif ($sendNotification && $skipEmail) {
                     error_log('Post published without sending emails (user opted out)');

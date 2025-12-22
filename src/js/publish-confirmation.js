@@ -71,27 +71,31 @@
       pending.resolved = false;
       pending.action = null;
 
-      const bsModal = new bootstrap.Modal(modal);
+      // Get existing modal instance or create new one
+      const bsModal = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
 
       // If user dismisses without inline confirm, treat as cancel
       const onHidden = () => {
         try {
-          // Dispatch a cancellation event so callers can re-enable UI controls
-          try {
-            const evt = new CustomEvent('publish-confirmation:cancelled', { detail: { reason: 'modal-hidden' } });
-            document.dispatchEvent(evt);
-          } catch (e) {
-            // ignore if CustomEvent not supported
+          // Only dispatch cancellation event if the action was actually a cancel (null)
+          // This prevents the event from firing when user clicks Publish or Publish Only
+          if (!pending.resolved || pending.action === null) {
+            try {
+              const evt = new CustomEvent('publish-confirmation:cancelled', { detail: { reason: 'modal-hidden' } });
+              document.dispatchEvent(evt);
+            } catch (e) {
+              // ignore if CustomEvent not supported
+            }
           }
           if (!pending.resolved && pending.resolve) {
             pending.resolved = true;
+            pending.action = null;
             pending.resolve(null);
           }
         } finally {
-          // Cleanup pending state
+          // Cleanup pending state - but preserve resolved flag until after promise chain completes
           pending.resolve = null;
           pending.modal = null;
-          pending.resolved = false;
           pending.action = null;
         }
       };

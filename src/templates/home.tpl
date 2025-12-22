@@ -174,6 +174,7 @@
     {* Publish Confirmation Modal *}
     {include file='templates/partials/publish_confirmation_modal.tpl'}
     {include file='templates/partials/unpublish_confirmation_modal.tpl'}
+    {include file='templates/partials/save_draft_confirmation_modal.tpl'}
 
     <meta name="csrf-token" content="{$csrf_token|default:''}" />
 

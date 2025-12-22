@@ -757,6 +757,7 @@
 {* Publish Confirmation Modal *}
 {include file='templates/partials/publish_confirmation_modal.tpl'}
 {include file='templates/partials/unpublish_confirmation_modal.tpl'}
+{include file='templates/partials/save_draft_confirmation_modal.tpl'}
 
 {* Post Delete Confirmation Modal *}
 <div class="modal fade" id="deletePostModal" tabindex="-1" aria-labelledby="deletePostModalLabel" aria-hidden="true">

@@ -16,7 +16,9 @@ ApiHandler::handle(function (): void {
     $newsletterService = $container->getNewsletterService();
 
     // Get email configuration status (includes subscriber count)
-    $emailConfig = checkEmailConfiguration($db);
+    // Skip SMTP connection test for faster response - we just need the subscriber count
+    // The actual connection will be tested when sending emails
+    $emailConfig = checkEmailConfiguration($db, testConnection: false);
 
     $response = [
         'subscriberCount' => $emailConfig['subscriberCount'],

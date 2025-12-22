@@ -3,6 +3,26 @@
  * Used by both home.js and admin.js
  */
 
+// Cookie name for "don't show again" preference
+const SAVE_DRAFT_HIDE_CONFIRM_COOKIE = 'hideSaveDraftConfirm';
+
+/**
+ * Check if the save draft confirmation should be shown
+ * @returns {boolean} True if confirmation should be shown
+ */
+function shouldShowSaveDraftConfirm() {
+  return !document.cookie.split('; ').some(c => c.startsWith(SAVE_DRAFT_HIDE_CONFIRM_COOKIE + '=1'));
+}
+
+/**
+ * Set cookie to hide save draft confirmation
+ */
+function hideSaveDraftConfirmForever() {
+  // Set cookie for 1 year
+  const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${SAVE_DRAFT_HIDE_CONFIRM_COOKIE}=1; expires=${expires}; path=/; SameSite=Lax`;
+}
+
 /**
  * Creates a Save Draft button handler
  * @param {Object} config - Configuration object
@@ -27,23 +47,15 @@ function setupSaveDraftHandler(config) {
     api
   } = config;
 
-  // Use global event delegation since clicks don't bubble to modal container properly
-  document.addEventListener('click', async function(e) {
-    const saveDraftBtn = e.target.closest('.btn-save-draft');
-    if (!saveDraftBtn) return; // Not a Save Draft button click
-
-    // Only handle if this is in our modal
-    const inOurModal = saveDraftBtn.closest('#postEditorModal');
-    if (!inOurModal) return; // Not in our modal
-
-    const saveBtn = saveDraftBtn;
-    const originalText = saveBtn.textContent;
+  // The actual save draft logic - extracted for reuse
+  async function performSaveDraft(saveBtn) {
+    const originalText = saveBtn.innerHTML;
 
     try {
       const editingId = getEditingId();
 
       saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
+      saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
 
       // Note: Hero image uploads are now handled by ImageCropManager
       // Images are uploaded immediately after cropping, not on save
@@ -56,7 +68,7 @@ function setupSaveDraftHandler(config) {
       const galleryMediaIds = getGalleryMediaIds();
 
       if (galleryFiles.length > 0) {
-        saveBtn.textContent = `Uploading ${galleryFiles.length} gallery image(s)...`;
+        saveBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> Uploading ${galleryFiles.length} gallery image(s)...`;
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
@@ -127,7 +139,7 @@ function setupSaveDraftHandler(config) {
 
       if (editingId) {
         // Existing post: save to draft fields without publishing
-        saveBtn.textContent = 'Saving changes...';
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving changes...';
 
         const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
           method: 'PUT',
@@ -138,7 +150,7 @@ function setupSaveDraftHandler(config) {
         if (!draftSave.success) {
           alert('Error saving: ' + (draftSave.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalText;
           return;
         }
 
@@ -153,7 +165,7 @@ function setupSaveDraftHandler(config) {
         }
       } else {
         // New post: create as draft
-        saveBtn.textContent = 'Creating draft...';
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating draft...';
         payload.status = 'draft';
 
         const draftSave = await api('/api/admin/posts.php', {
@@ -165,7 +177,7 @@ function setupSaveDraftHandler(config) {
         if (!draftSave.success) {
           alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalText;
           return;
         }
 
@@ -192,8 +204,71 @@ function setupSaveDraftHandler(config) {
       alert('An error occurred while saving the draft');
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = originalText;
+      saveBtn.innerHTML = originalText;
     }
+  }
+
+  // Store reference to pending save button for confirmation modal
+  let pendingSaveBtn = null;
+
+  // Handle confirmation modal confirm button
+  document.addEventListener('click', function(e) {
+    const confirmBtn = e.target.closest('.btn-confirm-save-draft');
+    if (!confirmBtn) return;
+
+    // Check if "don't show again" is checked
+    const dontShowCheckbox = document.getElementById('saveDraftDontShowAgain');
+    if (dontShowCheckbox && dontShowCheckbox.checked) {
+      hideSaveDraftConfirmForever();
+    }
+
+    // Hide the confirmation modal
+    const confirmModal = document.getElementById('saveDraftConfirmModal');
+    if (confirmModal) {
+      const bsConfirmModal = bootstrap.Modal.getInstance(confirmModal);
+      if (bsConfirmModal) bsConfirmModal.hide();
+    }
+
+    // Proceed with save
+    if (pendingSaveBtn) {
+      performSaveDraft(pendingSaveBtn);
+      pendingSaveBtn = null;
+    }
+  });
+
+  // Reset checkbox when modal is hidden
+  const confirmModalEl = document.getElementById('saveDraftConfirmModal');
+  if (confirmModalEl) {
+    confirmModalEl.addEventListener('hidden.bs.modal', function() {
+      const dontShowCheckbox = document.getElementById('saveDraftDontShowAgain');
+      if (dontShowCheckbox) dontShowCheckbox.checked = false;
+      pendingSaveBtn = null;
+    });
+  }
+
+  // Use global event delegation for save draft button clicks
+  document.addEventListener('click', async function(e) {
+    const saveDraftBtn = e.target.closest('.btn-save-draft');
+    if (!saveDraftBtn) return; // Not a Save Draft button click
+
+    // Only handle if this is in our modal
+    const inOurModal = saveDraftBtn.closest('#postEditorModal');
+    if (!inOurModal) return; // Not in our modal
+
+    // Check if we should show confirmation
+    if (shouldShowSaveDraftConfirm()) {
+      // Show confirmation modal
+      const confirmModal = document.getElementById('saveDraftConfirmModal');
+      if (confirmModal) {
+        pendingSaveBtn = saveDraftBtn;
+        const bsConfirmModal = new bootstrap.Modal(confirmModal);
+        bsConfirmModal.show();
+        return;
+      }
+    }
+
+    // No confirmation needed, proceed directly
+    await performSaveDraft(saveDraftBtn);
   });
 }
 

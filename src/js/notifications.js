@@ -85,10 +85,10 @@
   /**
    * Show an email error with optional action button based on response
    * @param {Object} emailResponse - Response object with error, actionRequired, actionLabel
-   * @param {string} defaultMessage - Default error message if none provided
+   * @param {string} customMessage - Custom message to display (overrides emailResponse.error if provided)
    */
-  function showEmailError(emailResponse, defaultMessage = 'Failed to send emails') {
-    const errorMsg = emailResponse.error || defaultMessage;
+  function showEmailError(emailResponse, customMessage = null) {
+    const errorMsg = customMessage || emailResponse.error || 'Failed to send emails';
 
     // Check if the error has an actionable fix
     if (emailResponse.actionRequired === 'enable_notifications') {
@@ -173,6 +173,16 @@
    */
   function handlePublishResult(publishResult) {
     if (!publishResult.success) {
+      // Check if publish was rolled back due to email failure
+      if (publishResult.publishRolledBack) {
+        const errorMsg = publishResult.email?.error || publishResult.error || 'Email sending failed';
+        showEmailError(
+          publishResult.email || { error: errorMsg, actionRequired: 'configure_smtp', actionLabel: 'Configure Email Settings' },
+          'Post NOT published: ' + errorMsg
+        );
+        throw new Error('__handled__'); // Signal that error was already shown
+      }
+
       // Check if there's an actionable email error (config issue prevented publish)
       if (publishResult.email && publishResult.email.actionRequired) {
         showEmailError(publishResult.email, 'Cannot publish: ' + (publishResult.email.error || 'Email configuration required'));

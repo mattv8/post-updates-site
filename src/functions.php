@@ -1333,7 +1333,10 @@ function checkEmailConfiguration(\mysqli $db_conn, bool $testConnection = true):
             $mail->isSMTP();
             $mail->Host = $smtp_host;
             $mail->Port = isset($settings['smtp_port']) ? (int)$settings['smtp_port'] : 587;
-            $mail->Timeout = 10;
+            $mail->Timeout = 5;
+            $smtp = $mail->getSMTPInstance();
+            $smtp->Timeout = 5;
+            $smtp->Timelimit = 5;
 
             $smtp_secure = $settings['smtp_secure'] ?? 'none';
             if ($smtp_secure !== 'none' && $smtp_secure !== '') {
@@ -1577,7 +1580,11 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
         $mail->Port = $smtp_port;
 
         // Set connection timeout to prevent gateway timeouts on unreachable servers
-        $mail->Timeout = 10; // Connection timeout in seconds
+        // Must set timeout on both PHPMailer and the underlying SMTP instance
+        $mail->Timeout = 5; // Connection timeout in seconds
+        $smtp = $mail->getSMTPInstance();
+        $smtp->Timeout = 5; // SMTP class connection timeout
+        $smtp->Timelimit = 5; // Per-command timeout
         $mail->SMTPKeepAlive = true; // Keep connection alive for multiple sends
 
         if ($smtp_auth) {
@@ -1601,24 +1608,8 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
             ]
         ];
 
-        // Test connection before attempting to send emails
-        try {
-            if (!$mail->smtpConnect()) {
-                $errorMsg = 'Failed to connect to SMTP server ' . $smtp_host . ':' . $smtp_port . '. Please verify the server is reachable and settings are correct.';
-                error_log('SMTP connection failed: ' . $errorMsg);
-                return [
-                    'success' => false,
-                    'error' => 'Cannot connect to SMTP server. Please check your email settings.'
-                ];
-            }
-        } catch (Exception $e) {
-            $errorMsg = 'SMTP connection exception: ' . $e->getMessage();
-            error_log($errorMsg);
-            return [
-                'success' => false,
-                'error' => 'Cannot connect to SMTP server: ' . $e->getMessage()
-            ];
-        }
+        // Note: Connection test is done in checkEmailConfiguration() before publishing
+        // No need to test again here - if we get this far, SMTP was already verified
 
         // Sender - use configured from name and email
         $mail->setFrom($smtp_from_email, $smtp_from_name);
@@ -1708,7 +1699,9 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
         } else {
             return [
                 'success' => false,
-                'error' => 'Failed to send emails to any subscribers'
+                'error' => 'Failed to send emails to any subscribers. Please verify your SMTP settings.',
+                'actionRequired' => 'configure_smtp',
+                'actionLabel' => 'Configure Email Settings'
             ];
         }
 
@@ -1716,7 +1709,9 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
         error_log('Failed to send post notification: ' . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Failed to send email: ' . $e->getMessage()
+            'error' => 'Failed to send email: ' . $e->getMessage(),
+            'actionRequired' => 'configure_smtp',
+            'actionLabel' => 'Configure Email Settings'
         ];
     }
 }
