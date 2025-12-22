@@ -63,6 +63,15 @@ RUN sed -i 's/;daemonize = yes/daemonize = no/g' /etc/php/8.1/fpm/php-fpm.conf
 # Configure nginx
 RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 
+# Configure MariaDB for container environment (smaller buffer pool = faster shutdown)
+RUN echo "[mysqld]" > /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Smaller buffer pool for container environment" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_buffer_pool_size = 64M" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Faster shutdown (1 = fast, 0 = full purge)" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_fast_shutdown = 1" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "# Reduce log file size for faster recovery" >> /etc/mysql/mariadb.conf.d/99-container.cnf \
+    && echo "innodb_log_file_size = 16M" >> /etc/mysql/mariadb.conf.d/99-container.cnf
+
 # Create nginx cache directory for FastCGI caching
 RUN mkdir -p /var/cache/nginx/fastcgi \
     && chown -R www-data:www-data /var/cache/nginx \

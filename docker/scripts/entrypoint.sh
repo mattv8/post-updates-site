@@ -3,6 +3,10 @@ set -e
 
 echo "==> Starting Post Portal Container"
 
+# ============================================================
+# PHASE 1: Configuration and Directory Setup
+# ============================================================
+
 # Generate secure root password automatically (user doesn't need to know this)
 if [ -z "${MYSQL_ROOT_PASSWORD}" ]; then
     export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
@@ -54,35 +58,55 @@ mkdir -p /var/www/html/storage/uploads/variants/thumbnail
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 
-# Initialize MariaDB if needed
+# Configure MariaDB to listen on all interfaces (for PHPMyAdmin and external connections)
+echo "==> Configuring MariaDB networking..."
+sed -i 's/^bind-address\s*=\s*127\.0\.0\.1/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf
+
+# ============================================================
+# PHASE 2: Database Initialization (if needed)
+# ============================================================
+
+# Ensure MariaDB runtime directory exists (mysqld_safe creates this, but we run mariadbd directly)
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld
+
+# Initialize MariaDB data directory if fresh install
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "==> Initializing MariaDB database..."
     mysql_install_db --user=mysql --datadir=/var/lib/mysql
 fi
 
-# Start MariaDB temporarily for initialization
+# Start MariaDB in background for initialization
+# Use mariadbd directly (not mysqld_safe) for proper signal handling
 echo "==> Starting MariaDB for initialization..."
-mysqld_safe --datadir=/var/lib/mysql --skip-networking &
-MYSQL_PID=$!
+/usr/sbin/mariadbd --user=mysql &
+MARIADB_PID=$!
 
-# Wait for MariaDB to be ready
+# Wait for MariaDB to be ready (max 30 seconds)
 echo "==> Waiting for MariaDB to be ready..."
 for i in {30..0}; do
-    if mysqladmin ping --silent; then
+    if mysqladmin ping --silent 2>/dev/null; then
         break
     fi
-    echo "MariaDB is unavailable - sleeping"
+    if [ $((i % 5)) -eq 0 ]; then
+        echo "    MariaDB starting... (${i}s remaining)"
+    fi
     sleep 1
 done
 
 if [ "$i" = 0 ]; then
-    echo "==> ERROR: MariaDB failed to start"
+    echo "==> ERROR: MariaDB failed to start within 30 seconds"
+    echo "    Check /var/log/mysql/error.log for details"
     exit 1
 fi
 
 echo "==> MariaDB is ready"
 
-# Run database initialization script
+# ============================================================
+# PHASE 3: Run Initialization Scripts
+# ============================================================
+
+# Run database initialization script (creates DB, users, etc.)
 echo "==> Running database initialization..."
 /docker-scripts/init-database.sh
 
@@ -101,32 +125,30 @@ fi
 if [ -f /tmp/admin_password_hash ]; then
     echo "==> Updating admin password from initial setup..."
     ADMIN_HASH=$(cat /tmp/admin_password_hash)
-    mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "UPDATE users SET password = '${ADMIN_HASH}' WHERE username = 'admin';" || echo "Warning: Failed to update admin password"
+    mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" \
+        -e "UPDATE users SET password = '${ADMIN_HASH}' WHERE username = 'admin';" \
+        || echo "Warning: Failed to update admin password"
     rm -f /tmp/admin_password_hash
     echo "==> Admin password updated successfully"
 fi
 
 # Sync admin password with DEFAULT_ADMIN_PASSWORD on every startup
-# This ensures password changes in .env take effect after container restart
 if [ -n "${DEFAULT_ADMIN_PASSWORD}" ]; then
     echo "==> Checking admin password sync..."
 
-    # Get current hash from database
-    CURRENT_HASH=$(mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -N -e "SELECT password FROM users WHERE username = 'admin' LIMIT 1;" 2>/dev/null)
+    CURRENT_HASH=$(mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" \
+        -N -e "SELECT password FROM users WHERE username = 'admin' LIMIT 1;" 2>/dev/null)
 
-    # Verify if current hash matches the expected password
     HASH_MATCHES=$(php -r "echo password_verify('${DEFAULT_ADMIN_PASSWORD}', '${CURRENT_HASH}') ? 'yes' : 'no';" 2>/dev/null)
 
     if [ "$HASH_MATCHES" = "no" ]; then
         echo "==> Admin password out of sync, updating..."
         NEW_HASH=$(php -r "echo password_hash('${DEFAULT_ADMIN_PASSWORD}', PASSWORD_DEFAULT);")
         if [ -n "$NEW_HASH" ]; then
-            mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "UPDATE users SET password = '${NEW_HASH}' WHERE username = 'admin';" 2>/dev/null
-            if [ $? -eq 0 ]; then
-                echo "==> Admin password synced with DEFAULT_ADMIN_PASSWORD"
-            else
-                echo "Warning: Failed to sync admin password"
-            fi
+            mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" \
+                -e "UPDATE users SET password = '${NEW_HASH}' WHERE username = 'admin';" 2>/dev/null \
+                && echo "==> Admin password synced with DEFAULT_ADMIN_PASSWORD" \
+                || echo "Warning: Failed to sync admin password"
         else
             echo "Warning: Failed to generate password hash"
         fi
@@ -135,57 +157,66 @@ if [ -n "${DEFAULT_ADMIN_PASSWORD}" ]; then
     fi
 fi
 
-# Stop temporary MariaDB
-echo "==> Stopping temporary MariaDB..."
-# Try graceful shutdown via Unix socket (since we used --skip-networking)
-if mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock shutdown 2>/dev/null; then
-    echo "==> MariaDB shutdown initiated, waiting for complete stop..."
-    # Wait for MariaDB to fully stop (up to 30 seconds)
+# ============================================================
+# PHASE 4: Transition to Supervisord
+# ============================================================
+
+# MariaDB is already running from init phase - we need to stop it cleanly
+# so supervisord can manage it (supervisord expects to start processes itself)
+echo "==> Preparing to transfer control to supervisord..."
+
+# Flush tables to ensure data integrity before supervisord takeover
+mysql -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" \
+    -e "FLUSH TABLES;" 2>/dev/null || true
+
+# Request graceful shutdown
+echo "==> Stopping MariaDB for supervisord takeover..."
+if mysqladmin -h localhost -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" shutdown 2>/dev/null; then
+    # Wait for clean shutdown (max 30 seconds - this is a clean DB, should be fast)
     for i in {30..0}; do
         if ! pgrep -x mariadbd >/dev/null 2>&1 && ! pgrep -x mysqld >/dev/null 2>&1; then
-            echo "==> MariaDB stopped gracefully"
+            echo "==> MariaDB stopped cleanly"
             break
         fi
         sleep 1
     done
+
     if [ "$i" = 0 ]; then
-        echo "==> WARNING: MariaDB took too long to stop, forcing..."
-        pkill -9 mariadbd 2>/dev/null || true
-        pkill -9 mysqld 2>/dev/null || true
+        # Still running after 30s - send SIGTERM and wait briefly
+        echo "==> MariaDB slow to stop, sending SIGTERM..."
+        pkill -TERM mariadbd 2>/dev/null || true
+        sleep 5
+
+        if pgrep -x mariadbd >/dev/null 2>&1; then
+            echo "==> WARNING: MariaDB still running, supervisord will handle it"
+            # Don't fail - supervisord can handle an already-running process
+            # or the autorestart will kick in
+        fi
     fi
 else
-    echo "==> Graceful shutdown failed, trying SIGTERM..."
-    # Send TERM signal and wait for graceful shutdown
-    pkill -TERM mysqld_safe 2>/dev/null || true
+    # mysqladmin failed - try SIGTERM
+    echo "==> mysqladmin shutdown unavailable, using SIGTERM..."
     pkill -TERM mariadbd 2>/dev/null || true
-    # Wait up to 15 seconds for graceful shutdown
-    for i in {15..0}; do
-        if ! pgrep -x mariadbd >/dev/null 2>&1 && ! pgrep -x mysqld >/dev/null 2>&1; then
-            echo "==> MariaDB stopped"
-            break
-        fi
-        sleep 1
-    done
-    if [ "$i" = 0 ]; then
-        echo "==> WARNING: Force killing MariaDB processes..."
-        pkill -9 mariadbd 2>/dev/null || true
-        pkill -9 mysqld 2>/dev/null || true
-    fi
+    sleep 5
 fi
+
+# Brief pause to ensure clean state
 sleep 1
+
+# ============================================================
+# PHASE 5: Start Background Services and Hand Off
+# ============================================================
 
 # Start demo reset loop in background (12h by default)
 if [ "${DEMO_MODE,,}" = "true" ]; then
     echo "==> DEMO_MODE: scheduling reset every ${DEMO_RESET_INTERVAL_SECONDS:-43200} seconds"
-    chmod +x /docker-scripts/demo-reset.sh || true
+    chmod +x /docker-scripts/demo-reset.sh 2>/dev/null || true
     /docker-scripts/demo-reset.sh >/var/log/demo-reset.log 2>&1 &
 fi
 
-# Configure MariaDB to listen on all interfaces (for PHPMyAdmin and external connections)
-echo "==> Configuring MariaDB to listen on all interfaces..."
-sed -i 's/^bind-address\s*=\s*127\.0\.0\.1/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf
-
 echo "==> Initialization complete, starting services via supervisord..."
+echo ""
 
 # Execute the main command (supervisord)
+# Supervisord will manage MariaDB, PHP-FPM, and nginx from here
 exec "$@"
