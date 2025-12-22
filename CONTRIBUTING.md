@@ -101,7 +101,7 @@ sudo docker compose -f docker-compose.dev.yml up --build
 
 Export your database to a file on your local machine:
 ```bash
-docker exec postportal-dev export > backup.sql
+docker exec postportal-dev export > backup_$(date +%F).sql
 ```
 
 ### Importing a SQL Dump
@@ -109,7 +109,7 @@ docker exec postportal-dev export > backup.sql
 Import a SQL dump from your local machine:
 
 ```bash
-docker exec -i postportal-dev import - < backup.sql
+docker exec -i postportal-dev import - < backup_$(date +%F).sql
 ```
 
 ### Demo Mode
