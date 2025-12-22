@@ -21,6 +21,8 @@
       this.uploadButton = options.uploadButton; // Upload button element
       this.cancelButton = options.cancelButton; // Cancel button element
       this.autoDetectButton = options.autoDetectButton; // Auto-detect bounds button
+      this.rotateLeftButton = options.rotateLeftButton; // Rotate left button element
+      this.rotateRightButton = options.rotateRightButton; // Rotate right button element
       this.onCropInit = options.onCropInit; // Callback when cropper is initialized
       this.onCropCancel = options.onCropCancel; // Callback when crop is cancelled
       this.validateFile = options.validateFile; // Custom file validation function
@@ -53,6 +55,14 @@
 
       if (this.autoDetectButton) {
         this.autoDetectButton.addEventListener('click', () => this._handleAutoDetect());
+      }
+
+      if (this.rotateLeftButton) {
+        this.rotateLeftButton.addEventListener('click', () => this._handleRotate(-90));
+      }
+
+      if (this.rotateRightButton) {
+        this.rotateRightButton.addEventListener('click', () => this._handleRotate(90));
       }
     }
 
@@ -186,6 +196,11 @@
       }
     }
 
+    _handleRotate(degrees) {
+      if (!this.cropper) return;
+      this.cropper.rotate(degrees);
+    }
+
     async _handleUpload() {
       if (!this.cropper || !this.currentFile) return;
 
@@ -203,7 +218,8 @@
           x: Math.round(cropData.x),
           y: Math.round(cropData.y),
           width: Math.round(cropData.width),
-          height: Math.round(cropData.height)
+          height: Math.round(cropData.height),
+          rotate: Math.round(cropData.rotate) || 0
         };
 
         // Call the upload callback
@@ -271,7 +287,8 @@
         x: Math.round(cropData.x),
         y: Math.round(cropData.y),
         width: Math.round(cropData.width),
-        height: Math.round(cropData.height)
+        height: Math.round(cropData.height),
+        rotate: Math.round(cropData.rotate) || 0
       };
     }
   }

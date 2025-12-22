@@ -114,6 +114,12 @@
           <button type="button" class="btn btn-sm btn-outline-secondary btn-hero-auto-detect">
             <i class="bi bi-magic"></i> Auto-Detect Bounds
           </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-hero-rotate-left" title="Rotate Left">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-hero-rotate-right" title="Rotate Right">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
           <button type="button" class="btn btn-sm btn-primary btn-hero-crop-upload">
             <i class="bi bi-upload"></i> Upload & Apply
           </button>
@@ -189,19 +195,28 @@
   {**
     Status control is intentionally hidden from the UI.
     The buttons control publish vs draft:
-      - "Save Draft" creates with status=draft
-      - "Save and Publish" creates/publishes with status=published
+      - "Save Draft" saves as draft without publishing
+      - "Publish" publishes the post (no email notification)
+      - "Publish & Email" publishes and sends email notification to subscribers
     Keep a hidden field to satisfy existing JS that queries `.post-status` when present.
   **}
   <input type="hidden" class="post-status" value="draft" />
 
-  <div class="mt-3 d-flex gap-2 justify-content-end">
+  <div class="mt-3 d-flex gap-2 justify-content-end flex-wrap">
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
     <button type="button" class="btn btn-outline-warning btn-unpublish-post" style="display: none;" title="Revert to draft status">
       <i class="bi bi-arrow-counterclockwise me-1"></i>Unpublish
     </button>
     <button type="button" class="btn btn-outline-primary btn-save-draft">Save Draft</button>
-    <button type="button" class="btn btn-primary btn-save-post">Save and Publish</button>
+    <button type="button" class="btn btn-primary btn-publish-post">
+      <i class="bi bi-upload me-1"></i>Publish
+    </button>
+    <button type="button" class="btn btn-success btn-publish-email" style="display: none;" title="Publish and send email notification to subscribers">
+      <i class="bi bi-send-fill me-1"></i>Publish &amp; Email
+    </button>
+    <button type="button" class="btn btn-outline-success btn-resend-email" style="display: none;" title="Send email notification to subscribers">
+      <i class="bi bi-envelope me-1"></i>Resend Email
+    </button>
   </div>
   {if isset($mode) && $mode == 'edit'}
   </div>

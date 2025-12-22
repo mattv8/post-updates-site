@@ -1,34 +1,34 @@
-{* Publish Confirmation Modal *}
+{* Email Confirmation Modal - confirms sending email to subscribers *}
 <div class="modal fade" id="publishConfirmModal" tabindex="-1" aria-labelledby="publishConfirmModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header bg-warning bg-opacity-10">
+      <div class="modal-header bg-success bg-opacity-10">
         <h5 class="modal-title" id="publishConfirmModalLabel">
-          <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-          Confirm First-Time Publish
+          <i class="bi bi-envelope-fill text-success me-2"></i>
+          Confirm Email Notification
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <p class="mb-3">
-          <strong>This post has never been published before.</strong>
+          <strong>You are about to send an email notification.</strong>
         </p>
         <p class="mb-3">
-          Publishing this post for the first time will trigger an email notification to
+          This will publish the post and send an email to
           <strong><span id="publishConfirmSubscriberCount">...</span> active subscriber(s)</strong>.
         </p>
         <p class="mb-0 text-muted small">
           <i class="bi bi-info-circle me-1"></i>
-          Re-publishing or updating an already published post will not trigger email notifications.
+          Email notifications can only be sent once per post.
         </p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-outline-warning" id="confirmPublishNoEmailBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineConfirmNoEmail && window.publishConfirmation.inlineConfirmNoEmail()">
-          <i class="bi bi-upload me-1"></i>
-          Just Publish
+        <button type="button" class="btn btn-outline-primary" id="publishOnlyBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlinePublishOnly && window.publishConfirmation.inlinePublishOnly()">
+          <i class="bi bi-check-lg me-1"></i>
+          Publish Only
         </button>
-        <button type="button" class="btn btn-warning" id="confirmPublishBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineConfirm && window.publishConfirmation.inlineConfirm()">
+        <button type="button" class="btn btn-success" id="confirmPublishBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineConfirm && window.publishConfirmation.inlineConfirm()">
           <i class="bi bi-send-fill me-1"></i>
           Publish &amp; Send Emails
         </button>

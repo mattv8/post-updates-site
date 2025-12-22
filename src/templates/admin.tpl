@@ -74,6 +74,12 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaAutoDetect">
           <i class="bi bi-magic"></i> Auto-Detect Bounds
         </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaRotateLeft" title="Rotate Left">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="mediaRotateRight" title="Rotate Right">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
         <button type="button" class="btn btn-sm btn-primary" id="mediaUploadBtn">
           <i class="bi bi-upload"></i> Upload & Apply
         </button>
@@ -416,6 +422,12 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="logoAutoDetect">
                   <i class="bi bi-magic"></i> Auto-Detect Bounds
                 </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="logoRotateLeft" title="Rotate Left">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="logoRotateRight" title="Rotate Right">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-primary" id="logoUploadBtn">
                   <i class="bi bi-upload"></i> Upload & Apply
                 </button>
@@ -459,6 +471,12 @@
               <div class="mt-2">
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="faviconAutoDetect">
                   <i class="bi bi-magic"></i> Auto-Detect Bounds
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="faviconRotateLeft" title="Rotate Left">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="faviconRotateRight" title="Rotate Right">
+                  <i class="bi bi-arrow-clockwise"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-primary" id="faviconUploadBtn">
                   <i class="bi bi-upload"></i> Upload & Apply

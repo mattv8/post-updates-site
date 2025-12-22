@@ -171,6 +171,8 @@
 
     // Logo buttons
     document.getElementById('logoAutoDetect')?.addEventListener('click', () => autoDetectLogo());
+    document.getElementById('logoRotateLeft')?.addEventListener('click', () => rotateLogo(-90));
+    document.getElementById('logoRotateRight')?.addEventListener('click', () => rotateLogo(90));
     document.getElementById('logoUploadBtn')?.addEventListener('click', () => uploadLogo());
     document.getElementById('logoCancelBtn')?.addEventListener('click', () => cancelLogoCrop());
     document.getElementById('logoRemoveBtn')?.addEventListener('click', () => showRemoveLogoModal());
@@ -178,6 +180,8 @@
 
     // Favicon buttons
     document.getElementById('faviconAutoDetect')?.addEventListener('click', () => autoDetectFavicon());
+    document.getElementById('faviconRotateLeft')?.addEventListener('click', () => rotateFavicon(-90));
+    document.getElementById('faviconRotateRight')?.addEventListener('click', () => rotateFavicon(90));
     document.getElementById('faviconUploadBtn')?.addEventListener('click', () => uploadFavicon());
     document.getElementById('faviconCancelBtn')?.addEventListener('click', () => cancelFaviconCrop());
     document.getElementById('faviconRemoveBtn')?.addEventListener('click', () => showRemoveFaviconModal());
@@ -272,6 +276,14 @@
     }
 
     /**
+     * Rotate logo image
+     */
+    function rotateLogo(degrees) {
+      if (!logoCropper) return;
+      logoCropper.rotate(degrees);
+    }
+
+    /**
      * Auto-detect content bounds for favicon
      */
     function autoDetectFavicon() {
@@ -291,6 +303,14 @@
         width: size,
         height: size
       });
+    }
+
+    /**
+     * Rotate favicon image
+     */
+    function rotateFavicon(degrees) {
+      if (!faviconCropper) return;
+      faviconCropper.rotate(degrees);
     }
 
     /**
@@ -316,7 +336,8 @@
           x: Math.round(cropData.x),
           y: Math.round(cropData.y),
           width: Math.round(cropData.width),
-          height: Math.round(cropData.height)
+          height: Math.round(cropData.height),
+          rotate: Math.round(cropData.rotate) || 0
         }));
 
         const response = await fetch('/api/admin/branding.php', {
@@ -372,7 +393,8 @@
           x: Math.round(cropData.x),
           y: Math.round(cropData.y),
           width: Math.round(cropData.width),
-          height: Math.round(cropData.height)
+          height: Math.round(cropData.height),
+          rotate: Math.round(cropData.rotate) || 0
         }));
 
         const response = await fetch('/api/admin/branding.php', {

@@ -33,6 +33,8 @@
     const uploadButton = document.getElementById('hero_crop_upload');
     const cancelButton = document.getElementById('hero_crop_cancel');
     const autoDetectButton = document.getElementById('hero_auto_detect');
+    const rotateLeftButton = document.getElementById('hero_rotate_left');
+    const rotateRightButton = document.getElementById('hero_rotate_right');
     const heroSelect = document.getElementById('hero_media_id');
 
     if (!heroUploadInput || !cropContainer || !cropImage) {
@@ -46,6 +48,8 @@
       uploadButton: uploadButton,
       cancelButton: cancelButton,
       autoDetectButton: autoDetectButton,
+      rotateLeftButton: rotateLeftButton,
+      rotateRightButton: rotateRightButton,
       uploadCallback: async (file, cropData) => {
         // Upload the image with crop data
         const formData = new FormData();
@@ -157,6 +161,8 @@
     const uploadButton = document.getElementById('footer_crop_upload');
     const cancelButton = document.getElementById('footer_crop_cancel');
     const autoDetectButton = document.getElementById('footer_auto_detect');
+    const rotateLeftButton = document.getElementById('footer_rotate_left');
+    const rotateRightButton = document.getElementById('footer_rotate_right');
     const footerSelect = document.getElementById('footer_media_id');
 
     if (!footerUploadInput || !cropContainer || !cropImage) {
@@ -170,6 +176,8 @@
       uploadButton: uploadButton,
       cancelButton: cancelButton,
       autoDetectButton: autoDetectButton,
+      rotateLeftButton: rotateLeftButton,
+      rotateRightButton: rotateRightButton,
       uploadCallback: async (file, cropData) => {
         // Upload the image with crop data
         const formData = new FormData();
@@ -278,6 +286,8 @@
     const uploadButton = document.getElementById('modal_hero_crop_upload');
     const cancelButton = document.getElementById('modal_hero_crop_cancel');
     const autoDetectButton = document.getElementById('modal_hero_auto_detect');
+    const rotateLeftButton = document.getElementById('modal_hero_rotate_left');
+    const rotateRightButton = document.getElementById('modal_hero_rotate_right');
     const heroSelect = document.getElementById('modal_hero_media_id');
 
     console.log('initModalHeroCrop - Elements found:', {
@@ -304,6 +314,8 @@
       uploadButton: uploadButton,
       cancelButton: cancelButton,
       autoDetectButton: autoDetectButton,
+      rotateLeftButton: rotateLeftButton,
+      rotateRightButton: rotateRightButton,
       uploadCallback: async (file, cropData) => {
         // Upload the image with crop data
         const formData = new FormData();
@@ -421,6 +433,8 @@
     const uploadButton = postEditorContainer.querySelector('.btn-hero-crop-upload');
     const cancelButton = postEditorContainer.querySelector('.btn-hero-crop-cancel');
     const autoDetectButton = postEditorContainer.querySelector('.btn-hero-auto-detect');
+    const rotateLeftButton = postEditorContainer.querySelector('.btn-hero-rotate-left');
+    const rotateRightButton = postEditorContainer.querySelector('.btn-hero-rotate-right');
     const heroSelect = postEditorContainer.querySelector('.post-hero-media');
     const heroPreviewContainer = postEditorContainer.querySelector('.hero-preview-container');
     const heroPreviewImg = postEditorContainer.querySelector('.hero-preview img');
@@ -440,6 +454,8 @@
       uploadButton: uploadButton,
       cancelButton: cancelButton,
       autoDetectButton: autoDetectButton,
+      rotateLeftButton: rotateLeftButton,
+      rotateRightButton: rotateRightButton,
       // Hide upload/select controls as soon as a file is chosen and crop UI opens
       onCropInit: () => {
         if (heroUploadControls) heroUploadControls.style.display = 'none';
@@ -562,6 +578,8 @@
     const uploadButton = document.getElementById('modal_footer_crop_upload');
     const cancelButton = document.getElementById('modal_footer_crop_cancel');
     const autoDetectButton = document.getElementById('modal_footer_auto_detect');
+    const rotateLeftButton = document.getElementById('modal_footer_rotate_left');
+    const rotateRightButton = document.getElementById('modal_footer_rotate_right');
     const footerSelect = document.getElementById('modal_footer_media_id');
 
     // Preview/controls within the modal
@@ -580,6 +598,8 @@
       uploadButton: uploadButton,
       cancelButton: cancelButton,
       autoDetectButton: autoDetectButton,
+      rotateLeftButton: rotateLeftButton,
+      rotateRightButton: rotateRightButton,
       uploadCallback: async (file, cropData) => {
         // Upload the image with crop data
         const formData = new FormData();

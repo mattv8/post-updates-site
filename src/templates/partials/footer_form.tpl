@@ -24,6 +24,12 @@
       <button type="button" class="btn btn-sm btn-outline-secondary" id="{$prefix}footer_auto_detect">
         <i class="bi bi-magic"></i> Auto-Detect Bounds
       </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="{$prefix}footer_rotate_left" title="Rotate Left">
+        <i class="bi bi-arrow-counterclockwise"></i>
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="{$prefix}footer_rotate_right" title="Rotate Right">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
       <button type="button" class="btn btn-sm btn-primary" id="{$prefix}footer_crop_upload">
         <i class="bi bi-upload"></i> Upload & Apply
       </button>

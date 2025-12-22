@@ -43,6 +43,8 @@
       const uploadButton = modal.querySelector('.btn-hero-crop-upload');
       const cancelButton = modal.querySelector('.btn-hero-crop-cancel');
       const autoDetectButton = modal.querySelector('.btn-hero-auto-detect');
+      const rotateLeftButton = modal.querySelector('.btn-hero-rotate-left');
+      const rotateRightButton = modal.querySelector('.btn-hero-rotate-right');
 
       if (heroUploadInput && cropContainer && cropImage) {
         heroCropManager = new window.ImageCropManager({
@@ -52,6 +54,8 @@
           uploadButton: uploadButton,
           cancelButton: cancelButton,
           autoDetectButton: autoDetectButton,
+          rotateLeftButton: rotateLeftButton,
+          rotateRightButton: rotateRightButton,
           uploadCallback: async (file, cropData) => {
             return await uploadHeroImage(file, cropData);
           }
@@ -467,12 +471,11 @@
     draggedElement = null;
   }
 
-  // Handle save button
-  const saveBtn = modal.querySelector('.btn-save-post');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async function() {
+  // Handle Publish button (publish without email)
+  const publishBtn = modal.querySelector('.btn-publish-post');
+  if (publishBtn) {
+    publishBtn.addEventListener('click', async function() {
       const title = modal.querySelector('.post-title').value.trim() || null;
-      const status = modal.querySelector('.post-status').value;
       const heroMediaId = modal.querySelector('.post-hero-media').value || null;
       const heroImageHeight = heroMediaId ? parseInt(modal.querySelector('.post-hero-height').value) : null;
       const bodyHtml = editor ? window.getQuillHTML(editor) : '';
@@ -480,10 +483,11 @@
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
       try {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
+        publishBtn.disabled = true;
+        publishBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
 
-        const response = await fetch('/api/admin/posts.php', {
+        // Create as draft first
+        const createResponse = await fetch('/api/admin/posts.php', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -492,7 +496,7 @@
           body: JSON.stringify({
             title: title,
             body_html: bodyHtml,
-            status: status,
+            status: 'draft',
             hero_media_id: heroMediaId,
             hero_image_height: heroImageHeight,
             hero_crop_overlay: modal.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0,
@@ -502,27 +506,136 @@
           })
         });
 
-        const data = await response.json();
+        const createData = await createResponse.json();
 
-        if (data.success) {
+        if (!createData.success || !createData.id) {
+          alert('Error: ' + (createData.error || 'Failed to create post'));
+          return;
+        }
+
+        // Publish with skip_email flag
+        publishBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Publishing...';
+        const publishResponse = await fetch('/api/admin/posts.php?action=publish&id=' + createData.id + '&skip_email=1', {
+          headers: { 'X-CSRF-Token': csrfToken }
+        });
+        const publishData = await publishResponse.json();
+
+        if (publishData.success) {
           // Close modal
           const bsModal = bootstrap.Modal.getInstance(modal);
           if (bsModal) bsModal.hide();
-          // Refresh posts list without full page reload
+          // Refresh posts list
           if (typeof window.refreshPostsList === 'function') {
             await window.refreshPostsList();
           } else {
             window.location.reload();
           }
         } else {
-          alert('Error: ' + (data.error || 'Failed to create post'));
+          alert('Error: ' + (publishData.error || 'Failed to publish post'));
         }
       } catch (error) {
         console.error('Error creating post:', error);
         alert('An error occurred while creating the post');
       } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Save Post';
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Publish';
+      }
+    });
+  }
+
+  // Handle Publish & Email button (publish with email notification)
+  const publishEmailBtn = modal.querySelector('.btn-publish-email');
+  if (publishEmailBtn) {
+    publishEmailBtn.addEventListener('click', async function() {
+      const title = modal.querySelector('.post-title').value.trim() || null;
+      const heroMediaId = modal.querySelector('.post-hero-media').value || null;
+      const heroImageHeight = heroMediaId ? parseInt(modal.querySelector('.post-hero-height').value) : null;
+      const bodyHtml = editor ? window.getQuillHTML(editor) : '';
+
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+      try {
+        publishEmailBtn.disabled = true;
+        publishEmailBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
+
+        // Create as draft first
+        const createResponse = await fetch('/api/admin/posts.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({
+            title: title,
+            body_html: bodyHtml,
+            status: 'draft',
+            hero_media_id: heroMediaId,
+            hero_image_height: heroImageHeight,
+            hero_crop_overlay: modal.querySelector('.post-hero-crop-overlay')?.checked ? 1 : 0,
+            hero_title_overlay: modal.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0,
+            hero_overlay_opacity: parseFloat(modal.querySelector('.post-hero-overlay-opacity')?.value || 0.70),
+            gallery_media_ids: galleryMediaIds
+          })
+        });
+
+        const createData = await createResponse.json();
+
+        if (!createData.success || !createData.id) {
+          alert('Error: ' + (createData.error || 'Failed to create post'));
+          return;
+        }
+
+        const postId = createData.id;
+
+        // Show email confirmation modal
+        publishEmailBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Confirming...';
+        const proceeded = await window.publishConfirmation.confirmAndSendEmail(async () => {
+          // Publish WITH email (no skip_email flag)
+          const publishResponse = await fetch('/api/admin/posts.php?action=publish&id=' + postId, {
+            headers: { 'X-CSRF-Token': csrfToken }
+          });
+          const publishData = await publishResponse.json();
+
+          if (!publishData.success) {
+            throw new Error(publishData.error || 'Failed to publish post');
+          }
+
+          // Show email result notification
+          if (publishData.email) {
+            if (publishData.email.sent && publishData.email.count > 0) {
+              if (typeof window.showNotification === 'function') {
+                window.showNotification(`Post published! Email sent to ${publishData.email.count} subscriber(s).`, 'success');
+              }
+            } else if (publishData.email.sent === false && !publishData.email.skipped) {
+              if (typeof window.showNotification === 'function') {
+                window.showNotification(`Post published, but email failed: ${publishData.email.error || 'Unknown error'}`, 'warning');
+              }
+            }
+          }
+        }, postId);
+
+        if (proceeded) {
+          // Close modal
+          const bsModal = bootstrap.Modal.getInstance(modal);
+          if (bsModal) bsModal.hide();
+          // Refresh posts list
+          if (typeof window.refreshPostsList === 'function') {
+            await window.refreshPostsList();
+          } else {
+            window.location.reload();
+          }
+        } else {
+          // User cancelled - post is saved as draft
+          if (typeof window.showNotification === 'function') {
+            window.showNotification('Draft saved (not published).', 'info');
+          }
+        }
+      } catch (error) {
+        console.error('Error creating post:', error);
+        alert('An error occurred while creating the post');
+      } finally {
+        publishEmailBtn.disabled = false;
+        publishEmailBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Publish & Email';
       }
     });
   }

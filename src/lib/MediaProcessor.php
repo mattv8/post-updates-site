@@ -200,12 +200,25 @@ class MediaProcessor
             // Apply crop if provided
             if ($cropData && isset($cropData['width']) && $cropData['width'] > 0) {
                 $img = $this->manager->make($originalPath);
+
+                // Apply rotation first if specified (before crop coordinates are applied)
+                if (isset($cropData['rotate']) && (int)$cropData['rotate'] !== 0) {
+                    // Cropper.js uses counter-clockwise rotation, Intervention uses clockwise
+                    // So we negate the rotation angle
+                    $img->rotate(-(int)$cropData['rotate']);
+                }
+
                 $img->crop(
                     (int)$cropData['width'],
                     (int)$cropData['height'],
                     (int)$cropData['x'],
                     (int)$cropData['y']
                 );
+                $img->save($originalPath, 90);
+            } elseif ($cropData && isset($cropData['rotate']) && (int)$cropData['rotate'] !== 0) {
+                // Apply rotation only (no crop)
+                $img = $this->manager->make($originalPath);
+                $img->rotate(-(int)$cropData['rotate']);
                 $img->save($originalPath, 90);
             }
 
@@ -588,6 +601,14 @@ class MediaProcessor
             // Load image for cropping
             $img = $this->manager->make($originalPath);
 
+            // Apply rotation first if specified
+            if ($cropData && isset($cropData['rotate']) && (int)$cropData['rotate'] !== 0) {
+                $img->rotate(-(int)$cropData['rotate']);
+                $img->save($originalPath, 90);
+                // Reload image after rotation for accurate crop coordinates
+                $img = $this->manager->make($originalPath);
+            }
+
             // Apply crop if provided
             if ($cropData && isset($cropData['width']) && $cropData['width'] > 0) {
                 $img->crop(
@@ -673,6 +694,14 @@ class MediaProcessor
 
             // Load image for cropping
             $img = $this->manager->make($originalPath);
+
+            // Apply rotation first if specified
+            if ($cropData && isset($cropData['rotate']) && (int)$cropData['rotate'] !== 0) {
+                $img->rotate(-(int)$cropData['rotate']);
+                $img->save($originalPath, 90);
+                // Reload image after rotation for accurate crop coordinates
+                $img = $this->manager->make($originalPath);
+            }
 
             // Apply crop if provided
             if ($cropData && isset($cropData['width']) && $cropData['width'] > 0) {

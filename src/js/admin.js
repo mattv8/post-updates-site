@@ -1415,13 +1415,13 @@
   let editingId = null;
   let galleryMediaIds = []; // Track gallery image IDs in order
 
-  // Re-enable Save & Publish if confirmation is cancelled
+  // Re-enable Publish & Email button if confirmation is cancelled
   if (!postEditorContainer.dataset.publishCancelBound) {
     document.addEventListener('publish-confirmation:cancelled', () => {
-      const btn = postEditorContainer.querySelector('.btn-save-post');
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save and Publish';
+      const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
+      if (publishEmailBtn) {
+        publishEmailBtn.disabled = false;
+        publishEmailBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Publish & Email';
       }
       // Trigger a refresh of the post editor to show the saved draft
       if (editingId) {
@@ -1627,59 +1627,74 @@
       // Disable toggle while processing
       e.target.disabled = true;
 
-      // If toggling to published, check if confirmation needed
+      // If toggling to published, show email confirmation modal
       if (isPublished) {
-        // Use confirmation wrapper
-        window.publishConfirmation.confirmAndPublish(postId, async () => {
-          // Use the publish endpoint which handles email notifications
-          const j = await api('/api/admin/posts.php?action=publish&id=' + postId, {
+        // Show email confirmation modal for publishing via toggle
+        const toggleBtn = e.target;
+        window.publishConfirmation.confirmAndSendEmail(async () => {
+          // Publish WITH email
+          const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postId, {
             method: 'GET'
           });
-
-
-
-          if (j.success) {
-            // Check email notification status
-            if (j.email) {
-              if (j.email.sent && j.email.count > 0) {
-                // Success - show confirmation
-                const successMsg = `Post published successfully! Email notifications sent to ${j.email.count} subscriber(s).`;
-                showNotification(successMsg, 'success');
-              } else if (j.email.sent === false && !j.email.skipped) {
-                // Email failed - show warning
-                const warningMsg = `Post published successfully, but email notifications failed to send.\n\nError: ${j.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`;
-                showNotification(warningMsg, 'warning');
-              } else if (j.email.skipped) {
-                // Not first publish, no emails sent
-                showNotification('Post published successfully.', 'success');
-              }
+          if (!publishResult.success) {
+            throw new Error(publishResult.error || 'Unknown error');
+          }
+          // Show email result
+          if (publishResult.email) {
+            if (publishResult.email.sent && publishResult.email.count > 0) {
+              showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
+            } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
+              showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
             } else {
-              // No email info returned
               showNotification('Post published successfully.', 'success');
             }
-
-            // Purge cache silently (publishing triggers auto-purge on server, but ensure UI reflects it)
-            api('/api/admin/cache-purge.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            }).catch(() => {}); // Silent failure is ok
-
-            // Reload the posts list to show updated date
-            loadPosts();
           } else {
-            throw new Error(j.error || 'Unknown error');
+            showNotification('Post published successfully.', 'success');
           }
-        }).then(proceeded => {
-          if (!proceeded) {
-            // User cancelled - revert toggle
-            e.target.checked = false;
-            e.target.disabled = false;
+
+          // Purge cache silently
+          api('/api/admin/cache-purge.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          }).catch(() => {}); // Silent failure is ok
+
+          // Reload the posts list to show updated date
+          loadPosts();
+        }, postId).then(result => {
+          if (result && result.action === 'publish-only') {
+            // User chose to publish without email
+            api('/api/admin/posts.php?action=publish&id=' + postId + '&skip_email=1', {
+              method: 'GET'
+            }).then(j => {
+              if (j.success) {
+                showNotification('Post published successfully.', 'success');
+                // Purge cache silently
+                api('/api/admin/cache-purge.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' }
+                }).catch(() => {});
+                loadPosts();
+              } else {
+                throw new Error(j.error || 'Unknown error');
+              }
+            }).catch(err => {
+              console.error('Error publishing post:', err);
+              alert('Error updating post status: ' + err.message);
+              toggleBtn.checked = false;
+              toggleBtn.disabled = false;
+            });
+          } else if (!result || !result.proceeded) {
+            // User cancelled - toggle back to unpublished
+            toggleBtn.checked = false;
+            toggleBtn.disabled = false;
+          } else {
+            toggleBtn.disabled = false;
           }
         }).catch(err => {
-          console.error('Error toggling publish status:', err);
+          console.error('Error publishing via toggle:', err);
           alert('Error updating post status: ' + err.message);
-          e.target.checked = false;
-          e.target.disabled = false;
+          toggleBtn.checked = false;
+          toggleBtn.disabled = false;
         });
       } else {
         // Toggling to draft - no confirmation needed
@@ -1777,38 +1792,33 @@
     });
   }
 
-  // Save button in post editor
-  postEditorContainer.querySelector('.btn-save-post').addEventListener('click', async function () {
+  // Publish button handler (Publish only - no email)
+  postEditorContainer.querySelector('.btn-publish-post').addEventListener('click', async function () {
     const saveBtn = this;
-    const originalText = saveBtn.textContent;
+    const originalHTML = saveBtn.innerHTML;
 
     try {
       saveBtn.disabled = true;
-
-      // Note: Hero image uploads are now handled by ImageCropManager
-      // Images are uploaded immediately after cropping, not on save
-      // The hero_media_id will already be set in the dropdown
 
       // Check if there are pending gallery uploads
       const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
       if (galleryUploadInput && galleryUploadInput.files.length > 0) {
         const fileCount = galleryUploadInput.files.length;
-        saveBtn.textContent = `Uploading ${fileCount} gallery image${fileCount > 1 ? 's' : ''}...`;
+        saveBtn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Uploading gallery...`;
         try {
           await uploadGalleryImages(Array.from(galleryUploadInput.files));
-          // Clear the file input
           galleryUploadInput.value = '';
           const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
           if (galleryUploadBtn) galleryUploadBtn.style.display = 'none';
         } catch (error) {
           alert('Gallery upload failed: ' + error.message);
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalHTML;
           return;
         }
       }
 
-      saveBtn.textContent = 'Saving post...';
+      saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
 
       const heroSelect = postEditorContainer.querySelector('.post-hero-media');
       const heroMediaId = heroSelect ? heroSelect.value : null;
@@ -1816,7 +1826,6 @@
       const payload = {
         title: postEditorContainer.querySelector('.post-title').value,
         body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-        // status will be set below depending on new vs edit branch
         hero_media_id: heroMediaId || null,
         hero_image_height: heroMediaId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null,
         hero_title_overlay: heroMediaId ? (postEditorContainer.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0) : 1,
@@ -1825,10 +1834,9 @@
       };
 
       if (editingId) {
-        // For existing posts: save to draft fields first, then check for confirmation, then publish
-        saveBtn.textContent = 'Publishing changes...';
+        // Editing existing post: save draft then publish (no email)
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Publishing...';
 
-        // Save current form values to draft fields
         const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1838,53 +1846,25 @@
         if (!draftSave.success) {
           alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalHTML;
           return;
         }
 
-        // Use confirmation wrapper for publish
-        const proceeded = await window.publishConfirmation.confirmAndPublish(
-          editingId,
-          async () => {
-            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId, { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-            if (publishResult.email) {
-              if (publishResult.email.sent && publishResult.email.count > 0) {
-                showNotification(`Post published successfully! Email notifications sent to ${publishResult.email.count} subscriber(s).`, 'success');
-              } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-                showNotification(`Post published successfully, but email notifications failed to send.\n\nError: ${publishResult.email.error || 'Unknown error'}\n\nPlease check your SMTP settings.`, 'warning');
-              } else {
-                showNotification('Post published successfully.', 'success');
-              }
-            } else {
-              showNotification('Post published successfully.', 'success');
-            }
-          },
-          async () => {
-            // Publish without sending emails
-            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId + '&skip_email=1', { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-            showNotification('Post published successfully (emails skipped).', 'success');
-          }
-        );
-
-        if (proceeded) {
-          loadPosts();
-          const modalEl = bootstrap.Modal.getInstance(postEditorModal);
-          if (modalEl) modalEl.hide();
-        } else {
-          // User cancelled
+        // Publish with skip_email flag
+        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId + '&skip_email=1', { method: 'GET' });
+        if (!publishResult.success) {
+          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalHTML;
+          return;
         }
+        showNotification('Post published successfully.', 'success');
+        loadPosts();
+        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+        if (modalEl) modalEl.hide();
       } else {
-        // New post: ALWAYS require confirmation prior to first publish.
-        // Step 1: create as draft to obtain ID
-        saveBtn.textContent = 'Creating draft...';
+        // New post: create as draft then publish (no email)
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
         const createDraft = await api('/api/admin/posts.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1893,62 +1873,217 @@
         if (!createDraft.success || !createDraft.id) {
           alert('Error creating draft: ' + (createDraft.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
+          saveBtn.innerHTML = originalHTML;
           return;
         }
 
         const newId = createDraft.id;
-        editingId = newId; // transition to edit mode
+        editingId = newId;
 
-        // Set up auto-save now that we have an ID
-        if (postBodyEditor) {
-          if (postAutoSave) clearInterval(postAutoSave);
-          postAutoSave = setupPostAutoSave(postBodyEditor, editingId);
-        }
-
-        // Hide Save Draft button now that we're editing
-        const saveDraftBtn = postEditorContainer.querySelector('.btn-save-draft');
-        if (saveDraftBtn) saveDraftBtn.style.display = 'none';
-
-        // Step 2: ask for confirmation, then publish
-        saveBtn.textContent = 'Confirming publish...';
-        const proceeded = await window.publishConfirmation.confirmAndPublish(
-          newId,
-          async () => {
-            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId, { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-          },
-          async () => {
-            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-            showNotification('Post published (emails skipped).', 'success');
-          }
-        );
-
-        if (proceeded) {
-          loadPosts();
-          const modalEl = bootstrap.Modal.getInstance(postEditorModal);
-          if (modalEl) modalEl.hide();
-        } else {
-          // User cancelled: keep draft open, refresh data, and re-enable button
+        // Publish with skip_email flag
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Publishing...';
+        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
+        if (!publishResult.success) {
+          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
           saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          // Refresh posts list to show the new draft
-          loadPosts();
-          // Note: post editor refresh happens via the global cancellation event handler
-          showNotification('Draft saved (not published).', 'info');
+          saveBtn.innerHTML = originalHTML;
+          return;
         }
+        showNotification('Post published successfully.', 'success');
+        loadPosts();
+        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+        if (modalEl) modalEl.hide();
       }
     } catch (error) {
-      console.error('Error saving post:', error);
-      alert('An error occurred while saving the post');
+      console.error('Error publishing post:', error);
+      alert('An error occurred while publishing the post');
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = originalText;
+      saveBtn.innerHTML = originalHTML;
+    }
+  });
+
+  // Publish & Email button handler (Publish and send email notification)
+  postEditorContainer.querySelector('.btn-publish-email').addEventListener('click', async function () {
+    const saveBtn = this;
+    const originalHTML = saveBtn.innerHTML;
+
+    try {
+      saveBtn.disabled = true;
+
+      // Check if there are pending gallery uploads
+      const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
+      if (galleryUploadInput && galleryUploadInput.files.length > 0) {
+        const fileCount = galleryUploadInput.files.length;
+        saveBtn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Uploading gallery...`;
+        try {
+          await uploadGalleryImages(Array.from(galleryUploadInput.files));
+          galleryUploadInput.value = '';
+          const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
+          if (galleryUploadBtn) galleryUploadBtn.style.display = 'none';
+        } catch (error) {
+          alert('Gallery upload failed: ' + error.message);
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalHTML;
+          return;
+        }
+      }
+
+      saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+
+      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
+      const heroMediaId = heroSelect ? heroSelect.value : null;
+
+      const payload = {
+        title: postEditorContainer.querySelector('.post-title').value,
+        body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
+        hero_media_id: heroMediaId || null,
+        hero_image_height: heroMediaId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null,
+        hero_title_overlay: heroMediaId ? (postEditorContainer.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0) : 1,
+        hero_overlay_opacity: heroMediaId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity')?.value || 0.70) : 0.70,
+        gallery_media_ids: galleryMediaIds
+      };
+
+      let postIdToPublish = editingId;
+
+      if (editingId) {
+        // Editing existing post: save draft first
+        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!draftSave.success) {
+          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalHTML;
+          return;
+        }
+      } else {
+        // New post: create as draft first
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
+        const createDraft = await api('/api/admin/posts.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, status: 'draft' })
+        });
+        if (!createDraft.success || !createDraft.id) {
+          alert('Error creating draft: ' + (createDraft.error || 'Unknown error'));
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalHTML;
+          return;
+        }
+        postIdToPublish = createDraft.id;
+        editingId = postIdToPublish;
+      }
+
+      // Show email confirmation modal
+      saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Confirming...';
+      const result = await window.publishConfirmation.confirmAndSendEmail(async () => {
+        // Publish WITH email (no skip_email flag)
+        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postIdToPublish, { method: 'GET' });
+        if (!publishResult.success) {
+          throw new Error(publishResult.error || 'Unknown error');
+        }
+        // Show email result
+        if (publishResult.email) {
+          if (publishResult.email.sent && publishResult.email.count > 0) {
+            showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
+          } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
+            showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
+          } else {
+            showNotification('Post published successfully.', 'success');
+          }
+        } else {
+          showNotification('Post published successfully.', 'success');
+        }
+      }, postIdToPublish);
+
+      if (result && result.action === 'publish-only') {
+        // User chose to publish without email
+        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postIdToPublish + '&skip_email=1', { method: 'GET' });
+        if (!publishResult.success) {
+          throw new Error(publishResult.error || 'Unknown error');
+        }
+        showNotification('Post published successfully (email not sent).', 'success');
+        loadPosts();
+        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+        if (modalEl) modalEl.hide();
+      } else if (result && result.proceeded) {
+        // User chose to send email
+        loadPosts();
+        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+        if (modalEl) modalEl.hide();
+      } else {
+        // User cancelled - keep as draft
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHTML;
+        showNotification('Draft saved (not published).', 'info');
+      }
+    } catch (error) {
+      console.error('Error publishing post with email:', error);
+      alert('An error occurred while publishing the post');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalHTML;
+    }
+  });
+
+  // Resend Email button handler (for already-published posts)
+  postEditorContainer.querySelector('.btn-resend-email').addEventListener('click', async function () {
+    const saveBtn = this;
+    const originalHTML = saveBtn.innerHTML;
+
+    try {
+      saveBtn.disabled = true;
+
+      if (!editingId) {
+        alert('Cannot resend email: no post selected');
+        saveBtn.disabled = false;
+        return;
+      }
+
+      // Show email confirmation modal
+      saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Confirming...';
+      const result = await window.publishConfirmation.confirmAndSendEmail(async () => {
+        // Resend email notification for already-published post
+        const resendResult = await api('/api/admin/posts.php?action=resend-email&id=' + editingId, { method: 'GET' });
+        if (!resendResult.success) {
+          throw new Error(resendResult.error || 'Unknown error');
+        }
+        // Show result - handle both queued and immediate responses
+        if (resendResult.queued) {
+          showNotification(resendResult.message || 'Email notification queued and will be sent shortly.', 'success');
+        } else if (resendResult.email) {
+          if (resendResult.email.sent && resendResult.email.count > 0) {
+            showNotification(`Email sent to ${resendResult.email.count} subscriber(s).`, 'success');
+          } else if (resendResult.email.sent === false) {
+            showNotification(`Email failed: ${resendResult.email.error || 'Unknown error'}`, 'warning');
+          } else {
+            showNotification('Email notification sent.', 'success');
+          }
+        } else {
+          showNotification('Email notification sent.', 'success');
+        }
+      }, editingId);
+
+      if (result && (result.action === 'email' || result.action === 'publish-only')) {
+        // Close the modal after successful action (for resend, publish-only doesn't apply but we'll handle it gracefully)
+        if (result.action === 'email' || result.proceeded) {
+          const modalEl = bootstrap.Modal.getInstance(postEditorModal);
+          if (modalEl) modalEl.hide();
+        }
+      } else {
+        // User cancelled
+        showNotification('Email not sent.', 'info');
+      }
+    } catch (error) {
+      console.error('Error resending email:', error);
+      alert('An error occurred while sending the email');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalHTML;
     }
   });
 
@@ -1980,6 +2115,8 @@
     const cropContainer = document.getElementById('mediaCropContainer');
     const cropImage = document.getElementById('mediaCropImage');
     const autoDetectBtn = document.getElementById('mediaAutoDetect');
+    const rotateLeftBtn = document.getElementById('mediaRotateLeft');
+    const rotateRightBtn = document.getElementById('mediaRotateRight');
     const uploadBtn = document.getElementById('mediaUploadBtn');
     const cancelBtn = document.getElementById('mediaCancelBtn');
     const submitBtn = document.getElementById('mediaSubmitBtn');
@@ -1993,6 +2130,8 @@
       uploadButton: uploadBtn,
       cancelButton: cancelBtn,
       autoDetectButton: autoDetectBtn,
+      rotateLeftButton: rotateLeftBtn,
+      rotateRightButton: rotateRightBtn,
       onCropInit: () => {
         if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('disabled'); }
       },
@@ -2955,6 +3094,19 @@
               if (unpublishBtn) {
                 unpublishBtn.style.display = post.status === 'published' ? 'inline-block' : 'none';
               }
+
+              // Show/hide Publish & Email button based on whether email can be sent
+              // Email can only be sent if post has never been published (published_at is null)
+              const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
+              const resendEmailBtn = postEditorContainer.querySelector('.btn-resend-email');
+              const canSendEmail = !post.published_at;
+              if (publishEmailBtn) {
+                publishEmailBtn.style.display = canSendEmail ? 'inline-block' : 'none';
+              }
+              // Show Resend Email button for already-published posts (when Publish & Email is hidden)
+              if (resendEmailBtn) {
+                resendEmailBtn.style.display = (post.status === 'published' && !canSendEmail) ? 'inline-block' : 'none';
+              }
             }
           });
         } else {
@@ -2972,6 +3124,18 @@
           const unpublishBtn = postEditorContainer.querySelector('.btn-unpublish-post');
           if (unpublishBtn) {
             unpublishBtn.style.display = 'none';
+          }
+
+          // Show Publish & Email button for new posts (email can be sent on first publish)
+          const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
+          if (publishEmailBtn) {
+            publishEmailBtn.style.display = 'inline-block';
+          }
+
+          // Hide Resend Email button for new posts
+          const resendEmailBtn = postEditorContainer.querySelector('.btn-resend-email');
+          if (resendEmailBtn) {
+            resendEmailBtn.style.display = 'none';
           }
           if (postBodyEditor) {
             window.clearQuillEditor(postBodyEditor);
