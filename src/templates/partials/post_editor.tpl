@@ -211,6 +211,9 @@
     <button type="button" class="btn btn-primary btn-publish-post">
       <i class="bi bi-upload me-1"></i>Publish
     </button>
+    <button type="button" class="btn btn-primary btn-publish-changes" style="display: none;" title="Publish your changes to the live post">
+      <i class="bi bi-upload me-1"></i>Publish Changes
+    </button>
     <button type="button" class="btn btn-success btn-publish-email" style="display: none;" title="Publish and send email notification to subscribers">
       <i class="bi bi-send-fill me-1"></i>Publish &amp; Email
     </button>

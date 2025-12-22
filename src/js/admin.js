@@ -1868,6 +1868,12 @@
     }
   });
 
+  // Publish Changes button handler - same functionality as Publish, used for already-published posts
+  postEditorContainer.querySelector('.btn-publish-changes').addEventListener('click', async function () {
+    // Delegate to the regular publish button handler
+    postEditorContainer.querySelector('.btn-publish-post').click();
+  });
+
   // Publish & Email button handler (Publish and send email notification)
   postEditorContainer.querySelector('.btn-publish-email').addEventListener('click', async function () {
     const saveBtn = this;
@@ -2709,6 +2715,22 @@
           editingId = null;
         }
       }
+
+      // Immediately set button visibility based on whether we're editing or creating
+      // For existing posts, hide "Publish" and show "Publish Changes" only when changes are detected
+      // For new posts, show "Publish" and hide "Publish Changes"
+      const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+      const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
+
+      if (editingId) {
+        // Editing existing post - hide Publish, Publish Changes will be shown when changes are detected
+        if (publishBtn) publishBtn.style.display = 'none';
+        if (publishChangesBtn) publishChangesBtn.style.display = 'none';
+      } else {
+        // New post - show Publish, hide Publish Changes
+        if (publishBtn) publishBtn.style.display = 'inline-block';
+        if (publishChangesBtn) publishChangesBtn.style.display = 'none';
+      }
     });
 
     postEditorModal.addEventListener('shown.bs.modal', function () {
@@ -3074,6 +3096,44 @@
                 unpublishBtn.style.display = post.status === 'published' ? 'inline-block' : 'none';
               }
 
+              // For already-published posts, hide "Publish" and show "Publish Changes" only when there are changes
+              const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+              const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
+              const isAlreadyPublished = post.status === 'published';
+
+              if (isAlreadyPublished) {
+                // Hide "Publish" button for already-published posts
+                if (publishBtn) publishBtn.style.display = 'none';
+                // Hide "Publish Changes" initially - will show when changes are detected
+                if (publishChangesBtn) publishChangesBtn.style.display = 'none';
+
+                // Setup text-change listener to detect changes and show "Publish Changes" button
+                if (postBodyEditor) {
+                  const updatePublishChangesVisibility = () => {
+                    const hasChanges = postAutoSave && typeof postAutoSave.hasChanges === 'function'
+                      ? postAutoSave.hasChanges()
+                      : false;
+                    if (publishChangesBtn) {
+                      publishChangesBtn.style.display = hasChanges ? 'inline-block' : 'none';
+                    }
+                  };
+
+                  // Check for changes on text-change
+                  postBodyEditor.on('text-change', updatePublishChangesVisibility);
+
+                  // Also check when title changes
+                  const titleInput = postEditorContainer.querySelector('.post-title');
+                  if (titleInput && !titleInput.dataset.publishChangesListener) {
+                    titleInput.addEventListener('input', updatePublishChangesVisibility);
+                    titleInput.dataset.publishChangesListener = 'true';
+                  }
+                }
+              } else {
+                // For draft posts, show "Publish" button and hide "Publish Changes"
+                if (publishBtn) publishBtn.style.display = 'inline-block';
+                if (publishChangesBtn) publishChangesBtn.style.display = 'none';
+              }
+
               // Show/hide Publish & Email button based on whether email can be sent
               // Email can only be sent if post has never been published (published_at is null)
               const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
@@ -3110,6 +3170,12 @@
           if (publishEmailBtn) {
             publishEmailBtn.style.display = 'inline-block';
           }
+
+          // Show Publish button and hide Publish Changes for new posts
+          const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+          const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
+          if (publishBtn) publishBtn.style.display = 'inline-block';
+          if (publishChangesBtn) publishChangesBtn.style.display = 'none';
 
           // Hide Resend Email button for new posts
           const resendEmailBtn = postEditorContainer.querySelector('.btn-resend-email');

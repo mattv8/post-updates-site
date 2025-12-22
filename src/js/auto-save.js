@@ -185,9 +185,33 @@
     // Also save periodically
     const intervalId = setInterval(performSave, interval);
 
-    // Return an object with the interval ID and a cleanup function
+    // Return an object with the interval ID, change tracking, and cleanup function
     return {
       intervalId: intervalId,
+      /**
+       * Check if there are unsaved changes
+       * @returns {boolean} True if content has changed since last save
+       */
+      hasChanges: function() {
+        if (!editor || !initialized) return false;
+        const currentContent = window.getQuillHTML(editor);
+        return currentContent !== lastSavedContent;
+      },
+      /**
+       * Get the baseline (last saved) content
+       * @returns {string} The content that was last saved
+       */
+      getLastSavedContent: function() {
+        return lastSavedContent;
+      },
+      /**
+       * Reset the baseline to current content (call after external save)
+       */
+      resetBaseline: function() {
+        if (editor) {
+          lastSavedContent = window.getQuillHTML(editor);
+        }
+      },
       cleanup: function() {
         clearInterval(intervalId);
         editor.off('selection-change', selectionChangeHandler);
