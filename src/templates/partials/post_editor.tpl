@@ -202,24 +202,31 @@
   **}
   <input type="hidden" class="post-status" value="draft" />
 
-  <div class="mt-3 d-flex gap-2 justify-content-end flex-wrap">
+  <div class="mt-3 d-flex gap-2 justify-content-between flex-wrap align-items-center">
+    {* Left side: Cancel *}
     <button type="button" class="btn btn-outline-secondary btn-cancel-post">Cancel</button>
-    <button type="button" class="btn btn-outline-warning btn-unpublish-post" style="display: none;" title="Revert to draft status">
-      <i class="bi bi-arrow-counterclockwise me-1"></i>Unpublish
-    </button>
-    <button type="button" class="btn btn-outline-primary btn-save-draft">Save Draft</button>
-    <button type="button" class="btn btn-primary btn-publish-post">
-      <i class="bi bi-upload me-1"></i>Publish
-    </button>
-    <button type="button" class="btn btn-primary btn-publish-changes" style="display: none;" title="Publish your changes to the live post">
-      <i class="bi bi-upload me-1"></i>Publish Changes
-    </button>
-    <button type="button" class="btn btn-success btn-publish-email" style="display: none;" title="Publish and send email notification to subscribers">
-      <i class="bi bi-send-fill me-1"></i>Publish &amp; Email
-    </button>
-    <button type="button" class="btn btn-outline-success btn-resend-email" style="display: none;" title="Send email notification to subscribers">
-      <i class="bi bi-envelope me-1"></i>Resend Email
-    </button>
+
+    {* Right side: All action buttons in a flex row *}
+    <div class="d-flex gap-2 flex-wrap justify-content-end">
+      <button type="button" class="btn btn-outline-warning btn-unpublish-post" style="display: none;" title="Revert to draft status">
+        <i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-md-inline ms-1">Unpublish</span>
+      </button>
+      <button type="button" class="btn btn-outline-primary btn-save-draft" title="Save as draft">
+        <i class="bi bi-floppy d-md-none"></i><span class="d-none d-md-inline">Save</span>
+      </button>
+      {* Publish button - always shows confirmation modal where user can choose to send email or not *}
+      <button type="button" class="btn btn-primary btn-publish-email" title="Publish post">
+        <i class="bi bi-upload"></i><span class="d-none d-md-inline ms-1">Publish</span>
+      </button>
+      {* Publish Changes button - for already-published posts with pending changes *}
+      <button type="button" class="btn btn-primary btn-publish-changes" style="display: none;" title="Publish your changes">
+        <i class="bi bi-upload"></i><span class="d-none d-md-inline ms-1">Publish</span>
+      </button>
+      {* Resend Email button - for already-published posts *}
+      <button type="button" class="btn btn-outline-success btn-resend-email" style="display: none;" title="Email subscribers">
+        <i class="bi bi-envelope"></i><span class="d-none d-md-inline ms-1">Email</span>
+      </button>
+    </div>
   </div>
   {if isset($mode) && $mode == 'edit'}
   </div>

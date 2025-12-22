@@ -25,36 +25,9 @@
     heroTextPreview.innerHTML = html && html.trim() ? html : 'Hero text will appear here...';
   }
 
-  // Helper to detect payment platform from link and return icon/name
-  function detectPaymentPlatform(link) {
-    if (!link) return { icon: 'bi-credit-card', color: 'text-secondary', name: 'Send payment:' };
-
-    const lowerLink = link.toLowerCase();
-
-    if (lowerLink.includes('venmo.com')) {
-      return { icon: 'bi-currency-dollar', color: 'text-primary', name: 'Send via Venmo:' };
-    } else if (lowerLink.includes('paypal.com') || lowerLink.includes('paypal.me')) {
-      return { icon: 'bi-paypal', color: 'text-primary', name: 'Send via PayPal:' };
-    } else if (lowerLink.includes('ko-fi.com')) {
-      return { icon: 'bi-cup-hot-fill', color: 'text-danger', name: 'Send via Ko-fi:' };
-    } else if (lowerLink.includes('buymeacoffee.com')) {
-      return { icon: 'bi-cup-hot', color: 'text-warning', name: 'Buy Me a Coffee:' };
-    } else if (lowerLink.includes('cash.app') || lowerLink.includes('cash.me')) {
-      return { icon: 'bi-cash-stack', color: 'text-success', name: 'Send via Cash App:' };
-    } else if (lowerLink.includes('zelle.com')) {
-      return { icon: 'bi-bank', color: 'text-purple', name: 'Send via Zelle:' };
-    } else if (lowerLink.includes('patreon.com')) {
-      return { icon: 'bi-heart-fill', color: 'text-danger', name: 'Support on Patreon:' };
-    } else if (lowerLink.includes('github.com/sponsors')) {
-      return { icon: 'bi-github', color: 'text-dark', name: 'Sponsor on GitHub:' };
-    } else if (lowerLink.includes('buy.stripe.com') || lowerLink.includes('donate.stripe.com')) {
-      return { icon: 'bi-credit-card-2-front', color: 'text-primary', name: 'Donate via Stripe:' };
-    } else if (lowerLink.includes('gofundme.com')) {
-      return { icon: 'bi-heart', color: 'text-success', name: 'Support on GoFundMe:' };
-    } else {
-      return { icon: 'bi-credit-card', color: 'text-secondary', name: 'Send payment:' };
-    }
-  }
+  // Use shared payment platform detection from shared-utils.js
+  const detectPaymentPlatform = window.detectPaymentPlatform;
+  const extractDonationUsername = window.extractDonationUsername;
 
   // Helper to toggle donation form fields based on method
   function updateDonationMethodVisibility(prefix = '') {
@@ -160,29 +133,8 @@
       linkIcon.className = `preview-platform-icon bi ${platform.icon} ${platform.color}`;
       linkName.textContent = platform.name;
 
-      // Extract username from URL
-      let username = donationLink;
-      if (donationLink.includes('venmo.com/u/')) {
-        username = donationLink.split('venmo.com/u/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('venmo.com/code')) {
-        username = donationLink.split('venmo.com/code?')[1]?.split('&')[0] || donationLink;
-      } else if (donationLink.includes('paypal.me/')) {
-        username = donationLink.split('paypal.me/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('ko-fi.com/')) {
-        username = donationLink.split('ko-fi.com/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('buymeacoffee.com/')) {
-        username = donationLink.split('buymeacoffee.com/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('cash.app/$')) {
-        username = donationLink.split('cash.app/$')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('cash.me/$')) {
-        username = donationLink.split('cash.me/$')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('patreon.com/')) {
-        username = donationLink.split('patreon.com/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('github.com/sponsors/')) {
-        username = donationLink.split('github.com/sponsors/')[1].split(/[/?#]/)[0];
-      } else if (donationLink.includes('gofundme.com/')) {
-        username = donationLink.split('gofundme.com/')[1]?.split(/[/?#]/)[0] || 'campaign';
-      }
+      // Extract username from URL using shared utility
+      const username = extractDonationUsername(donationLink);
 
       linkText.textContent = username;
     } else if (linkText) {
@@ -1757,121 +1709,10 @@
     });
   }
 
-  // Publish button handler (Publish only - no email)
-  postEditorContainer.querySelector('.btn-publish-post').addEventListener('click', async function () {
-    const saveBtn = this;
-    const originalHTML = saveBtn.innerHTML;
-
-    try {
-      saveBtn.disabled = true;
-
-      // Check if there are pending gallery uploads
-      const galleryUploadInput = postEditorContainer.querySelector('.gallery-upload-input');
-      if (galleryUploadInput && galleryUploadInput.files.length > 0) {
-        const fileCount = galleryUploadInput.files.length;
-        saveBtn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Uploading gallery...`;
-        try {
-          await uploadGalleryImages(Array.from(galleryUploadInput.files));
-          galleryUploadInput.value = '';
-          const galleryUploadBtn = postEditorContainer.querySelector('.btn-upload-gallery');
-          if (galleryUploadBtn) galleryUploadBtn.style.display = 'none';
-        } catch (error) {
-          alert('Gallery upload failed: ' + error.message);
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalHTML;
-          return;
-        }
-      }
-
-      saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
-
-      const heroSelect = postEditorContainer.querySelector('.post-hero-media');
-      const heroMediaId = heroSelect ? heroSelect.value : null;
-
-      const payload = {
-        title: postEditorContainer.querySelector('.post-title').value,
-        body_html: postBodyEditor ? window.getQuillHTML(postBodyEditor) : postEditorContainer.querySelector('.post-body').value,
-        hero_media_id: heroMediaId || null,
-        hero_image_height: heroMediaId ? parseInt(postEditorContainer.querySelector('.post-hero-height').value) : null,
-        hero_title_overlay: heroMediaId ? (postEditorContainer.querySelector('.post-hero-title-overlay')?.checked ? 1 : 0) : 1,
-        hero_overlay_opacity: heroMediaId ? parseFloat(postEditorContainer.querySelector('.post-hero-overlay-opacity')?.value || 0.70) : 0.70,
-        gallery_media_ids: galleryMediaIds
-      };
-
-      if (editingId) {
-        // Editing existing post: save draft then publish (no email)
-        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Publishing...';
-
-        const draftSave = await api('/api/admin/posts-draft.php?id=' + editingId, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!draftSave.success) {
-          alert('Error saving draft: ' + (draftSave.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalHTML;
-          return;
-        }
-
-        // Publish with skip_email flag
-        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + editingId + '&skip_email=1', { method: 'GET' });
-        if (!publishResult.success) {
-          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalHTML;
-          return;
-        }
-        showNotification('Post published successfully.', 'success');
-        loadPosts();
-        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
-        if (modalEl) modalEl.hide();
-      } else {
-        // New post: create as draft then publish (no email)
-        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Creating...';
-        const createDraft = await api('/api/admin/posts.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, status: 'draft' })
-        });
-        if (!createDraft.success || !createDraft.id) {
-          alert('Error creating draft: ' + (createDraft.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalHTML;
-          return;
-        }
-
-        const newId = createDraft.id;
-        editingId = newId;
-
-        // Publish with skip_email flag
-        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Publishing...';
-        const publishResult = await api('/api/admin/posts.php?action=publish&id=' + newId + '&skip_email=1', { method: 'GET' });
-        if (!publishResult.success) {
-          alert('Error publishing: ' + (publishResult.error || 'Unknown error'));
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalHTML;
-          return;
-        }
-        showNotification('Post published successfully.', 'success');
-        loadPosts();
-        const modalEl = bootstrap.Modal.getInstance(postEditorModal);
-        if (modalEl) modalEl.hide();
-      }
-    } catch (error) {
-      console.error('Error publishing post:', error);
-      alert('An error occurred while publishing the post');
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = originalHTML;
-    }
-  });
-
   // Publish Changes button handler - same functionality as Publish, used for already-published posts
   postEditorContainer.querySelector('.btn-publish-changes').addEventListener('click', async function () {
-    // Delegate to the regular publish button handler
-    postEditorContainer.querySelector('.btn-publish-post').click();
+    // Delegate to the Publish button handler (which shows email confirmation modal)
+    postEditorContainer.querySelector('.btn-publish-email').click();
   });
 
   // Publish & Email button handler (Publish and send email notification)
@@ -2378,24 +2219,15 @@
 
   // Hide Draft Previews toggle functionality
   const hideDraftPreviewsToggle = document.getElementById('hideDraftPreviews');
-  const LS_HIDE_DRAFTS_KEY = 'pp_hide_draft_previews';
 
   if (hideDraftPreviewsToggle) {
-    // Restore saved preference
-    try {
-      hideDraftPreviewsToggle.checked = localStorage.getItem(LS_HIDE_DRAFTS_KEY) === '1';
-    } catch (e) {
-      hideDraftPreviewsToggle.checked = false;
-    }
+    // Restore saved preference using shared utility
+    hideDraftPreviewsToggle.checked = window.shouldHideDrafts();
 
     // Handle toggle changes
     hideDraftPreviewsToggle.addEventListener('change', function () {
       const hide = this.checked;
-      try {
-        localStorage.setItem(LS_HIDE_DRAFTS_KEY, hide ? '1' : '0');
-      } catch (e) {
-        console.warn('Failed to save draft visibility preference:', e);
-      }
+      window.setHideDrafts(hide);
 
       // Update visibility of draft posts on the home page if visible
       document.querySelectorAll('.timeline-item-draft').forEach(el => {
@@ -2719,16 +2551,16 @@
       // Immediately set button visibility based on whether we're editing or creating
       // For existing posts, hide "Publish" and show "Publish Changes" only when changes are detected
       // For new posts, show "Publish" and hide "Publish Changes"
-      const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+      const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
       const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
 
       if (editingId) {
         // Editing existing post - hide Publish, Publish Changes will be shown when changes are detected
-        if (publishBtn) publishBtn.style.display = 'none';
+        if (publishEmailBtn) publishEmailBtn.style.display = 'none';
         if (publishChangesBtn) publishChangesBtn.style.display = 'none';
       } else {
         // New post - show Publish, hide Publish Changes
-        if (publishBtn) publishBtn.style.display = 'inline-block';
+        if (publishEmailBtn) publishEmailBtn.style.display = 'inline-block';
         if (publishChangesBtn) publishChangesBtn.style.display = 'none';
       }
     });
@@ -3097,13 +2929,13 @@
               }
 
               // For already-published posts, hide "Publish" and show "Publish Changes" only when there are changes
-              const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+              const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
               const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
               const isAlreadyPublished = post.status === 'published';
 
               if (isAlreadyPublished) {
                 // Hide "Publish" button for already-published posts
-                if (publishBtn) publishBtn.style.display = 'none';
+                if (publishEmailBtn) publishEmailBtn.style.display = 'none';
                 // Hide "Publish Changes" initially - will show when changes are detected
                 if (publishChangesBtn) publishChangesBtn.style.display = 'none';
 
@@ -3130,21 +2962,14 @@
                 }
               } else {
                 // For draft posts, show "Publish" button and hide "Publish Changes"
-                if (publishBtn) publishBtn.style.display = 'inline-block';
+                if (publishEmailBtn) publishEmailBtn.style.display = 'inline-block';
                 if (publishChangesBtn) publishChangesBtn.style.display = 'none';
               }
 
-              // Show/hide Publish & Email button based on whether email can be sent
-              // Email can only be sent if post has never been published (published_at is null)
-              const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
+              // Show Resend Email button for already-published posts
               const resendEmailBtn = postEditorContainer.querySelector('.btn-resend-email');
-              const canSendEmail = !post.published_at;
-              if (publishEmailBtn) {
-                publishEmailBtn.style.display = canSendEmail ? 'inline-block' : 'none';
-              }
-              // Show Resend Email button for already-published posts (when Publish & Email is hidden)
               if (resendEmailBtn) {
-                resendEmailBtn.style.display = (post.status === 'published' && !canSendEmail) ? 'inline-block' : 'none';
+                resendEmailBtn.style.display = post.status === 'published' ? 'inline-block' : 'none';
               }
             }
           });
@@ -3165,16 +2990,14 @@
             unpublishBtn.style.display = 'none';
           }
 
-          // Show Publish & Email button for new posts (email can be sent on first publish)
+          // Show Publish button for new posts
           const publishEmailBtn = postEditorContainer.querySelector('.btn-publish-email');
           if (publishEmailBtn) {
             publishEmailBtn.style.display = 'inline-block';
           }
 
-          // Show Publish button and hide Publish Changes for new posts
-          const publishBtn = postEditorContainer.querySelector('.btn-publish-post');
+          // Hide Publish Changes for new posts
           const publishChangesBtn = postEditorContainer.querySelector('.btn-publish-changes');
-          if (publishBtn) publishBtn.style.display = 'inline-block';
           if (publishChangesBtn) publishChangesBtn.style.display = 'none';
 
           // Hide Resend Email button for new posts

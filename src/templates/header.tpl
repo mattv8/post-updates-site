@@ -16,6 +16,9 @@
 <script src="/js/quill-upload-adapter.js"></script>
 <script src="/js/auto-save.js"></script>
 
+{* Shared utilities - must load before home.js and admin.js *}
+<script src="/js/shared-utils.js"></script>
+
 {* AI Title Generator - included globally *}
 <script src="/js/ai-title-generator.js"></script>
 
