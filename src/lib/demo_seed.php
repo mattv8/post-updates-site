@@ -226,7 +226,7 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
 
     $heroHtml = '<h1>Post Portal Demo</h1>' .
         '<p>This environment refreshes twice a day.</p>' .
-        '<p class="mb-0 small text-light">Edit anything to try the flow—content, media, newsletter, or donation blocks.</p>';
+        '<p class="mb-0 small text-light">Feel free to edit anything to try the flow: content, media, newsletter, or donation blocks.</p>';
 
     $bioHtml = '<p>Post Portal is a lean, self-hosted update blog. It ships with WYSIWYG editing, responsive media, analytics, newsletter signup, and donation links.</p>' .
         '<p>Use this demo as a tour: play around with posts and hero images so you can see how layouts adapt.</p>';
@@ -234,7 +234,7 @@ function seedSettings(mysqli $db, array $mediaIds, string $siteTitle): void
     $donateHtml = '<h3>Support the project</h3><p>If this tool helps you share updates, feel free to send thanks or file issues.</p>';
     $donationInstructions = '<p>Demo mode: donation links are illustrative only.</p>';
 
-    $mailingListHtml = '<p>Subscribe to see the double opt-in flow. Entries are cleared on each reset so you can retry safely.</p>';
+    $mailingListHtml = '<p>Here is where users would enter their email to subscribe to the newsletter. Emails have a tracked unsubscription flow.</p>';
 
     $footerCol1 = '<h4>What you are seeing</h4><p>Fresh Unsplash photos each cycle, seeded posts that highlight editing and analytics, and a minimal Bootstrap 5 UI.</p>';
     $footerCol2 = '<h4>Jump to</h4><ul class="mb-0"><li><a href="https://github.com/mattv8/post-portal" target="_blank">GitHub</a></li><li><a href="#updates">Latest posts</a></li></ul>';
@@ -339,7 +339,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
         ],
         [
             'title' => 'Draft → review → publish',
-            'body' => '<p>Create or edit in draft, preview changes, then publish when ready. Draft values (title, hero, overlay, gallery) stay separate until you hit publish.</p><p>After each reset you get a clean slate—perfect for testing editorial workflows without cleaning up afterward.</p>',
+            'body' => '<p>Create or edit in draft, preview changes, then publish when ready. Draft values (title, hero, overlay, gallery) stay separate until you hit publish.</p>',
             'hero' => 'post2_hero',
             'gallery' => ['post1_hero', 'gallery1'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
@@ -353,7 +353,7 @@ function seedPosts(mysqli $db, array $mediaIds, string $author): void
         ],
         [
             'title' => 'Email, privacy, and analytics',
-            'body' => '<p>Newsletter signups are rate-limited and double opt-in. Each post can trigger an email blast (disabled in this demo). View and impression counts are tracked with admin traffic ignored by default.</p><p>If you self-host, wire up SMTP in settings and toggle whether to include post bodies in emails.</p>',
+            'body' => '<p>Each post can trigger an email blast (disabled in this demo). View and impression counts are tracked with admin traffic ignored by default.</p><p>If you self-host, bring your own SMTP server and toggle whether to include post bodies in emails.</p>',
             'hero' => 'post4_hero',
             'gallery' => ['post3_hero', 'post1_hero'],
             'published_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
