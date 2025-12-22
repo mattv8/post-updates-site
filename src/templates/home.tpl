@@ -181,19 +181,20 @@
     {* Cropper + crop managers (needed for hero/footer image crop in modals) *}
     <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.1/dist/cropper.min.css">
     <script src="https://unpkg.com/cropperjs@1.6.1/dist/cropper.min.js"></script>
-    <script src="js/image-crop-manager.js"></script>
-    <script src="js/admin-crop-init.js"></script>
+    {if $_bundle_mode}
+    {* Cropping bundle already loaded in header *}
+    {else}
+    <script defer src="{asset_js file='image-crop-manager.js'}"></script>
+    <script defer src="{asset_js file='admin-crop-init.js'}"></script>
+    {/if}
 
     {* Edit sections JS - only for authenticated users *}
-    <script src="js/edit-sections.js"></script>
+    {if !$_bundle_mode}
+    <script defer src="{asset_js file='edit-sections.js'}"></script>
+    {/if}
   {/if}
 
   {* Page-specific JS - loaded for all users *}
-  <script src="js/newsletter-signup.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/publish-confirmation.js"></script>
-  <script src="js/unpublish-confirmation.js"></script>
-  <script src="js/post-draft-handler.js"></script>
   <script>
     window.POST_PORTAL_VIEW_SETTINGS = {
       showViewCounts: {$settings.show_view_counts|default:0},
@@ -202,6 +203,15 @@
       isAuthenticated: {if $is_authenticated|default:false}true{else}false{/if}
     };
   </script>
-  <script src="js/home.js"></script>
+  {if $_bundle_mode}
+  <script defer src="{bundle_url name='home.bundle.js'}"></script>
+  {else}
+  <script defer src="{asset_js file='newsletter-signup.js'}"></script>
+  <script defer src="{asset_js file='notifications.js'}"></script>
+  <script defer src="{asset_js file='publish-confirmation.js'}"></script>
+  <script defer src="{asset_js file='unpublish-confirmation.js'}"></script>
+  <script defer src="{asset_js file='post-draft-handler.js'}"></script>
+  <script defer src="{asset_js file='home.js'}"></script>
+  {/if}
 
 </div>

@@ -6,6 +6,9 @@ vendor/
 var/
 .phpunit.result.cache
 
+# JS bundles (generated at Docker build time)
+src/js/bundles/
+
 # Application directories
 src/cache/
 src/templates_c/
