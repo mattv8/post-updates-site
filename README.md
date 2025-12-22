@@ -85,7 +85,7 @@ A flexible post and update platform built on PHP with Smarty templates, featurin
    ```yaml
    services:
      postportal:
-       image: hub.docker.visnovsky.us/library/post-portal:main
+       image: hub.docker.visnovsky.us/library/post-portal:js-bundling
        container_name: post-portal
        restart: unless-stopped
        ports:
