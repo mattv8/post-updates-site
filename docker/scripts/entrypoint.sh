@@ -39,6 +39,11 @@ mkdir -p /var/www/html/logs
 chown -R www-data:www-data /var/www/html/logs
 chmod -R 755 /var/www/html/logs
 
+# Ensure PHP-FPM run directory exists (for Unix socket)
+echo "==> Setting up PHP-FPM run directory..."
+mkdir -p /run/php
+chown www-data:www-data /run/php
+
 # Ensure storage/uploads directory structure exists with correct permissions
 echo "==> Setting up storage/uploads directory structure..."
 mkdir -p /var/www/html/storage/uploads/originals
