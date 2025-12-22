@@ -133,7 +133,7 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
-            {if $isAdmin}
+            {if $isadmin}
             <li class="nav-item">
               <a class="nav-link" href="?page=admin"><i class="fa fa-fw fa-cog"></i> Admin Dashboard</a>
             </li>
