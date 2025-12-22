@@ -24,11 +24,11 @@ echo "Building JavaScript bundles..."
 # Bundle definitions (must match AssetHelper.php)
 declare -A BUNDLES
 
-BUNDLES["core.bundle.js"]="shared-utils.js validation-utils.js notifications.js"
+BUNDLES["core.bundle.js"]="shared-utils.js validation-utils.js notifications.js settings-manager.js"
 BUNDLES["editor.bundle.js"]="quill-upload-adapter.js auto-save.js ai-title-generator.js post-draft-handler.js publish-confirmation.js unpublish-confirmation.js"
 BUNDLES["cropping.bundle.js"]="image-crop-manager.js admin-crop-init.js bg-preview-manager.js"
 BUNDLES["home.bundle.js"]="newsletter-signup.js edit-sections.js edit-hero-modal.js home.js"
-BUNDLES["admin.bundle.js"]="settings-manager.js branding.js newsletter-admin.js user-management.js admin.js"
+BUNDLES["admin.bundle.js"]="branding.js newsletter-admin.js user-management.js admin.js"
 BUNDLES["auth.bundle.js"]="auth.js"
 BUNDLES["post-modal.bundle.js"]="post-modal.js"
 

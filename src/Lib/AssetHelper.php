@@ -26,6 +26,7 @@ class AssetHelper
             'shared-utils.js',
             'validation-utils.js',
             'notifications.js',
+            'settings-manager.js',
         ],
         // Editor/post functionality
         'editor.bundle.js' => [
@@ -51,7 +52,6 @@ class AssetHelper
         ],
         // Admin page specific
         'admin.bundle.js' => [
-            'settings-manager.js',
             'branding.js',
             'newsletter-admin.js',
             'user-management.js',
