@@ -7,7 +7,7 @@
           <i class="bi bi-envelope-fill text-success me-2"></i>
           Confirm Email Notification
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" aria-label="Close" onclick="window.publishConfirmation && window.publishConfirmation.inlineCancel && window.publishConfirmation.inlineCancel()"></button>
       </div>
       <div class="modal-body">
         <p class="mb-3">
@@ -23,7 +23,7 @@
         </p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary" id="publishCancelBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlineCancel && window.publishConfirmation.inlineCancel()">Cancel</button>
         <button type="button" class="btn btn-outline-primary" id="publishOnlyBtn" onclick="window.publishConfirmation && window.publishConfirmation.inlinePublishOnly && window.publishConfirmation.inlinePublishOnly()">
           <i class="bi bi-check-lg me-1"></i>
           Publish Only

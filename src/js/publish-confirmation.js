@@ -20,11 +20,9 @@
    * @returns {Promise<{subscriberCount: number}>}
    */
   async function getSubscriberCount(postId = 0) {
-    // For resend email, we may not have a post ID, but we still want subscriber count
-    // If postId is provided, use it; otherwise use a placeholder that won't fail
-    const id = postId || 1; // Use 1 as fallback to avoid "Missing post ID" error
+    const url = postId ? `/api/admin/publish-check.php?id=${postId}` : '/api/admin/publish-check.php';
 
-    const response = await fetch(`/api/admin/publish-check.php?id=${id}`);
+    const response = await fetch(url);
     const result = await response.json();
 
     if (!result.success) {
@@ -32,7 +30,7 @@
     }
 
     return {
-      subscriberCount: result.subscriberCount
+      subscriberCount: result.subscriberCount ?? 0
     };
   }
 
@@ -129,9 +127,23 @@
 
       return { action: null, proceeded: false }; // User cancelled
     } catch (error) {
+      const errorMsg = error.message || '';
+
+      // Check if error was already handled (e.g., actionable toast shown)
+      if (errorMsg === '__handled__') {
+        return { action: null, proceeded: false };
+      }
+
       console.error('[EMAIL] Error in email confirmation:', error);
-      // On error, ask user if they want to proceed anyway
-      if (confirm('Unable to verify subscriber count. Proceed anyway?')) {
+
+      // Check for authentication errors
+      if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.toLowerCase().includes('session')) {
+        alert('Your session has expired. Please refresh the page and log in again.');
+        return { action: null, proceeded: false };
+      }
+
+      // On other errors, ask user if they want to proceed anyway
+      if (confirm(`Unable to verify subscriber count: ${errorMsg}\n\nProceed anyway?`)) {
         await emailAction();
         return { action: 'email', proceeded: true };
       }
@@ -144,12 +156,41 @@
     getSubscriberCount,
     showEmailConfirmation,
     confirmAndSendEmail,
+    // Called by inline onclick in the modal template for Cancel button
+    inlineCancel: function() {
+      const modal = pending.modal || document.getElementById('publishConfirmModal');
+      const bsInstance = modal ? bootstrap.Modal.getInstance(modal) : null;
+
+      // Blur focus before hiding to prevent aria-hidden warning
+      if (document.activeElement && modal && modal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+
+      // Resolve with null to indicate cancellation (resolve function sets pending.resolved internally)
+      if (pending.resolve && !pending.resolved) {
+        pending.resolve(null);
+      }
+
+      // Then hide the modal
+      if (bsInstance) {
+        bsInstance.hide();
+      }
+
+      // Cleanup lightweight state
+      pending.resolve = null;
+      pending.modal = null;
+    },
     // Called by inline onclick in the modal template for "Publish & Send Emails"
     inlineConfirm: function() {
       const modal = pending.modal || document.getElementById('publishConfirmModal');
       const bsInstance = modal ? (bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal)) : null;
 
-      // Call resolve BEFORE setting resolved flag, so the wrapper check passes
+      // Blur focus before hiding to prevent aria-hidden warning
+      if (document.activeElement && modal && modal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+
+      // Call resolve (resolve function sets pending.resolved internally)
       if (pending.resolve && !pending.resolved) {
         pending.resolve('email');
       }
@@ -168,7 +209,12 @@
       const modal = pending.modal || document.getElementById('publishConfirmModal');
       const bsInstance = modal ? (bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal)) : null;
 
-      // Call resolve with 'publish-only' action
+      // Blur focus before hiding to prevent aria-hidden warning
+      if (document.activeElement && modal && modal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+
+      // Call resolve with 'publish-only' action (resolve function sets pending.resolved internally)
       if (pending.resolve && !pending.resolved) {
         pending.resolve('publish-only');
       }

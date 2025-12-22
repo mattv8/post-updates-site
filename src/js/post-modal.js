@@ -595,23 +595,7 @@
             headers: { 'X-CSRF-Token': csrfToken }
           });
           const publishData = await publishResponse.json();
-
-          if (!publishData.success) {
-            throw new Error(publishData.error || 'Failed to publish post');
-          }
-
-          // Show email result notification
-          if (publishData.email) {
-            if (publishData.email.sent && publishData.email.count > 0) {
-              if (typeof window.showNotification === 'function') {
-                window.showNotification(`Post published! Email sent to ${publishData.email.count} subscriber(s).`, 'success');
-              }
-            } else if (publishData.email.sent === false && !publishData.email.skipped) {
-              if (typeof window.showNotification === 'function') {
-                window.showNotification(`Post published, but email failed: ${publishData.email.error || 'Unknown error'}`, 'warning');
-              }
-            }
-          }
+          window.handlePublishResult(publishData);
         }, postId);
 
         if (proceeded) {
@@ -626,13 +610,14 @@
           }
         } else {
           // User cancelled - post is saved as draft
-          if (typeof window.showNotification === 'function') {
-            window.showNotification('Draft saved (not published).', 'info');
-          }
+          window.showNotification('Draft saved (not published).', 'info');
         }
       } catch (error) {
         console.error('Error creating post:', error);
-        alert('An error occurred while creating the post');
+        // Don't show alert if error was already handled with actionable toast
+        if (error.message !== '__handled__') {
+          alert('An error occurred while creating the post');
+        }
       } finally {
         publishEmailBtn.disabled = false;
         publishEmailBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Publish & Email';

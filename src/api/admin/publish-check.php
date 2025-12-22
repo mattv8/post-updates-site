@@ -8,26 +8,35 @@ use PostPortal\Http\ErrorResponse;
 require_once __DIR__ . '/../bootstrap.php';
 
 ApiHandler::handle(function (): void {
-    ['container' => $container] = bootstrapApi(requireAuth: true, requireAdmin: true);
+    ['container' => $container, 'db' => $db] = bootstrapApi(requireAuth: true, requireAdmin: true);
 
     $postId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-    if ($postId <= 0) {
-        ErrorResponse::badRequest('Missing post ID');
-    }
 
     $postService = $container->getPostService();
     $newsletterService = $container->getNewsletterService();
 
-    $post = $postService->getPost($postId);
-    if ($post === null) {
-        ErrorResponse::notFound('Post not found');
+    // Get email configuration status (includes subscriber count)
+    $emailConfig = checkEmailConfiguration($db);
+
+    $response = [
+        'subscriberCount' => $emailConfig['subscriberCount'],
+        'canSendEmail' => $emailConfig['canSend'],
+    ];
+
+    // Include error info if email can't be sent
+    if (!$emailConfig['canSend']) {
+        $response['emailError'] = $emailConfig['error'] ?? null;
+        $response['actionRequired'] = $emailConfig['actionRequired'] ?? null;
+        $response['actionLabel'] = $emailConfig['actionLabel'] ?? null;
     }
 
-    $isFirstPublish = is_null($post['published_at']);
-    $subscriberCount = $newsletterService->getActiveSubscriberCount();
+    // If post ID provided, also check if it's first publish
+    if ($postId > 0) {
+        $post = $postService->getPost($postId);
+        if ($post !== null) {
+            $response['isFirstPublish'] = is_null($post['published_at']);
+        }
+    }
 
-    ErrorResponse::success([
-        'isFirstPublish' => $isFirstPublish,
-        'subscriberCount' => $subscriberCount,
-    ]);
+    ErrorResponse::success($response);
 });

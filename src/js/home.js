@@ -723,29 +723,7 @@
               headers: { 'X-CSRF-Token': CSRF }
             });
             const publishResult = await response.json();
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-            // Show email result
-            if (publishResult.email) {
-              if (publishResult.email.sent && publishResult.email.count > 0) {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
-                }
-              } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
-                }
-              } else {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification('Post published successfully.', 'success');
-                }
-              }
-            } else {
-              if (typeof window.showNotification === 'function') {
-                window.showNotification('Post published successfully.', 'success');
-              }
-            }
+            window.handlePublishResult(publishResult);
           }, postId);
 
           if (result && result.action === 'publish-only') {
@@ -758,9 +736,7 @@
             if (!publishResult.success) {
               throw new Error(publishResult.error || 'Unknown error');
             }
-            if (typeof window.showNotification === 'function') {
-              window.showNotification('Post published successfully (email not sent).', 'success');
-            }
+            window.showNotification('Post published successfully (email not sent).', 'success');
             hideOverlay();
             window.location.reload();
           } else if (result && result.proceeded) {
@@ -771,13 +747,14 @@
             // User cancelled - keep as draft
             publishDraftBtn.disabled = false;
             publishDraftBtn.innerHTML = originalHTML;
-            if (typeof window.showNotification === 'function') {
-              window.showNotification('Publish cancelled.', 'info');
-            }
+            window.showNotification('Publish cancelled.', 'info');
           }
         } catch (err) {
           console.error('Error publishing draft:', err);
-          alert('Error publishing post: ' + err.message);
+          // Don't show alert if error was already handled with actionable toast
+          if (err.message !== '__handled__') {
+            alert('Error publishing post: ' + err.message);
+          }
           publishDraftBtn.disabled = false;
           publishDraftBtn.innerHTML = originalHTML;
         }
@@ -2488,29 +2465,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const result = await window.publishConfirmation.confirmAndSendEmail(async () => {
             // Publish WITH email (no skip_email flag)
             const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postIdToPublish, { method: 'GET' });
-            if (!publishResult.success) {
-              throw new Error(publishResult.error || 'Unknown error');
-            }
-            // Show email result
-            if (publishResult.email) {
-              if (publishResult.email.sent && publishResult.email.count > 0) {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
-                }
-              } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
-                }
-              } else {
-                if (typeof window.showNotification === 'function') {
-                  window.showNotification('Post published successfully.', 'success');
-                }
-              }
-            } else {
-              if (typeof window.showNotification === 'function') {
-                window.showNotification('Post published successfully.', 'success');
-              }
-            }
+            window.handlePublishResult(publishResult);
           }, postIdToPublish);
 
           if (result && result.action === 'publish-only') {
@@ -2519,9 +2474,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!publishResult.success) {
               throw new Error(publishResult.error || 'Unknown error');
             }
-            if (typeof window.showNotification === 'function') {
-              window.showNotification('Post published successfully (email not sent).', 'success');
-            }
+            window.showNotification('Post published successfully (email not sent).', 'success');
             const postEditorModal = document.getElementById('postEditorModal');
             // Hide loading spinner before closing modal to prevent brief flash
             const loadingEl = postEditorModal.querySelector('.post-editor-loading');
@@ -2556,7 +2509,10 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         } catch (error) {
           console.error('Error publishing post with email:', error);
-          alert('An error occurred while publishing the post');
+          // Don't show alert if error was already handled with actionable toast
+          if (error.message !== '__handled__') {
+            alert('An error occurred while publishing the post');
+          }
         } finally {
           saveBtn.disabled = false;
           saveBtn.innerHTML = originalHTML;

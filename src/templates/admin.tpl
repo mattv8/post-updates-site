@@ -207,7 +207,7 @@
             <h6 class="mb-3">SMTP Configuration</h6>
             {if $debug|default:false}
               <div class="form-check form-switch mb-3" id="smtpMailpitToggleRow">
-                <input class="form-check-input" type="checkbox" id="smtp_mailpit_toggle" checked>
+                <input class="form-check-input" type="checkbox" id="smtp_mailpit_toggle">
                 <label class="form-check-label" for="smtp_mailpit_toggle">
                   Use Mailpit (dev override)
                 </label>
@@ -848,6 +848,7 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="/js/image-crop-manager.js"></script>
 <script src="/js/admin-crop-init.js"></script>
+<script src="/js/notifications.js"></script>
 <script src="/js/publish-confirmation.js"></script>
 <script src="/js/unpublish-confirmation.js"></script>
 <script src="/js/post-draft-handler.js"></script>

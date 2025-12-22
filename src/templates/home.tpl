@@ -189,6 +189,7 @@
 
   {* Page-specific JS - loaded for all users *}
   <script src="js/newsletter-signup.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/publish-confirmation.js"></script>
   <script src="js/unpublish-confirmation.js"></script>
   <script src="js/post-draft-handler.js"></script>

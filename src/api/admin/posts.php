@@ -45,6 +45,8 @@ ApiHandler::handle(function (): void {
                     $response['email'] = [
                         'sent' => false,
                         'error' => $emailResult['error'] ?? 'Unknown error',
+                        'actionRequired' => $emailResult['actionRequired'] ?? null,
+                        'actionLabel' => $emailResult['actionLabel'] ?? null,
                     ];
                 }
 
@@ -60,6 +62,22 @@ ApiHandler::handle(function (): void {
                 if (isset($_GET['skip_email'])) {
                     $val = strtolower((string) $_GET['skip_email']);
                     $skipEmail = in_array($val, ['1', 'true', 'yes'], true);
+                }
+
+                // If user wants to send emails, verify email configuration BEFORE publishing
+                if (!$skipEmail) {
+                    $emailCheckResult = checkEmailConfiguration($db);
+                    if (!$emailCheckResult['canSend']) {
+                        // Don't publish - return error with actionable fix
+                        ErrorResponse::json(400, $emailCheckResult['error'], [
+                            'email' => [
+                                'sent' => false,
+                                'error' => $emailCheckResult['error'],
+                                'actionRequired' => $emailCheckResult['actionRequired'] ?? null,
+                                'actionLabel' => $emailCheckResult['actionLabel'] ?? null,
+                            ]
+                        ]);
+                    }
                 }
 
                 $currentPost = $postService->getPost($id);
@@ -87,6 +105,8 @@ ApiHandler::handle(function (): void {
                             $response['email'] = [
                                 'sent' => false,
                                 'error' => $emailResult['error'] ?? 'Unknown error',
+                                'actionRequired' => $emailResult['actionRequired'] ?? null,
+                                'actionLabel' => $emailResult['actionLabel'] ?? null,
                             ];
                         }
                     } else {
@@ -101,52 +121,6 @@ ApiHandler::handle(function (): void {
                 }
 
                 ErrorResponse::badRequest($res['error'] ?? 'Failed to publish draft');
-            }
-
-            // Resend email action (for already-published posts)
-            if (isset($_GET['action']) && $_GET['action'] === 'resend-email' && isset($_GET['id'])) {
-                requireCsrfToken();
-                $id = (int) $_GET['id'];
-
-                $currentPost = $postService->getPost($id);
-                if (!$currentPost) {
-                    ErrorResponse::notFound('Post not found');
-                }
-
-                if ($currentPost['status'] !== 'published') {
-                    ErrorResponse::badRequest('Cannot resend email for unpublished post');
-                }
-
-                // Return success immediately to avoid client timeout
-                // Emails will be sent in the background with rate limiting
-                $response = ['success' => true, 'queued' => true, 'message' => 'Email notification will be sent shortly.'];
-
-                // Send response before processing emails to prevent timeout
-                header('Content-Type: application/json');
-                http_response_code(200);
-                echo json_encode($response);
-
-                // Flush output and close connection if possible
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
-                flush();
-
-                // Continue with email sending if connection is still available
-                if (function_exists('fastcgi_finish_request')) {
-                    fastcgi_finish_request();
-                }
-
-                // Now send the emails in the background
-                error_log('Post notification resend started for post ' . $id);
-                $emailResult = sendNewPostNotification($db, $id);
-                if ($emailResult['success']) {
-                    error_log('Post notification resent: ' . ($emailResult['message'] ?? 'Success'));
-                } else {
-                    error_log('Post notification resend failed: ' . ($emailResult['error'] ?? 'Unknown error'));
-                }
-
-                exit;
             }
 
             // Single post by id for editing

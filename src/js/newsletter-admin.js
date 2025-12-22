@@ -32,57 +32,8 @@
     return adminApp ? adminApp.getAttribute('data-csrf') : '';
   }
 
-  // Show toast notification
-  function showNotification(message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-      toastContainer.style.zIndex = '9999';
-      document.body.appendChild(toastContainer);
-    }
-
-    // Map type to Bootstrap alert class
-    const typeMap = {
-      'success': 'success',
-      'warning': 'warning',
-      'error': 'danger',
-      'danger': 'danger',
-      'info': 'info'
-    };
-    const bgClass = 'bg-' + (typeMap[type] || 'info');
-    const textClass = (type === 'warning') ? 'text-dark' : 'text-white';
-
-    // Create toast element
-    const toastId = 'toast-' + Date.now();
-    const toastHtml = `
-      <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header ${bgClass} ${textClass}">
-          <strong class="me-auto">${type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : type === 'error' || type === 'danger' ? 'Error' : 'Info'}</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-          ${message.replace(/\n/g, '<br>')}
-        </div>
-      </div>
-    `;
-
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-
-    // Initialize and show the toast
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-      autohide: type === 'success', // Auto-hide success messages
-      delay: 5000
-    });
-    toast.show();
-
-    // Remove from DOM after hidden
-    toastElement.addEventListener('hidden.bs.toast', () => {
-      toastElement.remove();
-    });
-  }
+  // Use shared notification function from notifications.js
+  const showNotification = window.showNotification;
 
   // Get SMTP configuration from form
   function getSMTPConfigFromForm() {
@@ -1007,10 +958,12 @@
         }
       };
 
-      // Apply initial state if mailpit config is active OR toggle is already checked (from template)
-      if (isMailpitConfigActive() || mailpitToggle.checked) {
+      // Apply initial state only if mailpit config is actually active in the database
+      if (isMailpitConfigActive()) {
         mailpitToggle.checked = true;
         applyMailpitState(true);
+      } else {
+        mailpitToggle.checked = false;
       }
 
       mailpitToggle.addEventListener('change', async function() {

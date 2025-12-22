@@ -1279,6 +1279,111 @@ function validateUnsubscribeToken(string $token): string|false
 }
 
 /**
+ * Check if email configuration is valid for sending notifications
+ * Used to pre-validate before publishing when user wants to send emails
+ *
+ * @param mysqli $db_conn Database connection
+ * @param bool $testConnection Whether to actually test the SMTP connection
+ * @return array ['canSend' => bool, 'error' => string|null, 'actionRequired' => string|null, 'actionLabel' => string|null, 'subscriberCount' => int]
+ */
+function checkEmailConfiguration(\mysqli $db_conn, bool $testConnection = true): array
+{
+    $settings = getSettings($db_conn);
+
+    // Get subscriber count regardless of config status (for UI display)
+    $subscriberCount = getActiveSubscriberCount($db_conn);
+
+    if (!$settings || !$settings['notify_subscribers_on_post']) {
+        return [
+            'canSend' => false,
+            'error' => 'Email notifications disabled in settings.',
+            'actionRequired' => 'enable_notifications',
+            'actionLabel' => 'Enable Email Notifications',
+            'subscriberCount' => $subscriberCount
+        ];
+    }
+
+    $smtp_host = $settings['smtp_host'] ?? null;
+    $smtp_from_email = $settings['smtp_from_email'] ?? null;
+
+    $missingFields = [];
+    if (!$smtp_host) {
+        $missingFields[] = 'SMTP Host';
+    }
+    if (!$smtp_from_email) {
+        $missingFields[] = 'From Email';
+    }
+
+    if (!empty($missingFields)) {
+        return [
+            'canSend' => false,
+            'error' => 'SMTP configuration incomplete. Missing: ' . implode(', ', $missingFields),
+            'actionRequired' => 'configure_smtp',
+            'actionLabel' => 'Configure Email Settings',
+            'subscriberCount' => $subscriberCount
+        ];
+    }
+
+    // Test actual SMTP connection if requested
+    if ($testConnection) {
+        try {
+            require_once(__DIR__ . '/vendor/autoload.php');
+
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host = $smtp_host;
+            $mail->Port = isset($settings['smtp_port']) ? (int)$settings['smtp_port'] : 587;
+            $mail->Timeout = 10;
+
+            $smtp_secure = $settings['smtp_secure'] ?? 'none';
+            if ($smtp_secure !== 'none' && $smtp_secure !== '') {
+                $mail->SMTPSecure = $smtp_secure;
+            }
+
+            $smtp_auth = isset($settings['smtp_auth']) ? (bool)$settings['smtp_auth'] : true;
+            if ($smtp_auth) {
+                $mail->SMTPAuth = true;
+                $mail->Username = $settings['smtp_username'] ?? '';
+                $mail->Password = $settings['smtp_password'] ?? '';
+            }
+
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ];
+
+            if (!$mail->smtpConnect()) {
+                return [
+                    'canSend' => false,
+                    'error' => 'Cannot connect to SMTP server. Please verify your email settings.',
+                    'actionRequired' => 'configure_smtp',
+                    'actionLabel' => 'Configure Email Settings',
+                    'subscriberCount' => $subscriberCount
+                ];
+            }
+
+            $mail->smtpClose();
+        } catch (\Exception $e) {
+            return [
+                'canSend' => false,
+                'error' => 'SMTP connection failed: ' . $e->getMessage(),
+                'actionRequired' => 'configure_smtp',
+                'actionLabel' => 'Configure Email Settings',
+                'subscriberCount' => $subscriberCount
+            ];
+        }
+    }
+
+    return [
+        'canSend' => true,
+        'subscriberCount' => $subscriberCount
+    ];
+}
+
+/**
  * Send email notification to all active subscribers about a new post
  *
  * @param mysqli $db_conn Database connection
@@ -1290,7 +1395,12 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
     // Get settings - notifications enabled and SMTP configuration
     $settings = getSettings($db_conn);
     if (!$settings || !$settings['notify_subscribers_on_post']) {
-        return ['success' => false, 'error' => 'Notifications disabled in settings'];
+        return [
+            'success' => false,
+            'error' => 'Email notifications disabled in settings.',
+            'actionRequired' => 'enable_notifications',
+            'actionLabel' => 'Enable Email Notifications'
+        ];
     }
 
     // Load SMTP settings from database only
@@ -1319,7 +1429,12 @@ function sendNewPostNotification(\mysqli $db_conn, int $postId): array
         $missingFields[] = 'From Email';
     }
     if (!empty($missingFields)) {
-        return ['success' => false, 'error' => 'SMTP configuration incomplete. Missing: ' . implode(', ', $missingFields) . '. Please configure in Admin > Newsletter > Email Settings.'];
+        return [
+            'success' => false,
+            'error' => 'SMTP configuration incomplete. Missing: ' . implode(', ', $missingFields),
+            'actionRequired' => 'configure_smtp',
+            'actionLabel' => 'Configure Email Settings'
+        ];
     }
 
     // Get post details

@@ -3,57 +3,8 @@
   if (!root) return;
   const CSRF = root.getAttribute('data-csrf') || '';
 
-  // Notification system - shows Bootstrap toast notifications
-  function showNotification(message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-      toastContainer.style.zIndex = '9999';
-      document.body.appendChild(toastContainer);
-    }
-
-    // Map type to Bootstrap alert class
-    const typeMap = {
-      'success': 'success',
-      'warning': 'warning',
-      'error': 'danger',
-      'danger': 'danger',
-      'info': 'info'
-    };
-    const bgClass = 'bg-' + (typeMap[type] || 'info');
-    const textClass = (type === 'warning') ? 'text-dark' : 'text-white';
-
-    // Create toast element
-    const toastId = 'toast-' + Date.now();
-    const toastHtml = `
-      <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header ${bgClass} ${textClass}">
-          <strong class="me-auto">${type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : type === 'error' || type === 'danger' ? 'Error' : 'Info'}</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-          ${message.replace(/\n/g, '<br>')}
-        </div>
-      </div>
-    `;
-
-    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-
-    // Initialize and show the toast
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-      autohide: type === 'success', // Auto-hide success messages
-      delay: 5000
-    });
-    toast.show();
-
-    // Remove from DOM after hidden
-    toastElement.addEventListener('hidden.bs.toast', () => {
-      toastElement.remove();
-    });
-  }
+  // Use shared notification functions from notifications.js
+  // These are exposed globally: window.showNotification, window.showEmailError, window.handlePublishResult
 
   // Quill editor instances
   let heroEditor = null;
@@ -1597,7 +1548,7 @@
           if (j.email && j.email.sent && j.email.count > 0) {
             showNotification(`Email notifications resent to ${j.email.count} subscriber(s).`, 'success');
           } else if (j.email && j.email.sent === false) {
-            showNotification(`Failed to send emails: ${j.email.error || 'Unknown error'}`, 'warning');
+            showEmailError(j.email);
           } else {
             showNotification('Email sending completed.', 'success');
           }
@@ -1619,53 +1570,63 @@
   }
 
   // Handle publish toggle switches
-  postsList.addEventListener('change', function (e) {
+  postsList.addEventListener('change', async function (e) {
     if (e.target.classList.contains('publish-toggle')) {
       const postId = e.target.getAttribute('data-id');
       const isPublished = e.target.checked;
+      const toggleBtn = e.target;
+      const originalChecked = !isPublished; // The state before the change
 
       // Disable toggle while processing
-      e.target.disabled = true;
+      toggleBtn.disabled = true;
 
       // If toggling to published, show email confirmation modal
       if (isPublished) {
-        // Show email confirmation modal for publishing via toggle
-        const toggleBtn = e.target;
-        window.publishConfirmation.confirmAndSendEmail(async () => {
-          // Publish WITH email
-          const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postId, {
-            method: 'GET'
-          });
-          if (!publishResult.success) {
-            throw new Error(publishResult.error || 'Unknown error');
-          }
-          // Show email result
-          if (publishResult.email) {
-            if (publishResult.email.sent && publishResult.email.count > 0) {
-              showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
-            } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-              showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
+        try {
+          // Show email confirmation modal for publishing via toggle
+          const result = await window.publishConfirmation.confirmAndSendEmail(async () => {
+            // Publish WITH email
+            const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postId, {
+              method: 'GET'
+            });
+            if (!publishResult.success) {
+              // Check if there's an actionable email error (config issue prevented publish)
+              if (publishResult.email && publishResult.email.actionRequired) {
+                showEmailError(publishResult.email, 'Cannot publish: ' + (publishResult.email.error || 'Email configuration required'));
+                throw new Error('__handled__'); // Signal that error was already shown
+              }
+              throw new Error(publishResult.error || 'Unknown error');
+            }
+            // Show email result
+            if (publishResult.email) {
+              if (publishResult.email.sent && publishResult.email.count > 0) {
+                showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
+              } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
+                showNotification('Post published successfully.', 'success');
+                showEmailError(publishResult.email, 'Email notification failed');
+              } else {
+                showNotification('Post published successfully.', 'success');
+              }
             } else {
               showNotification('Post published successfully.', 'success');
             }
-          } else {
-            showNotification('Post published successfully.', 'success');
-          }
 
-          // Purge cache silently
-          api('/api/admin/cache-purge.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          }).catch(() => {}); // Silent failure is ok
+            // Purge cache silently
+            api('/api/admin/cache-purge.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            }).catch(() => {}); // Silent failure is ok
 
-          // Reload the posts list to show updated date
-          loadPosts();
-        }, postId).then(result => {
+            // Reload the posts list to show updated date
+            loadPosts();
+          }, postId);
+
           if (result && result.action === 'publish-only') {
             // User chose to publish without email
-            api('/api/admin/posts.php?action=publish&id=' + postId + '&skip_email=1', {
-              method: 'GET'
-            }).then(j => {
+            try {
+              const j = await api('/api/admin/posts.php?action=publish&id=' + postId + '&skip_email=1', {
+                method: 'GET'
+              });
               if (j.success) {
                 showNotification('Post published successfully.', 'success');
                 // Purge cache silently
@@ -1677,25 +1638,29 @@
               } else {
                 throw new Error(j.error || 'Unknown error');
               }
-            }).catch(err => {
+            } catch (err) {
               console.error('Error publishing post:', err);
               alert('Error updating post status: ' + err.message);
-              toggleBtn.checked = false;
+              toggleBtn.checked = originalChecked;
               toggleBtn.disabled = false;
-            });
-          } else if (!result || !result.proceeded) {
-            // User cancelled - toggle back to unpublished
-            toggleBtn.checked = false;
-            toggleBtn.disabled = false;
+            }
+          } else if (result && result.proceeded) {
+            // User chose to send email - loadPosts() already called in callback
+            // Toggle will be refreshed when posts list reloads
           } else {
+            // User cancelled - restore toggle to original state
+            toggleBtn.checked = originalChecked;
             toggleBtn.disabled = false;
           }
-        }).catch(err => {
+        } catch (err) {
           console.error('Error publishing via toggle:', err);
-          alert('Error updating post status: ' + err.message);
-          toggleBtn.checked = false;
+          // Don't show alert if error was already handled with actionable toast
+          if (err.message !== '__handled__') {
+            alert('Error updating post status: ' + err.message);
+          }
+          toggleBtn.checked = originalChecked;
           toggleBtn.disabled = false;
-        });
+        }
       } else {
         // Toggling to draft - no confirmation needed
         unpublishPost(postId, {
@@ -1983,21 +1948,7 @@
       const result = await window.publishConfirmation.confirmAndSendEmail(async () => {
         // Publish WITH email (no skip_email flag)
         const publishResult = await api('/api/admin/posts.php?action=publish&id=' + postIdToPublish, { method: 'GET' });
-        if (!publishResult.success) {
-          throw new Error(publishResult.error || 'Unknown error');
-        }
-        // Show email result
-        if (publishResult.email) {
-          if (publishResult.email.sent && publishResult.email.count > 0) {
-            showNotification(`Post published! Email sent to ${publishResult.email.count} subscriber(s).`, 'success');
-          } else if (publishResult.email.sent === false && !publishResult.email.skipped) {
-            showNotification(`Post published, but email failed: ${publishResult.email.error || 'Unknown error'}`, 'warning');
-          } else {
-            showNotification('Post published successfully.', 'success');
-          }
-        } else {
-          showNotification('Post published successfully.', 'success');
-        }
+        window.handlePublishResult(publishResult);
       }, postIdToPublish);
 
       if (result && result.action === 'publish-only') {
@@ -2023,7 +1974,10 @@
       }
     } catch (error) {
       console.error('Error publishing post with email:', error);
-      alert('An error occurred while publishing the post');
+      // Don't show alert if error was already handled with actionable toast
+      if (error.message !== '__handled__') {
+        alert('An error occurred while publishing the post');
+      }
     } finally {
       saveBtn.disabled = false;
       saveBtn.innerHTML = originalHTML;
@@ -2059,7 +2013,7 @@
           if (resendResult.email.sent && resendResult.email.count > 0) {
             showNotification(`Email sent to ${resendResult.email.count} subscriber(s).`, 'success');
           } else if (resendResult.email.sent === false) {
-            showNotification(`Email failed: ${resendResult.email.error || 'Unknown error'}`, 'warning');
+            showEmailError(resendResult.email);
           } else {
             showNotification('Email notification sent.', 'success');
           }
@@ -2456,6 +2410,31 @@
   if (tabButton) {
     const tab = new bootstrap.Tab(tabButton);
     tab.show();
+  }
+
+  // Restore Newsletter subtab if coming from external navigation (e.g., homepage toast button)
+  const newsletterSubtab = sessionStorage.getItem('adminNewsletterSubtab');
+  if (newsletterSubtab) {
+    // Clear the flag so it doesn't persist on subsequent visits
+    sessionStorage.removeItem('adminNewsletterSubtab');
+
+    // Wait for main tab to render, then activate subtab
+    setTimeout(() => {
+      if (newsletterSubtab === 'email-settings') {
+        const emailSettingsTab = document.getElementById('subtab-email-settings');
+        if (emailSettingsTab) {
+          emailSettingsTab.click();
+          // Scroll to SMTP host field
+          setTimeout(() => {
+            const smtpHost = document.getElementById('smtp_host');
+            if (smtpHost) {
+              smtpHost.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              smtpHost.focus();
+            }
+          }, 300);
+        }
+      }
+    }, 300);
   }
 
   // Reveal the tab content now that the correct tab is active
